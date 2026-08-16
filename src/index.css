@@ -5,6 +5,108 @@ body {
   overflow: hidden;
 }
 
+/* --- Backdrop finishing passes (see themes/SceneLayer) --- */
+
+/* A very slow push on the backdrop. Long and gentle enough that you notice it
+   only as the room being alive, never as movement. */
+.scene-drift {
+  animation: scene-drift 64s ease-in-out infinite alternate;
+}
+@keyframes scene-drift {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.06) translate3d(-1.2%, -0.8%, 0);
+  }
+}
+
+/* The light in the room. `screen` lets it lift the scene instead of washing it out. */
+.scene-glow {
+  mix-blend-mode: screen;
+}
+.scene-glow-breathe {
+  animation: glow-breathe 11s ease-in-out infinite alternate;
+}
+@keyframes glow-breathe {
+  from {
+    opacity: 0.72;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Firelight: uneven, never settling on one brightness. */
+.scene-glow-flicker {
+  animation: glow-flicker 5.5s ease-in-out infinite;
+}
+@keyframes glow-flicker {
+  0% { opacity: 0.72; }
+  12% { opacity: 0.95; }
+  23% { opacity: 0.66; }
+  38% { opacity: 1; }
+  47% { opacity: 0.78; }
+  61% { opacity: 0.93; }
+  74% { opacity: 0.7; }
+  88% { opacity: 0.97; }
+  100% { opacity: 0.72; }
+}
+
+/* Darkens the corners so the eye settles in the middle of the desk. */
+.scene-vignette {
+  background: radial-gradient(
+    ellipse 82% 76% at 50% 46%,
+    transparent 34%,
+    rgba(0, 0, 0, 0.26) 72%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+}
+
+/* Light themes only need a hint of one, or the paper looks dirty. */
+.scene-vignette-light {
+  background: radial-gradient(
+    ellipse 88% 82% at 50% 46%,
+    transparent 45%,
+    rgba(120, 96, 64, 0.1) 100%
+  );
+}
+
+/* Fine film grain. Static noise from an inline SVG filter — no asset, no repaint. */
+.scene-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+/* --- Widget chrome, painted from the active theme's tokens --- */
+
+.widget-glass {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  /* Saturation lifts the backdrop so the glass looks lit, not just blurred. */
+  backdrop-filter: blur(26px) saturate(1.25);
+  box-shadow:
+    0 28px 64px -16px rgba(0, 0, 0, 0.55),
+    0 2px 10px rgba(0, 0, 0, 0.22),
+    /* The lit top edge is what reads as a real pane of glass. */
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.widget-header {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015));
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.chrome-button {
+  color: var(--ink-soft);
+  transition: background-color 0.15s, color 0.15s;
+}
+.chrome-button:hover {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  color: var(--ink);
+}
+
 /* Electron frameless window drag region */
 .titlebar-drag-region {
   -webkit-app-region: drag;

@@ -58,8 +58,14 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       update({ url: e.url });
       readHistory();
     };
+    // Single-page sites (YouTube among them) change page with history.pushState,
+    // which only surfaces here — so this has to persist too, or reopening the app
+    // drops the user back on whatever the last full page load was.
     const onNavigateInPage = (e: Electron.DidNavigateInPageEvent) => {
-      if (e.isMainFrame) setAddress(e.url);
+      if (e.isMainFrame) {
+        setAddress(e.url);
+        update({ url: e.url });
+      }
       readHistory();
     };
 

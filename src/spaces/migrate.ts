@@ -1,4 +1,5 @@
 import { SILENT_AMBIENCE } from '../ambience/engine';
+import { DEFAULT_THEME_ID, THEMES } from '../themes/themes';
 import { SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from './types';
 
 /**
@@ -22,6 +23,20 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     // v3 added the per-space ambience mixer.
     doc.ambience = doc.ambience ?? { ...SILENT_AMBIENCE };
     doc.schemaVersion = 3;
+  }
+
+  if (doc.schemaVersion < 4) {
+    // v4 made the backdrop a theme. A background that is just one of the shipped
+    // wallpapers becomes the matching theme; anything else the user chose stays
+    // put as an override on top of the default theme.
+    const matched = THEMES.find(
+      (t) =>
+        (t.scene.kind === 'image' && t.scene.src === doc.background?.value) ||
+        (t.scene.kind === 'color' && t.scene.value === doc.background?.value)
+    );
+    doc.themeId = matched?.id ?? DEFAULT_THEME_ID;
+    doc.background = matched ? null : doc.background;
+    doc.schemaVersion = 4;
   }
 
   doc.schemaVersion = SCHEMA_VERSION;
@@ -166,6 +181,8 @@ export function migrateLegacySpaces(raw: unknown): SpaceDoc[] {
         id: legacy.id,
         schemaVersion: SCHEMA_VERSION,
         name: legacy.name,
+        themeId: DEFAULT_THEME_ID,
+        // The MVP's own wallpaper choice is kept, as an override on that theme.
         background:
           legacy.backgroundType === 'COLOR'
             ? { type: 'COLOR' as const, value: legacy.backgroundUrl }

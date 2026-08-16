@@ -2,7 +2,7 @@ import type { Camera } from '../canvas/camera';
 
 import type { AmbienceLevels } from '../ambience/engine';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export type WidgetType =
   | 'todo'
@@ -31,7 +31,9 @@ export interface SpaceDoc {
   id: string;
   schemaVersion: number;
   name: string;
-  background: { type: 'COLOR' | 'IMAGE'; value: string };
+  themeId: string;
+  /** A wallpaper or colour the user picked themselves; null means the theme's own scene. */
+  background: { type: 'COLOR' | 'IMAGE'; value: string } | null;
   camera: Camera;
   ambience: AmbienceLevels;
   widgets: Record<string, WidgetDoc>;

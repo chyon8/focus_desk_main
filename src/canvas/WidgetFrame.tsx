@@ -19,8 +19,8 @@ const HeaderButton: React.FC<{
     title={label}
     onPointerDown={(e) => e.stopPropagation()}
     onClick={onClick}
-    className={`w-7 h-7 flex items-center justify-center rounded-md text-white/60 hover:bg-white/15 transition-colors ${
-      danger ? 'hover:text-red-300' : 'hover:text-white'
+    className={`chrome-button w-7 h-7 flex items-center justify-center rounded-md ${
+      danger ? 'hover:!text-red-300' : ''
     }`}
   >
     {children}
@@ -82,7 +82,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, ful
 
   return (
     <div
-      className="absolute rounded-2xl border border-white/15 bg-white/10 backdrop-blur-md shadow-2xl overflow-hidden"
+      className="widget-glass absolute rounded-2xl overflow-hidden"
       style={{
         left: box.x,
         top: box.y,
@@ -93,7 +93,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, ful
       onPointerDownCapture={() => useSpaceStore.getState().bringToFront(id)}
     >
       <div
-        className={`group h-10 flex items-center px-3 gap-2 bg-white/10 border-b border-white/10 select-none ${
+        className={`widget-header group h-10 flex items-center px-3 gap-2 select-none ${
           fullRect ? '' : 'cursor-grab active:cursor-grabbing'
         }`}
         onDoubleClick={() => useUiStore.getState().toggleMaximized(id)}
@@ -102,15 +102,17 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, ful
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
       >
-        <entry.icon size={14} className="text-white/60" />
-        <span className="text-xs text-white/80">{entry.label}</span>
+        <entry.icon size={14} style={{ color: 'var(--ink-soft)' }} />
+        <span className="text-xs tracking-wide" style={{ color: 'var(--ink)' }}>
+          {entry.label}
+        </span>
 
         <div className="ml-auto flex items-center gap-0.5">
           {fullRect && (
             <button
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => useUiStore.getState().clearMaximized()}
-              className="mr-1 px-2 h-7 rounded-md text-[11px] text-white/70 bg-white/10 hover:bg-white/20 hover:text-white transition-colors"
+              className="chrome-button mr-1 px-2 h-7 rounded-md text-[11px]"
             >
               Esc to restore
             </button>
@@ -146,7 +148,10 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, ful
           onPointerUp={endGesture}
           onPointerCancel={endGesture}
         >
-          <div className="absolute bottom-1 right-1 w-2 h-2 border-r-2 border-b-2 border-white/40" />
+          <div
+            className="absolute bottom-1 right-1 w-2 h-2 border-r-2 border-b-2"
+            style={{ borderColor: 'var(--ink-soft)' }}
+          />
         </div>
       )}
     </div>

@@ -6,16 +6,20 @@ import { AmbienceDock } from '../ambience/AmbienceDock';
 import { FocusInsights } from '../focus/FocusInsights';
 import { FocusSessionBar } from '../focus/FocusSessionBar';
 import { useUiStore } from '../stores/uiStore';
-import { BackgroundPicker } from './BackgroundPicker';
+import { SceneLayer } from '../themes/SceneLayer';
+import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
+import { ThemePicker } from './ThemePicker';
 import { ControlBar } from './ControlBar';
 import { MiniViewHost } from './MiniView';
 import { Sidebar } from './Sidebar';
 
 export const App: React.FC = () => {
   const isLoaded = useSpaceStore((s) => s.isLoaded);
-  const background = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
+  const theme = useActiveTheme();
   const isMini = useUiStore((s) => s.miniWidgetId !== null);
   const [showInsights, setShowInsights] = useState(false);
+
+  useThemeVariables(theme);
 
   useEffect(() => {
     void useSpaceStore.getState().load();
@@ -26,11 +30,6 @@ export const App: React.FC = () => {
     return <div className="w-screen h-screen bg-[#1e1e24]" />;
   }
 
-  const backgroundStyle =
-    background?.type === 'IMAGE'
-      ? { backgroundImage: `url(${background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-      : { backgroundColor: background?.value ?? '#1e1e24' };
-
   if (isMini) {
     return (
       <div className="w-screen h-screen overflow-hidden text-white font-sans">
@@ -40,12 +39,16 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden text-white font-sans" style={backgroundStyle}>
+    <div
+      className="relative w-screen h-screen overflow-hidden text-white"
+      style={{ fontFamily: 'var(--font-ui)' }}
+    >
+      <SceneLayer theme={theme} />
       <Canvas />
       <Sidebar />
       <FocusSessionBar />
       <AmbienceDock />
-      <BackgroundPicker />
+      <ThemePicker />
       <ControlBar onOpenInsights={() => setShowInsights(true)} />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
       {/* Drag handle for the frameless window. It does swallow clicks in the top

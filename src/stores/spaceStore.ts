@@ -6,6 +6,7 @@ import { arrange, ArrangeMode, fitCamera } from '../canvas/layout';
 import { canvasArea } from './uiStore';
 import { migrateLegacySpaces, migrateSpace } from '../spaces/migrate';
 import { SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from '../spaces/types';
+import { DEFAULT_THEME_ID } from '../themes/themes';
 import { WIDGET_DEFS } from '../widgets/defs';
 
 const ACTIVE_SPACE_KEY = 'active-space-id';
@@ -24,6 +25,7 @@ interface SpaceState {
   setActiveSpace: (id: string) => void;
 
   setCamera: (camera: Camera) => void;
+  setTheme: (themeId: string) => void;
   setBackground: (background: SpaceDoc['background']) => void;
   setAmbience: (ambience: AmbienceLevels) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
@@ -41,7 +43,8 @@ function newSpace(name: string): SpaceDoc {
     id: crypto.randomUUID(),
     schemaVersion: SCHEMA_VERSION,
     name,
-    background: { type: 'COLOR', value: '#1e1e24' },
+    themeId: DEFAULT_THEME_ID,
+    background: null,
     camera: { x: -40, y: -40, zoom: 1 },
     ambience: { ...SILENT_AMBIENCE },
     widgets: {},
@@ -160,6 +163,10 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   },
 
   setCamera: (camera) => updateActive(set, (space) => ({ ...space, camera })),
+
+  // Choosing a theme drops any wallpaper the user had layered on top of the old one,
+  // otherwise the new theme's scene would stay hidden behind it.
+  setTheme: (themeId) => updateActive(set, (space) => ({ ...space, themeId, background: null })),
 
   setBackground: (background) => updateActive(set, (space) => ({ ...space, background })),
 
