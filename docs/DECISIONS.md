@@ -100,6 +100,18 @@
 - grid(≈정사각), columns(한 줄), rows(한 열), cascade(계단식 겹침). `arrange(boxes, mode, columns?)` 하나로 통일
 - 정렬 후 항상 fit — 결과가 화면 밖이면 정렬한 의미가 없음
 
+## D-028 (2026-08-16) YouTube Music은 위젯이 아니라 브라우저 프리셋
+- 우려했던 X-Frame-Options는 **해당 없음**. legacy는 iframe이라 막혔지만 지금은 `WebContentsView`라 그냥 로드됨
+- 그래서 새 위젯 타입을 만들지 않고 컨트롤바에 "YouTube Music" 버튼 하나 = `addWidget('browser', { url: 'https://music.youtube.com' })`. 스키마 변경 없음
+- legacy 위젯이 더 갖고 있던 것(주소창·뒤로/앞으로·CSS 주입)은 브라우저 위젯에 이미 있거나 없어도 되는 것들
+- **Reader는 보류**: 본문 추출에 `@mozilla/readability` 의존성 + main에서 HTML fetch(CORS 회피)가 필요. 기술적으로는 가능하지만, 브라우저 위젯이 90%를 대체하므로 비용 대비 가치가 낮음. 사용자가 원하면 그때 착수
+
+## D-027 (2026-08-16) 배포는 "본인 머신용 dmg"까지만, 서명/자동업데이트는 보류
+- `electron-builder.yml` mac target을 `dir` → `dmg`(arm64). `npm run dist` → `release/Focus Desk-0.1.0-arm64.dmg` (121MB)
+- 키체인의 **Apple Development** 인증서로 자동 서명됨 → 본인 맥에서는 그냥 실행됨. 하지만 남에게 배포하려면 **Developer ID Application** 인증서 + 공증(notarize)이 필요 (Apple Developer Program 연 $99). 계정 확보 전까지 이 부분은 진행 불가
+- 자동 업데이트(electron-updater + GitHub Releases)도 macOS에선 서명된 빌드가 전제라 같이 보류
+- 아이콘 없음 → 기본 Electron 아이콘 사용 중. 만들면 `build/icon.icns`에 넣으면 됨
+
 ## D-026 (2026-08-16) 웹뷰 3종 후속 수정 (사용자 실사용 지적)
 - **겹침**: 네이티브 뷰가 z-index를 무시해 앞에 있는 위젯(그 위젯의 **헤더/드래그 바 포함**)이 뒤 브라우저 뷰에 먹힘. 해결: **위에 겹친 위젯이 하나라도 있으면 그 브라우저 뷰는 숨고 스냅샷으로 대체**(`isCovered()` in `canvas/layout.ts` — 렌더러가 월드 좌표로 판정해 `sync`로 전달). 스냅샷은 일반 HTML이라 스택 순서가 다른 위젯과 완전히 동일하게 동작함
 - 대안(기각): `addChildView` 재정렬로 뷰끼리 순서만 맞추기 — 브라우저끼리는 해결되지만 브라우저 위에 올린 메모·투두는 여전히 먹힘. 비용: 뒤로 밀린 브라우저는 정지화면이 된다(맨 앞이면 항상 라이브)

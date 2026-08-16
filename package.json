@@ -2,6 +2,8 @@
   "name": "focus-desk",
   "private": true,
   "version": "0.1.0",
+  "description": "A zoomable desktop workspace: spaces you lay out with tabs and widgets",
+  "author": "chyon8 <identt94@gmail.com>",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

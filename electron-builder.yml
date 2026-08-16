@@ -6,5 +6,9 @@ files:
   - dist/**
   - dist-electron/**
 mac:
-  target: dir # unsigned dev build; switch to dmg + signing at release phase
+  # Unsigned/ad-hoc: fine for installing on this machine, but a downloaded copy
+  # would be blocked by Gatekeeper until the app is signed and notarised.
+  target:
+    - target: dmg
+      arch: arm64
   category: public.app-category.productivity

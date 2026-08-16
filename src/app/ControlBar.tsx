@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, Scan } from 'lucide-react';
+import { BarChart2, Music, Scan } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { WIDGET_REGISTRY, WIDGET_TYPES } from '../widgets/registry';
 import { ArrangeMenu } from './ArrangeMenu';
@@ -21,6 +21,11 @@ const BarButton: React.FC<{ label: string; onClick: () => void; children: React.
   </button>
 );
 
+// A site the browser widget opens straight into. Not a widget type of its own:
+// a native view loads music.youtube.com just fine, and everything a dedicated
+// widget would add (its own address bar, nav buttons) already exists.
+const MUSIC_URL = 'https://music.youtube.com';
+
 export const ControlBar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights }) => {
   const addWidget = useSpaceStore((s) => s.addWidget);
   const fitToWidgets = useSpaceStore((s) => s.fitToWidgets);
@@ -36,6 +41,10 @@ export const ControlBar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenIns
           </BarButton>
         );
       })}
+
+      <BarButton label="YouTube Music" onClick={() => addWidget('browser', { url: MUSIC_URL })}>
+        <Music size={18} />
+      </BarButton>
 
       <div className="w-px h-6 bg-white/10 mx-1" />
 
