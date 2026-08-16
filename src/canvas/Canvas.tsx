@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useSpaceStore } from '../stores/spaceStore';
-import { SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
+import { canvasArea, SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { useCameraControls } from './useCameraControls';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { WidgetFrame } from './WidgetFrame';
@@ -15,10 +15,30 @@ export const Canvas: React.FC = () => {
     useShallow((s) => Object.keys(s.spaces[s.activeSpaceId]?.widgets ?? {}))
   );
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen);
+  const maximizedId = useUiStore((s) => s.maximizedWidgetId);
   const { isSpaceHeld, isPanning } = useCameraControls(viewportRef);
   useKeyboardShortcuts();
 
+  // Only used while a widget is maximised, but the canvas has to re-measure when
+  // the window changes size.
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    const onResize = () => redraw((n) => n + 1);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   if (!camera) return null;
+
+  // The world rect that exactly covers the visible canvas. Handing it to a widget
+  // blows it up in place — no reparenting, so a browser widget keeps its page.
+  const area = canvasArea();
+  const fullRect = {
+    x: camera.x,
+    y: camera.y,
+    width: area.width / camera.zoom,
+    height: area.height / camera.zoom,
+  };
 
   return (
     // Inset by the sidebar so widgets never slide underneath it and become
@@ -38,7 +58,7 @@ export const Canvas: React.FC = () => {
         }}
       >
         {ids.map((id) => (
-          <WidgetFrame key={id} id={id} />
+          <WidgetFrame key={id} id={id} fullRect={id === maximizedId ? fullRect : undefined} />
         ))}
       </div>
     </div>

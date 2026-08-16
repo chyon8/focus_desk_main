@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
 
 /** True when the user is typing, so single-letter shortcuts must not fire. */
 function isTyping(target: EventTarget | null) {
@@ -14,6 +15,12 @@ export function useKeyboardShortcuts() {
       if (e.metaKey && e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         void window.windowMode?.toggleFullscreen();
+        return;
+      }
+      // Esc leaves a maximised widget, even from inside a text field.
+      if (e.key === 'Escape' && useUiStore.getState().maximizedWidgetId) {
+        e.preventDefault();
+        useUiStore.getState().clearMaximized();
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
