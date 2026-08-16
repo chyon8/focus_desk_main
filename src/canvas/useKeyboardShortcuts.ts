@@ -10,6 +10,12 @@ function isTyping(target: EventTarget | null) {
 export function useKeyboardShortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // macOS's own fullscreen chord, so it works from anywhere in the app.
+      if (e.metaKey && e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        void window.windowMode?.toggleFullscreen();
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
 
       const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();

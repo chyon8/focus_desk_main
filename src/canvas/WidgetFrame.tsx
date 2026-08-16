@@ -75,18 +75,14 @@ export const WidgetFrame: React.FC<{ id: string }> = ({ id }) => {
         <span className="text-xs text-white/70">{entry.label}</span>
 
         <div className="ml-auto flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* A browser view is composited at canvas coordinates and would not
-              follow the mini window, so it cannot pop out. */}
-          {widget.type !== 'browser' && (
-            <button
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => useUiStore.getState().enterMini(id)}
-              title="Float on top"
-              className="p-1 rounded text-white/50 hover:text-white transition-colors"
-            >
-              <PictureInPicture2 size={12} />
-            </button>
-          )}
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => useUiStore.getState().enterMini(id)}
+            title="Float on top"
+            className="p-1 rounded text-white/50 hover:text-white transition-colors"
+          >
+            <PictureInPicture2 size={12} />
+          </button>
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => useSpaceStore.getState().removeWidget(id)}

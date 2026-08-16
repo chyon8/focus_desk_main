@@ -71,27 +71,6 @@ export function arrange(
   return packGrid(ordered, Math.max(1, columns ?? Math.ceil(Math.sqrt(ordered.length))));
 }
 
-export type StackedBox = Box & { z: number };
-
-/**
- * True when any widget stacked above `target` overlaps it.
- *
- * Only browser widgets care: their native view paints above all HTML and ignores
- * z-index, so the widget in front — its header included — would be swallowed.
- * A covered view hides itself and shows a snapshot, which stacks like any HTML.
- */
-export function isCovered(target: StackedBox, boxes: StackedBox[]): boolean {
-  return boxes.some(
-    (box) =>
-      box.id !== target.id &&
-      box.z > target.z &&
-      box.x < target.x + target.width &&
-      box.x + box.width > target.x &&
-      box.y < target.y + target.height &&
-      box.y + box.height > target.y
-  );
-}
-
 /**
  * Camera that frames every box inside the given area.
  * `area` is the canvas region in window coordinates — the world container starts

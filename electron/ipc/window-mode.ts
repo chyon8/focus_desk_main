@@ -27,4 +27,13 @@ export function registerWindowModeIpc(getWindow: () => BrowserWindow | null) {
       if (normalBounds) win.setBounds(normalBounds);
     }
   });
+
+  ipcMain.handle('window:toggle-fullscreen', () => {
+    const win = getWindow();
+    if (!win || win.isDestroyed()) return false;
+
+    const next = !win.isFullScreen();
+    win.setFullScreen(next);
+    return next;
+  });
 }

@@ -243,8 +243,6 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   removeWidget: (id) =>
     updateActive(set, (space) => {
-      // A browser widget owns a native view and a snapshot in the main process.
-      if (space.widgets[id]?.type === 'browser') void window.browserView?.destroy(id);
       const widgets = { ...space.widgets };
       delete widgets[id];
       return { ...space, widgets };

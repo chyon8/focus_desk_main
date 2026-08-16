@@ -19,22 +19,24 @@ declare global {
     };
     windowMode?: {
       setMini: (enabled: boolean) => Promise<void>;
+      toggleFullscreen: () => Promise<boolean>;
     };
-    browserView?: {
-      sync: (
-        id: string,
-        spaceId: string,
-        url: string,
-        rect: { x: number; y: number; width: number; height: number },
-        zoom: number,
-        area: { x: number; y: number; width: number; height: number },
-        covered: boolean
-      ) => Promise<string | null>;
-      hibernate: (id: string) => Promise<string | null>;
-      snapshot: (id: string) => Promise<string | null>;
-      destroy: (id: string) => Promise<void>;
-      clearSpaceSession: (spaceId: string) => Promise<void>;
-    };
+  }
+
+  // Electron's <webview>, used by the browser widget.
+  namespace React {
+    namespace JSX {
+      interface IntrinsicElements {
+        webview: React.DetailedHTMLProps<
+          React.HTMLAttributes<Electron.WebviewTag> & {
+            src?: string;
+            partition?: string;
+            allowpopups?: boolean;
+          },
+          Electron.WebviewTag
+        >;
+      }
+    }
   }
 }
 

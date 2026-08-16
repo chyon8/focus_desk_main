@@ -19,21 +19,5 @@ contextBridge.exposeInMainWorld('images', {
 
 contextBridge.exposeInMainWorld('windowMode', {
   setMini: (enabled: boolean) => ipcRenderer.invoke('window:set-mini', enabled),
-});
-
-contextBridge.exposeInMainWorld('browserView', {
-  sync: (
-    id: string,
-    spaceId: string,
-    url: string,
-    rect: { x: number; y: number; width: number; height: number },
-    zoom: number,
-    area: { x: number; y: number; width: number; height: number },
-    covered: boolean
-  ) => ipcRenderer.invoke('browser-view:sync', id, spaceId, url, rect, zoom, area, covered),
-  hibernate: (id: string) => ipcRenderer.invoke('browser-view:hibernate', id),
-  snapshot: (id: string) => ipcRenderer.invoke('browser-view:snapshot', id),
-  destroy: (id: string) => ipcRenderer.invoke('browser-view:destroy', id),
-  clearSpaceSession: (spaceId: string) =>
-    ipcRenderer.invoke('browser-view:clear-space-session', spaceId),
+  toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
 });

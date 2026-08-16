@@ -100,6 +100,20 @@
 - grid(≈정사각), columns(한 줄), rows(한 열), cascade(계단식 겹침). `arrange(boxes, mode, columns?)` 하나로 통일
 - 정렬 후 항상 fit — 결과가 화면 밖이면 정렬한 의미가 없음
 
+## D-029 (2026-08-16) ⭐ 브라우저 위젯을 `<webview>`로 전면 교체 (D-010 뒤집음)
+사용자 지적: 웹뷰가 위젯 프레임에서 어긋난 채 뜨고, 움직이면 정상화됨. 근본 원인을 다시 봄.
+
+**왜 뒤집나**
+`WebContentsView`는 페이지 위에 떠 있는 **네이티브 뷰**라 z-index·클리핑·CSS 트랜스폼이 통하지 않는다. 그래서 ZUI 캔버스 위에 얹으려면 매 프레임 bounds를 손으로 계산해 동기화해야 하고, 그 동기화는 store/resize 이벤트에만 걸려 있어서 **이벤트 없이 화면 위치가 변하는 순간(사이드바 트랜지션 등) 그대로 어긋난다.** D-018·D-021·D-024·D-025·D-026이 전부 같은 뿌리의 증상을 하나씩 때운 것 — 클리핑, 스냅샷, 오클루전, park/hibernate 전부.
+
+**바꾼 것**
+`<webview>`(웹 컨텐츠가 페이지 레이아웃 안에 들어옴, `webviewTag: true`) → 위치·스케일·클리핑·스택 순서를 **브라우저가 알아서 한다.**
+- 삭제: `ipc/browser-views.ts`, `ipc/overlap.ts`(+테스트), preload `browserView` API 전체, `uiStore.bottomOverlayHeight`, `layout.isCovered`, 스냅샷·hibernation·bounds 동기화 로직 전부
+- 줌은 CSS 트랜스폼이라 **리플로우가 원천적으로 없음**(D-024/025가 싸우던 문제 자체가 사라짐). 겹침·팝오버·리사이즈 핸들도 그냥 z-index대로 동작
+- 덤: 브라우저 위젯도 PiP(미니 모드) 가능해져서 제외 조건 제거. 주소창이 실제 이동을 따라감(`did-navigate`)
+- 비용: Electron 문서는 `<webview>`를 "권장하지 않음"이라 표시(WebContentsView 권장). 하지만 그 권장은 **캔버스 안에 웹을 얹는 케이스를 상정하지 않은 것**이고, 실제로 이 앱에는 in-page 합성이 필수. deprecated는 아니며 계속 지원됨
+- 검증(CDP 스크린샷): 브라우저 2개 겹침 정상, 그 위에 메모 위젯 정상, 리사이즈 핸들 동작(698×448 → 770×496), 74% 줌에서 선명, 도크가 웹 컨텐츠 위에 그려짐
+
 ## D-028 (2026-08-16) YouTube Music은 위젯이 아니라 브라우저 프리셋
 - 우려했던 X-Frame-Options는 **해당 없음**. legacy는 iframe이라 막혔지만 지금은 `WebContentsView`라 그냥 로드됨
 - 그래서 새 위젯 타입을 만들지 않고 컨트롤바에 "YouTube Music" 버튼 하나 = `addWidget('browser', { url: 'https://music.youtube.com' })`. 스키마 변경 없음

@@ -1,11 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Layers, LayoutGrid } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
-import { useUiStore } from '../stores/uiStore';
-
-// Roughly the popover's height, reserved so native browser views cannot cover it.
-const MENU_HEIGHT = 190;
 
 const COLUMN_CHOICES = [1, 2, 3, 4, 5];
 
@@ -24,13 +20,6 @@ export const ArrangeMenu: React.FC = () => {
   const widgetCount = useSpaceStore(
     (s) => Object.keys(s.spaces[s.activeSpaceId]?.widgets ?? {}).length
   );
-  const setBottomOverlayHeight = useUiStore((s) => s.setBottomOverlayHeight);
-
-  useEffect(() => {
-    setBottomOverlayHeight(isOpen ? MENU_HEIGHT : 0);
-    return () => setBottomOverlayHeight(0);
-  }, [isOpen, setBottomOverlayHeight]);
-
   const runGrid = (columns?: number) => {
     arrangeWidgets('grid', columns);
     setIsOpen(false);

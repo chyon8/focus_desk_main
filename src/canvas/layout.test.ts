@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { arrange, fitCamera, isCovered, ARRANGE_GAP, Box, StackedBox } from './layout';
+import { arrange, fitCamera, ARRANGE_GAP, Box } from './layout';
 import { worldToScreen } from './camera';
 
 const boxes: Box[] = [
@@ -77,23 +77,3 @@ describe('fitCamera', () => {
   });
 });
 
-describe('isCovered', () => {
-  const browser: StackedBox = { id: 'browser', x: 100, y: 100, width: 400, height: 300, z: 1 };
-  const all = (...others: StackedBox[]) => [browser, ...others];
-
-  it('is false when nothing overlaps', () => {
-    expect(isCovered(browser, all({ id: 'memo', x: 600, y: 100, width: 200, height: 200, z: 5 }))).toBe(false);
-  });
-
-  it('is true when a widget above overlaps', () => {
-    expect(isCovered(browser, all({ id: 'memo', x: 400, y: 300, width: 200, height: 200, z: 5 }))).toBe(true);
-  });
-
-  it('is false when the overlapping widget is behind', () => {
-    expect(isCovered(browser, all({ id: 'memo', x: 400, y: 300, width: 200, height: 200, z: 0 }))).toBe(false);
-  });
-
-  it('is false for widgets that only touch edges', () => {
-    expect(isCovered(browser, all({ id: 'memo', x: 500, y: 100, width: 200, height: 200, z: 9 }))).toBe(false);
-  });
-});

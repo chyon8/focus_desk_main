@@ -1,7 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { registerStorageIpc } from './ipc/storage';
-import { registerBrowserViewIpc } from './ipc/browser-views';
 import { registerImageProtocolScheme, registerImagesIpc } from './ipc/images';
 import { registerSpacesIpc } from './ipc/spaces';
 import { registerWindowModeIpc } from './ipc/window-mode';
@@ -24,6 +23,9 @@ function createWindow() {
     trafficLightPosition: { x: 10, y: 10 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      // Browser widgets are <webview> elements: they live inside the canvas and
+      // are laid out, scaled and stacked by the page itself (D-029).
+      webviewTag: true,
     },
   });
 
@@ -43,7 +45,6 @@ app.whenReady().then(() => {
   registerStorageIpc();
   registerSpacesIpc();
   registerImagesIpc();
-  registerBrowserViewIpc(() => win);
   registerWindowModeIpc(() => win);
   createWindow();
 });

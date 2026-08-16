@@ -11,7 +11,6 @@ src/
   canvas/           # ZUI 코어: 카메라, 월드 컨테이너, 드래그/리사이즈
   spaces/           # 스페이스 CRUD, 전환, 영속화, 마이그레이션
   widgets/          # 위젯별 폴더 (registry 패턴, 아래 참조)
-  browser/          # WebContentsView 연동 (bounds 동기화, hibernation)
   ambience/         # 사운드 믹서, 라디오
   focus/            # 포커스 세션, 통계
   stores/           # zustand 스토어
@@ -38,12 +37,12 @@ docs/
 - 위젯 컴포넌트는 `(data, onUpdate)`만 받는다. 세션/라디오 등 전역은 스토어에서 직접 구독 (prop drilling 금지)
 - legacy 이식 시 통합: Memo+NewMemo → Memo, Editor+NewEditor → Editor
 
-## 브라우저 (browser/)
-- 웹 탭 = BrowserCard 위젯. 렌더러에는 placeholder div, main process의 WebContentsView가 그 위에 합성
-- **카메라 동기화**: `viewBounds = worldToScreen(widget.rect)`, `zoomFactor = camera.zoom`. 카메라 변경 시 batch로 IPC 전송 (매 프레임 IPC 주의 — rAF throttle)
-- 스페이스별 `session.fromPartition('persist:space-<id>')` → 로그인 분리
-- Hibernation: 스페이스 비활성화 시 `capturePage()` 스크린샷 저장 → view destroy → placeholder에 스크린샷 표시
-- 줌아웃이 일정 이하(예: zoom < 0.5)면 뷰 대신 스크린샷 표시 (성능)
+## 브라우저 (widgets/BrowserWidget)
+- 웹 탭 = 브라우저 위젯 안의 **`<webview>` 엘리먼트**(D-029). 웹 컨텐츠가 페이지 레이아웃 안에 있으므로 위치·스케일·클리핑·z-index를 브라우저가 처리 — main process 동기화 코드 없음
+- 줌은 월드 컨테이너의 CSS 트랜스폼이 그대로 적용됨 → **페이지 리플로우 없음**
+- 스페이스별 `partition="persist:space-<id>"` → 로그인 분리
+- 스페이스 전환 = 언마운트 = 웹 컨텐츠 파괴. 돌아오면 `data.url`(마지막 방문 주소)로 재로드
+- ⚠️ 과거 WebContentsView 방식은 D-029에서 폐기. 그 흔적(스냅샷·hibernation·클리핑)은 코드에 남아 있지 않음
 
 ## PiP / 미니 모드
 - 별도 BrowserWindow (`alwaysOnTop: true`, 작은 크기) + 선택한 위젯 1개 렌더

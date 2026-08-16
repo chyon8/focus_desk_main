@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, Music, Scan } from 'lucide-react';
+import { BarChart2, Maximize, Music, Scan } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { WIDGET_REGISTRY, WIDGET_TYPES } from '../widgets/registry';
 import { ArrangeMenu } from './ArrangeMenu';
@@ -51,6 +51,12 @@ export const ControlBar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenIns
       <ArrangeMenu />
       <BarButton label="Fit to widgets (F)" onClick={fitToWidgets}>
         <Scan size={18} />
+      </BarButton>
+      <BarButton
+        label="Fullscreen (⌃⌘F)"
+        onClick={() => void window.windowMode?.toggleFullscreen()}
+      >
+        <Maximize size={18} />
       </BarButton>
       <BarButton label="Focus insights" onClick={onOpenInsights}>
         <BarChart2 size={18} />
