@@ -1,32 +1,39 @@
-import { ipcRenderer, contextBridge } from 'electron'
+import { ipcRenderer, contextBridge } from 'electron';
 
-// --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
-  on(...args: Parameters<typeof ipcRenderer.on>) {
-    const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
-  },
-  off(...args: Parameters<typeof ipcRenderer.off>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.off(channel, ...omit)
-  },
-  send(...args: Parameters<typeof ipcRenderer.send>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.send(channel, ...omit)
-  },
-  invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.invoke(channel, ...omit)
-  },
+contextBridge.exposeInMainWorld('store', {
+  get: (key: string) => ipcRenderer.invoke('store:get', key),
+  set: (key: string, value: unknown) => ipcRenderer.invoke('store:set', key, value),
+  delete: (key: string) => ipcRenderer.invoke('store:delete', key),
+});
 
-  // You can expose other weird stuff too
-  store: {
-    get: (key: string) => ipcRenderer.invoke('store:get', key),
-    set: (key: string, value: any) => ipcRenderer.invoke('store:set', key, value),
-    delete: (key: string) => ipcRenderer.invoke('store:delete', key),
-  },
-  gallery: {
-    getImages: () => ipcRenderer.invoke('get-custom-images'),
-    deleteImage: (url: string) => ipcRenderer.invoke('delete-custom-image', url),
-  }
-})
+contextBridge.exposeInMainWorld('spaces', {
+  list: () => ipcRenderer.invoke('spaces:list'),
+  save: (doc: unknown) => ipcRenderer.invoke('spaces:save', doc),
+  delete: (id: string) => ipcRenderer.invoke('spaces:delete', id),
+});
+
+contextBridge.exposeInMainWorld('images', {
+  save: (buffer: ArrayBuffer, fileName: string) =>
+    ipcRenderer.invoke('images:save', buffer, fileName),
+});
+
+contextBridge.exposeInMainWorld('windowMode', {
+  setMini: (enabled: boolean) => ipcRenderer.invoke('window:set-mini', enabled),
+});
+
+contextBridge.exposeInMainWorld('browserView', {
+  sync: (
+    id: string,
+    spaceId: string,
+    url: string,
+    rect: { x: number; y: number; width: number; height: number },
+    zoom: number,
+    area: { x: number; y: number; width: number; height: number },
+    covered: boolean
+  ) => ipcRenderer.invoke('browser-view:sync', id, spaceId, url, rect, zoom, area, covered),
+  hibernate: (id: string) => ipcRenderer.invoke('browser-view:hibernate', id),
+  snapshot: (id: string) => ipcRenderer.invoke('browser-view:snapshot', id),
+  destroy: (id: string) => ipcRenderer.invoke('browser-view:destroy', id),
+  clearSpaceSession: (spaceId: string) =>
+    ipcRenderer.invoke('browser-view:clear-space-session', spaceId),
+});

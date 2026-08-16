@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Electron frameless window drag region */
+.titlebar-drag-region {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}

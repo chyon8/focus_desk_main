@@ -1,0 +1,10 @@
+appId: com.focusdesk.app
+productName: Focus Desk
+directories:
+  output: release
+files:
+  - dist/**
+  - dist-electron/**
+mac:
+  target: dir # unsigned dev build; switch to dmg + signing at release phase
+  category: public.app-category.productivity

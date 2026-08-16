@@ -1,32 +1,38 @@
 {
   "name": "focus-desk",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "0.1.0",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "electron:dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "test": "vitest run",
+    "dist": "npm run build && electron-builder"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "electron-store": "^11.0.2",
     "framer-motion": "^12.23.24",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.555.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-markdown": "9"
+    "react-markdown": "9",
+    "tailwindcss": "^4.3.3",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/html2canvas": "^0.5.35",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^5.0.0",
     "electron": "^39.2.7",
+    "electron-builder": "^26.15.3",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "^4.1.10"
   }
 }

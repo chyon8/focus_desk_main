@@ -1,0 +1,111 @@
+import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Layers, LayoutGrid } from 'lucide-react';
+import { useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
+
+// Roughly the popover's height, reserved so native browser views cannot cover it.
+const MENU_HEIGHT = 190;
+
+const COLUMN_CHOICES = [1, 2, 3, 4, 5];
+
+/** Miniature preview of the resulting layout. */
+const GridPreview: React.FC<{ columns: number }> = ({ columns }) => (
+  <div className="grid gap-[2px] w-6" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+    {Array.from({ length: columns * 2 }, (_, i) => (
+      <span key={i} className="h-[4px] rounded-[1px] bg-current opacity-60" />
+    ))}
+  </div>
+);
+
+export const ArrangeMenu: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const arrangeWidgets = useSpaceStore((s) => s.arrangeWidgets);
+  const widgetCount = useSpaceStore(
+    (s) => Object.keys(s.spaces[s.activeSpaceId]?.widgets ?? {}).length
+  );
+  const setBottomOverlayHeight = useUiStore((s) => s.setBottomOverlayHeight);
+
+  useEffect(() => {
+    setBottomOverlayHeight(isOpen ? MENU_HEIGHT : 0);
+    return () => setBottomOverlayHeight(0);
+  }, [isOpen, setBottomOverlayHeight]);
+
+  const runGrid = (columns?: number) => {
+    arrangeWidgets('grid', columns);
+    setIsOpen(false);
+  };
+
+  const runCascade = () => {
+    arrangeWidgets('cascade');
+    setIsOpen(false);
+  };
+
+  // What "Auto" will pick, so the label is honest about the result.
+  const autoColumns = Math.max(1, Math.ceil(Math.sqrt(Math.max(1, widgetCount))));
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        title="Arrange (G)"
+        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 ${
+          isOpen ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+        }`}
+      >
+        <LayoutGrid size={18} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-[80]" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[90] w-52 p-2 rounded-2xl bg-black/85 backdrop-blur-xl border border-white/10 shadow-2xl"
+            >
+              <div className="px-2 pt-1 pb-2 text-[10px] font-bold uppercase tracking-widest text-white/30">
+                Columns
+              </div>
+
+              <button
+                onClick={() => runGrid()}
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <GridPreview columns={autoColumns} />
+                <span className="flex-1 text-left text-xs font-medium">Auto</span>
+                <span className="text-[10px] text-white/25">{autoColumns} wide</span>
+              </button>
+
+              <div className="grid grid-cols-5 gap-1 px-1 pt-1">
+                {COLUMN_CHOICES.map((columns) => (
+                  <button
+                    key={columns}
+                    onClick={() => runGrid(columns)}
+                    title={`${columns} column${columns > 1 ? 's' : ''}`}
+                    className="h-9 flex items-center justify-center rounded-lg text-xs font-medium tabular-nums text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    {columns}
+                  </button>
+                ))}
+              </div>
+
+              <div className="my-1 h-px bg-white/10" />
+
+              <button
+                onClick={runCascade}
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <Layers size={15} />
+                <span className="flex-1 text-left text-xs font-medium">Cascade</span>
+                <span className="text-[10px] text-white/25">Overlapping</span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
