@@ -6,6 +6,9 @@ import { useCameraControls } from './useCameraControls';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { WidgetFrame } from './WidgetFrame';
 
+// Titlebar drag strip plus the row of floating buttons under it.
+const TOP_CHROME_HEIGHT = 84;
+
 export const Canvas: React.FC = () => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const camera = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera);
@@ -30,14 +33,16 @@ export const Canvas: React.FC = () => {
 
   if (!camera) return null;
 
-  // The world rect that exactly covers the visible canvas. Handing it to a widget
-  // blows it up in place — no reparenting, so a browser widget keeps its page.
+  // The world rect that covers the visible canvas, minus the strip the floating
+  // chrome sits in — otherwise the sidebar toggle and the focus pill land on the
+  // maximised widget's own toolbar. Handing this to a widget blows it up in place,
+  // with no reparenting, so a browser widget keeps its page.
   const area = canvasArea();
   const fullRect = {
     x: camera.x,
-    y: camera.y,
+    y: camera.y + TOP_CHROME_HEIGHT / camera.zoom,
     width: area.width / camera.zoom,
-    height: area.height / camera.zoom,
+    height: (area.height - TOP_CHROME_HEIGHT) / camera.zoom,
   };
 
   return (

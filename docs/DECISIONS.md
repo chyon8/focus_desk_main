@@ -100,6 +100,23 @@
 - grid(≈정사각), columns(한 줄), rows(한 열), cascade(계단식 겹침). `arrange(boxes, mode, columns?)` 하나로 통일
 - 정렬 후 항상 fit — 결과가 화면 밖이면 정렬한 의미가 없음
 
+## D-032 (2026-08-16) 상단 셸이 위젯을 먹던 문제 — 원인은 타이틀바 드래그 영역
+사용자: "우상단 버튼이 안 눌린다 / 사이드바가 뒤로가기를 가린다 / 버튼이 안 보인다 / 전체화면에서 못 나갔다"
+
+- **범인**: `App.tsx`의 `fixed top-0 left-0 right-0 h-6 z-[60]` 드래그 영역. 창을 옮기려고 깔아둔 투명 띠가 **화면 최상단 24px의 모든 클릭을 삼킴** — 위젯 헤더 버튼이 정확히 그 자리. 숨기든 말든 안 눌리는 게 당연했음 → 트래픽 라이트 쪽(좌측 256px)만 남김
+- **최대화 위젯이 상단 셸과 겹침**: 사이드바 토글(`top-9 left-6`)·Start focus 필·앰비언스 버튼이 전부 y 36~76에 떠 있는데 최대화 위젯이 y=0부터 시작했음 → 최대화 rect를 **상단 84px 아래로** 내림. 그러면 겹칠 일이 없으므로 앰비언스/배경 버튼 숨기던 처리도 제거
+- **탈출 불가**: 웹 페이지에 포커스가 있으면 키 입력이 페이지에 갇혀 Esc·⌃⌘F가 앱에 도달하지 않음 → main에서 webview의 `before-input-event`를 받아 렌더러로 전달. 클릭 가능한 "Esc to restore" 버튼도 추가
+- **너무 작음**: 헤더 32px/아이콘 12px → 헤더 40px/아이콘 14px/히트영역 28px
+- 검증(CDP): 최대화 후 Restore 버튼 클릭 → 복귀, 페이지 안에서 Esc → 복귀, 뒤로가기 버튼 위치 (265,131)로 사이드바 토글과 분리
+
+## D-031 (2026-08-16) 영상 전체화면은 위젯 안에 가둔다 — 게스트에 fullscreen API를 심음
+- 요구: 유튜브 전체화면 버튼 → **영상만 커지고 위젯은 제자리**. 앱/창은 그대로
+- 측정해보니 Electron의 실제 fullscreen은 전부 아니면 전무: `<webview>` 게스트가 fullscreen → **창까지 OS 전체화면**, 창을 되돌리면(`setFullScreen(false)`) **게스트도 fullscreen에서 튕겨나옴**. 둘이 묶여 있어서 창 쪽만 막는 방법은 불가능
+- 그래서 게스트에 **가짜 fullscreen API를 주입**(`widgets/browserFullscreen.ts`, `dom-ready`마다 `executeJavaScript`+`insertCSS`). 플레이어는 평소대로 fullscreen 레이아웃으로 전환하되 "화면"이 위젯이 됨(게스트 뷰포트 = 위젯이므로 100vw/100vh가 곧 위젯)
+- 별칭을 **전부** 덮어야 함. 처음에 `requestFullscreen`/`webkitRequestFullscreen`만 덮었더니 YouTube가 대문자 S인 `webkitRequestFullScreen`을 써서 진짜 전체화면이 나갔다
+- 검증(실제 YouTube, CDP): 전체화면 버튼 클릭 → 창 1440×900 유지, `ytp-fullscreen` 진입, video rect 574×323 → 818×492(위젯 꽉 참), 다시 클릭 → 원복
+- 한계: `:fullscreen` CSS 의사클래스는 매칭되지 않으므로 그걸로만 스타일하는 사이트는 다르게 보일 수 있음. 더 크게 보려면 위젯 최대화(D-030) 또는 앱 전체화면(⌃⌘F)과 겹쳐 쓰면 됨
+
 ## D-030 (2026-08-16) 위젯 최대화는 "월드 rect 오버라이드", 리페어런팅 금지
 - 헤더 더블클릭(또는 헤더 ⛶ 버튼) → 그 위젯이 캔버스를 꽉 채움. Esc 또는 다시 더블클릭으로 복귀
 - 구현: `uiStore.maximizedWidgetId`(비영속) → Canvas가 "현재 화면을 덮는 월드 rect"를 계산해 `fullRect` prop으로 내려줌. WidgetFrame은 저장된 x/y/w/h 대신 그걸 쓴다

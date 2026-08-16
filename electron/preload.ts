@@ -20,4 +20,10 @@ contextBridge.exposeInMainWorld('images', {
 contextBridge.exposeInMainWorld('windowMode', {
   setMini: (enabled: boolean) => ipcRenderer.invoke('window:set-mini', enabled),
   toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
+  // Shortcuts pressed while a browser widget had focus, forwarded by the main process.
+  onGuestKey: (handler: (key: string) => void) => {
+    const listener = (_event: unknown, key: string) => handler(key);
+    ipcRenderer.on('guest-key', listener);
+    return () => ipcRenderer.removeListener('guest-key', listener);
+  },
 });

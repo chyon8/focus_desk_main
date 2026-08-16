@@ -4,9 +4,28 @@ import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 
-const HEADER_HEIGHT = 32;
+const HEADER_HEIGHT = 40;
 // Above every other widget, below the app's own chrome.
 const MAXIMIZED_Z = 9000;
+
+/** 28px hit area: the old 12px icons were both hard to see and hard to hit. */
+const HeaderButton: React.FC<{
+  label: string;
+  danger?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ label, danger, onClick, children }) => (
+  <button
+    title={label}
+    onPointerDown={(e) => e.stopPropagation()}
+    onClick={onClick}
+    className={`w-7 h-7 flex items-center justify-center rounded-md text-white/60 hover:bg-white/15 transition-colors ${
+      danger ? 'hover:text-red-300' : 'hover:text-white'
+    }`}
+  >
+    {children}
+  </button>
+);
 
 /**
  * A widget box positioned in world coordinates. It lives inside the scaled world
@@ -74,7 +93,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, ful
       onPointerDownCapture={() => useSpaceStore.getState().bringToFront(id)}
     >
       <div
-        className={`group h-8 flex items-center px-3 gap-2 bg-white/10 border-b border-white/10 select-none ${
+        className={`group h-10 flex items-center px-3 gap-2 bg-white/10 border-b border-white/10 select-none ${
           fullRect ? '' : 'cursor-grab active:cursor-grabbing'
         }`}
         onDoubleClick={() => useUiStore.getState().toggleMaximized(id)}
@@ -83,34 +102,35 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, ful
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
       >
-        <entry.icon size={12} className="text-white/50" />
-        <span className="text-xs text-white/70">{entry.label}</span>
+        <entry.icon size={14} className="text-white/60" />
+        <span className="text-xs text-white/80">{entry.label}</span>
 
-        <div className="ml-auto flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
+        <div className="ml-auto flex items-center gap-0.5">
+          {fullRect && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => useUiStore.getState().clearMaximized()}
+              className="mr-1 px-2 h-7 rounded-md text-[11px] text-white/70 bg-white/10 hover:bg-white/20 hover:text-white transition-colors"
+            >
+              Esc to restore
+            </button>
+          )}
+          <HeaderButton
             onClick={() => useUiStore.getState().toggleMaximized(id)}
-            title={fullRect ? 'Restore (Esc)' : 'Fill the canvas'}
-            className="p-1 rounded text-white/50 hover:text-white transition-colors"
+            label={fullRect ? 'Restore' : 'Fill the canvas'}
           >
-            {fullRect ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-          </button>
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => useUiStore.getState().enterMini(id)}
-            title="Float on top"
-            className="p-1 rounded text-white/50 hover:text-white transition-colors"
-          >
-            <PictureInPicture2 size={12} />
-          </button>
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
+            {fullRect ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </HeaderButton>
+          <HeaderButton onClick={() => useUiStore.getState().enterMini(id)} label="Float on top">
+            <PictureInPicture2 size={14} />
+          </HeaderButton>
+          <HeaderButton
             onClick={() => useSpaceStore.getState().removeWidget(id)}
-            title="Remove"
-            className="p-1 -mr-1 rounded text-white/50 hover:text-red-300 transition-colors"
+            label="Remove"
+            danger
           >
-            <X size={12} />
-          </button>
+            <X size={14} />
+          </HeaderButton>
         </div>
       </div>
 

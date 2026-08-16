@@ -20,6 +20,7 @@ declare global {
     windowMode?: {
       setMini: (enabled: boolean) => Promise<void>;
       toggleFullscreen: () => Promise<boolean>;
+      onGuestKey: (handler: (key: string) => void) => () => void;
     };
   }
 

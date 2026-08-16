@@ -35,7 +35,16 @@ export function useKeyboardShortcuts() {
       }
     };
 
+    // Same two escapes, but pressed while a browser widget had focus.
+    const offGuestKey = window.windowMode?.onGuestKey((key) => {
+      if (key === 'escape') useUiStore.getState().clearMaximized();
+      else if (key === 'fullscreen') void window.windowMode?.toggleFullscreen();
+    });
+
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      offGuestKey?.();
+    };
   }, []);
 }

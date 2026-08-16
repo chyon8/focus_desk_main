@@ -48,7 +48,10 @@ export const App: React.FC = () => {
       <BackgroundPicker />
       <ControlBar onOpenInsights={() => setShowInsights(true)} />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
-      <div className="fixed top-0 left-0 right-0 h-6 z-[60] titlebar-drag-region" />
+      {/* Drag handle for the frameless window. Kept to the traffic-light corner:
+          a full-width strip swallowed every click in the top 24px of the canvas,
+          which is exactly where a widget's header buttons sit. */}
+      <div className="fixed top-0 left-0 h-6 w-64 z-[60] titlebar-drag-region" />
     </div>
   );
 };

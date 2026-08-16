@@ -41,6 +41,22 @@ function createWindow() {
   });
 }
 
+// Key presses inside a browser widget stay in that page — the app never sees them.
+// Without this, clicking into a page while a widget is maximised or the window is
+// fullscreen leaves no way out: Esc and ⌃⌘F both go to the site instead.
+app.on('web-contents-created', (_event, contents) => {
+  if (contents.getType() !== 'webview') return;
+
+  contents.on('before-input-event', (_e, input) => {
+    if (input.type !== 'keyDown' || !win || win.isDestroyed()) return;
+
+    if (input.key === 'Escape') win.webContents.send('guest-key', 'escape');
+    else if (input.meta && input.control && input.key.toLowerCase() === 'f') {
+      win.webContents.send('guest-key', 'fullscreen');
+    }
+  });
+});
+
 app.whenReady().then(() => {
   registerStorageIpc();
   registerSpacesIpc();
