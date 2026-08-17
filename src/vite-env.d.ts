@@ -8,6 +8,13 @@ declare global {
       get: (key: string) => Promise<unknown>;
       set: (key: string, value: unknown) => Promise<void>;
       delete: (key: string) => Promise<void>;
+      /** Blocking write, for the last save before the window closes. */
+      setSync: (key: string, value: unknown) => void;
+    };
+    /** Whether the user is at the app: window focused, machine awake. */
+    activity?: {
+      state: () => Promise<boolean>;
+      onChange: (handler: (active: boolean) => void) => () => void;
     };
     spaces?: {
       list: () => Promise<unknown[]>;

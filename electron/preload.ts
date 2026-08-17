@@ -4,6 +4,19 @@ contextBridge.exposeInMainWorld('store', {
   get: (key: string) => ipcRenderer.invoke('store:get', key),
   set: (key: string, value: unknown) => ipcRenderer.invoke('store:set', key, value),
   delete: (key: string) => ipcRenderer.invoke('store:delete', key),
+  // Only for the flush on window close, where an async write would be dropped.
+  setSync: (key: string, value: unknown) => {
+    ipcRenderer.sendSync('store:set-sync', key, value);
+  },
+});
+
+contextBridge.exposeInMainWorld('activity', {
+  state: () => ipcRenderer.invoke('activity:state'),
+  onChange: (handler: (active: boolean) => void) => {
+    const listener = (_event: unknown, active: boolean) => handler(active);
+    ipcRenderer.on('activity:changed', listener);
+    return () => ipcRenderer.removeListener('activity:changed', listener);
+  },
 });
 
 contextBridge.exposeInMainWorld('spaces', {

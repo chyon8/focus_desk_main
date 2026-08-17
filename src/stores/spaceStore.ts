@@ -3,6 +3,7 @@ import type { AmbienceLevels } from '../ambience/engine';
 import { SILENT_AMBIENCE } from '../ambience/engine';
 import type { Camera } from '../canvas/camera';
 import { arrange, ArrangeMode, fitCamera } from '../canvas/layout';
+import { useSpaceTimeStore } from './spaceTimeStore';
 import { canvasArea } from './uiStore';
 import { migrateLegacySpaces, migrateSpace } from '../spaces/migrate';
 import { SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from '../spaces/types';
@@ -150,6 +151,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     if (remaining.length === 0) return; // Never leave the app with no space.
 
     void window.spaces?.delete(id);
+    // Its logged time goes with it, rather than lingering as a nameless row.
+    useSpaceTimeStore.getState().forget(id);
     const nextSpaces = { ...spaces };
     delete nextSpaces[id];
     const nextActive = activeSpaceId === id ? remaining[0] : activeSpaceId;

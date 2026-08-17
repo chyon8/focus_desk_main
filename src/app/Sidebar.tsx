@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { BookOpen, ChevronLeft, Coffee, Home, Layout, Monitor, PanelLeft, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatDuration } from '../focus/stats';
+import { useToday } from '../focus/useToday';
 import { useSpaceStore } from '../stores/spaceStore';
+import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 
 function spaceIcon(name: string) {
@@ -13,21 +16,32 @@ function spaceIcon(name: string) {
   return <Layout size={16} />;
 }
 
-const SpaceRow: React.FC<{ id: string; canDelete: boolean }> = ({ id, canDelete }) => {
+const SpaceRow: React.FC<{ id: string; canDelete: boolean; today: string }> = ({
+  id,
+  canDelete,
+  today,
+}) => {
   const name = useSpaceStore((s) => s.spaces[id]?.name ?? '');
   const isActive = useSpaceStore((s) => s.activeSpaceId === id);
   const setActiveSpace = useSpaceStore((s) => s.setActiveSpace);
   const removeSpace = useSpaceStore((s) => s.removeSpace);
+  // Ticks up once a second while this is the space in front of the user.
+  const seconds = useSpaceTimeStore((s) => s.time[id]?.[today] ?? 0);
 
   return (
     <button
       onClick={() => setActiveSpace(id)}
-      className={`row w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+      className={`row w-full group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
         isActive ? 'row-on shadow-sm' : ''
       }`}
     >
       <span className={isActive ? 't-ink' : 't-faint'}>{spaceIcon(name)}</span>
-      <span className="flex-1 text-left truncate">{name}</span>
+      <span className="flex-1 min-w-0 text-left">
+        <span className="block truncate">{name}</span>
+        <span className="t-faint block text-[10px] font-normal tabular-nums">
+          {seconds > 0 ? formatDuration(seconds) : '—'}
+        </span>
+      </span>
       {canDelete && (
         <span
           onClick={(e) => {
@@ -54,6 +68,10 @@ export const Sidebar: React.FC = () => {
   // Object.is comparison on every render and loop forever (React #185).
   const spaceIds = useSpaceStore(useShallow((s) => Object.keys(s.spaces)));
   const addSpace = useSpaceStore((s) => s.addSpace);
+  const today = useToday();
+  const todayTotal = useSpaceTimeStore((s) =>
+    spaceIds.reduce((sum, id) => sum + (s.time[id]?.[today] ?? 0), 0)
+  );
 
   const create = () => {
     if (!newName.trim()) return;
@@ -102,13 +120,18 @@ export const Sidebar: React.FC = () => {
               </div>
             </div>
 
-            <div className="t-faint text-[10px] font-bold uppercase tracking-widest px-3 mb-2">
-              My Spaces
+            <div className="flex items-baseline justify-between px-3 mb-2">
+              <span className="t-faint text-[10px] font-bold uppercase tracking-widest">
+                My Spaces
+              </span>
+              <span className="t-faint text-[10px] tabular-nums" title="Time here today">
+                {formatDuration(todayTotal)}
+              </span>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-1 px-1">
               {spaceIds.map((id) => (
-                <SpaceRow key={id} id={id} canDelete={spaceIds.length > 1} />
+                <SpaceRow key={id} id={id} canDelete={spaceIds.length > 1} today={today} />
               ))}
             </div>
 

@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
+import { registerActivityIpc } from './ipc/activity';
 import { registerStorageIpc } from './ipc/storage';
 import { registerImageProtocolScheme, registerImagesIpc } from './ipc/images';
 import { registerSpacesIpc } from './ipc/spaces';
@@ -69,6 +70,7 @@ app.whenReady().then(() => {
   registerSpacesIpc();
   registerImagesIpc();
   registerWindowModeIpc(() => win);
+  registerActivityIpc(() => win);
   createWindow();
 });
 

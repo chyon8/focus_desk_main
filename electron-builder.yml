@@ -6,6 +6,8 @@ files:
   - dist/**
   - dist-electron/**
 mac:
+  # Drawn by build/make_icon.py, so it can be edited as code rather than redrawn.
+  icon: build/icon.icns
   # Unsigned/ad-hoc: fine for installing on this machine, but a downloaded copy
   # would be blocked by Gatekeeper until the app is signed and notarised.
   target:

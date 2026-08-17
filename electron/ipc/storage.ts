@@ -12,4 +12,11 @@ export function registerStorageIpc() {
   ipcMain.handle('store:delete', (_event, key: string) => {
     store.delete(key);
   });
+
+  // Blocking twin of store:set, for the last write before the window goes away:
+  // an `invoke` sent from `beforeunload` loses the race with the teardown.
+  ipcMain.on('store:set-sync', (event, key: string, value: unknown) => {
+    store.set(key, value);
+    event.returnValue = true;
+  });
 }
