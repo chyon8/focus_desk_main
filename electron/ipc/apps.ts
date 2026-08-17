@@ -24,6 +24,8 @@ const FOLLOW_MS = 60;
  * input while it is in front — there is nothing in Focus Desk left to click.
  */
 const RETURN_SHORTCUT = 'Alt+Space';
+/** Enough for the helper to read one line and write the window back before it dies. */
+const RESTORE_GRACE_MS = 250;
 
 /** Sends a command and waits for the one reply that answers it. */
 function ask<T>(
@@ -227,9 +229,34 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     helper.send({ cmd: 'raise', appKey });
   });
 
+  // Giving a window its size back is the renderer's cleanup, and that never runs
+  // when the desk itself goes away — closing the window or quitting while an app
+  // is live leaves it at the widget's size for good, since the frame it had
+  // before is only remembered inside the helper, which dies with us.
+  const restoreLive = () => {
+    if (!live) return false;
+    helper.send({ cmd: 'restore', appKey: live.appKey });
+    live = null;
+    globalShortcut.unregister(RETURN_SHORTCUT);
+    return true;
+  };
+
   app.on('browser-window-created', (_event, win) => {
     win.on('move', follow);
     win.on('resize', follow);
+    // On macOS this is not a quit: the app stays running with no renderer left to
+    // ask for the restore.
+    win.on('close', () => void restoreLive());
+  });
+
+  // The helper is killed on `will-quit`, so the restore has to be sent one step
+  // earlier and given a moment to land.
+  let leaving = false;
+  app.on('before-quit', (event) => {
+    if (leaving || !restoreLive()) return;
+    leaving = true;
+    event.preventDefault();
+    setTimeout(() => app.quit(), RESTORE_GRACE_MS);
   });
 
   app.on('will-quit', () => globalShortcut.unregister(RETURN_SHORTCUT));
