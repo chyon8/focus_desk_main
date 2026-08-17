@@ -9,18 +9,15 @@ import { useSpaceTimeTracker } from '../focus/useSpaceTimeTracker';
 import { useSpaceApps } from '../apps/useSpaceApps';
 import { useAppTimeStore } from '../stores/appTimeStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
-import { useUiStore } from '../stores/uiStore';
 import { SceneLayer } from '../themes/SceneLayer';
 import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
 import { ThemePicker } from './ThemePicker';
 import { ControlBar } from './ControlBar';
-import { MiniViewHost } from './MiniView';
 import { Sidebar } from './Sidebar';
 
 export const App: React.FC = () => {
   const isLoaded = useSpaceStore((s) => s.isLoaded);
   const theme = useActiveTheme();
-  const isMini = useUiStore((s) => s.miniWidgetId !== null);
   const [showInsights, setShowInsights] = useState(false);
 
   useThemeVariables(theme);
@@ -36,14 +33,6 @@ export const App: React.FC = () => {
 
   if (!isLoaded) {
     return <div className="w-screen h-screen bg-[#1e1e24]" />;
-  }
-
-  if (isMini) {
-    return (
-      <div className="w-screen h-screen overflow-hidden" style={{ fontFamily: 'var(--font-ui)' }}>
-        <MiniViewHost />
-      </div>
-    );
   }
 
   return (

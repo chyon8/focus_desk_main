@@ -11,34 +11,19 @@ export interface Rect {
 }
 
 interface UiState {
-  // Widget shown alone in the floating mini window; null means normal canvas.
-  miniWidgetId: string | null;
   isSidebarOpen: boolean;
   // Widget blown up to fill the canvas. Purely a view state: the widget keeps its
   // stored position and size, so leaving maximised puts it back untouched.
   maximizedWidgetId: string | null;
 
-  enterMini: (widgetId: string) => void;
-  exitMini: () => void;
   setSidebarOpen: (open: boolean) => void;
   toggleMaximized: (widgetId: string) => void;
   clearMaximized: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
-  miniWidgetId: null,
   isSidebarOpen: true,
   maximizedWidgetId: null,
-
-  enterMini: (widgetId) => {
-    void window.windowMode?.setMini(true);
-    set({ miniWidgetId: widgetId });
-  },
-
-  exitMini: () => {
-    void window.windowMode?.setMini(false);
-    set({ miniWidgetId: null });
-  },
 
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
 

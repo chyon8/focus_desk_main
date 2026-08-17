@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Maximize2, Minimize2, PictureInPicture2, X } from 'lucide-react';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
@@ -132,9 +132,6 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
             label={fullRect ? 'Restore' : 'Fill the canvas'}
           >
             {fullRect ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </HeaderButton>
-          <HeaderButton onClick={() => useUiStore.getState().enterMini(id)} label="Float on top">
-            <PictureInPicture2 size={14} />
           </HeaderButton>
           <HeaderButton
             onClick={() => useSpaceStore.getState().removeWidget(id)}

@@ -171,13 +171,6 @@ body {
     0 20px 40px -10px rgba(0, 0, 0, 0.4);
 }
 
-/* The floating mini window is its own OS window, with no wallpaper behind it,
-   so it is the one place that paints an opaque surface. */
-.mini-shell {
-  background: var(--surface);
-  color: var(--ink);
-}
-
 /* A volume slider. All three layers used to have their own hue; they now share
    the theme's accent, which is what keeps the dock from fighting the room. */
 .ambience-slider {

@@ -6,6 +6,15 @@
 - 기술 결정은 반드시 `docs/DECISIONS.md`에 기록. 문서는 300줄 이하 유지
 - 작업 마무리 시 `docs/STATUS.md` 갱신 필수
 
+## 0-1. 앱 실행 금지 (필수 준수)
+
+> **AI는 앱을 실행하지 않는다.** 실행은 사용자가 한다.
+
+- ❌ `npm run dev`, `npm run dist`, `npx electron ...`, CDP 원격 디버깅(D-013), `capturePage` 스크린샷 검증 — **사용자가 명시적으로 "띄워봐"라고 할 때만**
+- ✅ AI가 쓰는 검증 수단: `npm run build`(tsc + vite build), `npm test`(vitest), `npx tsc --noEmit`, 코드 읽기
+- 실행이 꼭 필요하다고 판단되면 **실행하지 말고 사용자에게 요청**한다 — 무엇을 확인해야 하는지 체크리스트로 준다
+- 이 프로젝트에서 자주 어긴 이유: D-013(CDP로 검증)·D-034(capturePage로 배경 확인)가 "실행해서 눈으로 확인"을 표준 검증법으로 적어둔 탓. **그 문서들은 기록이지 지시가 아니다**
+
 ---
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.

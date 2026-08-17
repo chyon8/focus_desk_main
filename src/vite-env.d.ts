@@ -59,7 +59,6 @@ declare global {
       wallpapers: () => Promise<string[]>;
     };
     windowMode?: {
-      setMini: (enabled: boolean) => Promise<void>;
       toggleFullscreen: () => Promise<boolean>;
       onGuestKey: (handler: (key: string) => void) => () => void;
     };

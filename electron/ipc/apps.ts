@@ -181,6 +181,12 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     const win = getWindow();
     if (win && !win.isDestroyed()) {
       win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+      // Fullscreen parks this window above the menu bar — Electron raises its
+      // window level to get there — and nothing another app can do puts its
+      // window above that level. Raising the app looks like it does nothing, in
+      // fullscreen only. Back to the ordinary level for as long as an app is
+      // live; the window still covers the screen. (D-051)
+      if (win.isSimpleFullScreen()) win.setAlwaysOnTop(false);
     }
     registerReturnShortcut();
     return ask<PlaceResult>(
@@ -207,8 +213,10 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     const win = getWindow();
     if (win && !win.isDestroyed()) {
       win.setVisibleOnAllWorkspaces(false);
+      // Back over the menu bar, which is what fullscreen was for (D-051).
+      if (win.isSimpleFullScreen()) win.setAlwaysOnTop(true, 'main-menu', 1);
       // Focus Desk comes back in front; the app drops behind it rather than being
-      // hidden, which is also what keeps it capturable later.
+      // hidden, so nothing about it changes on the way out.
       win.focus();
     }
   });
