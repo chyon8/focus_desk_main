@@ -23,6 +23,20 @@ declare global {
       /** Everything installed, fetched once and cached in the main process. */
       list: () => Promise<AppData[]>;
       launch: (appKey: string) => Promise<void>;
+      /** Which of the two macOS permissions this feature needs are granted. */
+      permissions: () => Promise<{ accessibility: boolean; screenRecording: boolean }>;
+      askCaptureAccess: () => Promise<void>;
+      /** Opens the Accessibility pane and reveals the binary to add; returns its path. */
+      showAccessibilitySettings: () => Promise<string>;
+      /** One frame of the app's window as a JPEG data URI, or null if there is none. */
+      capture: (appKey: string, maxWidth: number) => Promise<string | null>;
+      /** Rect in window coordinates; the main process adds the window's origin. */
+      place: (
+        appKey: string,
+        rect: { x: number; y: number; width: number; height: number }
+      ) => Promise<import('./apps/useAppSurface').PlaceResult>;
+      /** Puts the window back where it was and brings Focus Desk forward. */
+      release: (appKey: string) => Promise<void>;
       /** Which apps count as "still at the desk" while this space is open. */
       setSpaceApps: (appKeys: string[]) => Promise<void>;
       onFrontmost: (handler: (appKey: string | null) => void) => () => void;

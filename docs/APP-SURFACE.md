@@ -17,31 +17,31 @@ electron/helper/macos/FocusDeskHelper.swift  →  resources/focusdesk-helper
 Electron이 자식 프로세스로 띄우고 **stdin/stdout JSON Lines**로 대화한다.
 (네이티브 노드 애드온을 안 쓰는 이유는 D-038)
 
-### 프로토콜 — 동사 6개
+### 프로토콜
 ```ts
 // electron/apps/protocol.ts — 이식 계약서
 type Cmd =
-  | { cmd: 'list' }                                     // 설치된 앱 + 아이콘
-  | { cmd: 'launch';  appKey }                          // 실행 or 활성화
-  | { cmd: 'windows'; appKey }                          // 창 목록 (id, title, rect)
-  | { cmd: 'place';   winId; rect; front: boolean }     // 이동·리사이즈·z
-  | { cmd: 'capture'; winId; maxWidth }                 // → PNG
-  | { cmd: 'watch' }                                    // frontmost 구독
+  | { cmd: 'list' }                          // 설치된 앱 + 아이콘
+  | { cmd: 'launch';  appKey }               // 실행 or 활성화
+  | { cmd: 'watch' }                         // frontmost 구독
+  | { cmd: 'permissions' }                   // 접근성·화면기록 상태
+  | { cmd: 'place';   appKey; rect }         // 메인 창을 이 사각형에 + 앞으로
+  | { cmd: 'restore'; appKey }               // 처음 place 전 위치로 되돌림
+  | { cmd: 'capture'; appKey; maxWidth }     // → JPEG 한 장
+  | { cmd: 'ask-capture-access' }
 type Ev =
-  | { ev: 'frontmost'; appKey: string | null }
-  | { ev: 'windows'; appKey; windows }
-  | { ev: 'capture'; winId; png }
-  | { ev: 'error'; cmd; reason }
+  | { ev: 'apps' | 'frontmost' | 'permissions' | 'placed' | 'capture' | 'error'; ... }
 ```
+
+**창 id가 없다.** 설계 초안의 `windows` 동사는 구현하면서 없앴다 — `place`가 `AXMainWindow`(앱이 스스로 주 창이라 여기는 것)를 직접 잡으므로 id 레지스트리·재바인딩 문제가 통째로 사라진다. 대가는 창이 여러 개인 앱에서 주 창만 대상이 된다는 것. (D-040)
 
 | 동사 | macOS | Windows (미래) |
 |---|---|---|
 | list | `NSWorkspace` + `/Applications` | 시작 메뉴 `.lnk` 스캔 |
 | launch | `NSWorkspace.openApplication` | `ShellExecute` |
-| windows | `AXUIElementCopyAttributeValue` | `EnumWindows` |
-| place | `AXPosition`/`AXSize` | `SetWindowPos` |
-| capture | `ScreenCaptureKit` | DWM 썸네일 |
 | watch | `didActivateApplicationNotification` | `SetWinEventHook` |
+| place | `AXMainWindow` + `AXPosition`/`AXSize` | `SetWindowPos` |
+| capture | `ScreenCaptureKit` | DWM 썸네일 |
 
 **윈도우 이식 = 이 파일 하나 다시 씀.** 렌더러는 안 바뀐다.
 `appKey`는 macOS bundle id / Windows exe 경로. 렌더러는 불투명 문자열로만 다룬다.
@@ -73,39 +73,45 @@ active = frontmost ∈ ( {FocusDesk} ∪ 현재 공간의 앱 위젯들 )
 → 기존 `space-time-v1` 마이그레이션 불필요. "Focus Desk 자체" 시간은 총합 − 앱합(잔차).
 
 ## 단계 (각 단계는 혼자 배포 가능)
-| | 범위 | 권한 | 검증 |
+| | 범위 | 권한 | 상태 |
 |---|---|---|---|
-| **A** | `list`·`launch`·`watch`. 앱 위젯 + 시간 판정 + 앱별 Insights | 없음 | VSCode 40분 작업 → 사이드바 시간 +40분, Insights에 `VSCode 40m`. Slack으로 가면 멈춤 |
-| **B** | `windows`·`capture`. IDLE→THUMB | 화면 기록 | 위젯에 실제 화면이 1fps로. 줌아웃하면 같이 축소. 썸네일 5개에 CPU 유의미하게 안 오름 |
-| **C** | `place`. 최대화 시 LIVE + 크로스페이드 | 접근성 | 위젯을 열면 실제 창이 그 자리에 뜨고 타이핑됨. Esc로 썸네일 복귀. 공간 전환 시 따라 사라짐 |
-| **D** | 창 크기 기억, 공간 진입 시 자동 실행 | — | 재시작 후에도 배치 복원 |
+| **A** | `list`·`launch`·`watch`. 앱 위젯 + 시간 판정 + 앱별 Insights | 없음 | ✅ 2026-08-17 |
+| **B** | `capture`. 위젯에 라이브 썸네일(1fps, JPEG) | 화면 기록 | ✅ 2026-08-17 |
+| **C** | `place`·`restore`. 최대화 시 실제 창이 위젯 자리로 | 접근성 | ✅ 2026-08-17 |
+| **D** | 창 크기 기억, 공간 진입 시 자동 실행 | — | 미착수 |
 
 Phase A만으로도 "앱 전환하면 시간이 멈추는" 문제가 해결되고 앱별 통계가 생긴다.
 
-## 파일 계획
+### 실측 (2026-08-17)
+- 설치 앱 스캔 104개, 아이콘 전부 확보. 목록 1회 응답 829KB → main에서 캐시
+- 캡처 400px 폭: PNG 335KB → **JPEG(0.6) 58KB**. 1fps로 흘리려면 JPEG여야 함
+- 부모(Electron) 강제 종료 시 헬퍼도 자동 종료 — stdin EOF 경로 확인
+
+## 파일 지도
 ```
-electron/helper/macos/FocusDeskHelper.swift   신규
-electron/apps/protocol.ts                     신규  ← 이식 계약서
-electron/apps/helperClient.ts                 신규  spawn·JSON Lines·respawn
-electron/ipc/apps.ts                          신규
-electron/ipc/activity.ts                      수정  판정에 앱 집합 반영
-electron/preload.ts                           수정  window.apps
-src/widgets/AppWidget.tsx                     신규
-src/widgets/defs.ts · registry.ts             수정  app 타입 등록
-src/apps/useAppSurface.ts                     신규  IDLE/THUMB/LIVE
-src/focus/appTime.ts (+ .test.ts)             신규  순수함수, vitest
-src/stores/appTimeStore.ts                    신규
-src/focus/FocusInsights.tsx                   수정  앱별 분해
+electron/helper/macos/FocusDeskHelper.swift   유일한 네이티브 표면
+electron/apps/protocol.ts                     이식 계약서
+electron/apps/helperClient.ts                 spawn·JSON Lines·respawn(최대 5회)
+electron/ipc/apps.ts                          ask() 요청·응답, 좌표 변환, 창 따라가기
+electron/ipc/activity.ts                      판정에 앱 집합 반영 (D-039)
+src/widgets/AppWidget.tsx                     피커 / 썸네일 / LIVE 세 얼굴
+src/apps/useAppSurface.ts                     최대화 중 실제 창 배치(정지 후 90ms)
+src/apps/useAppThumbnail.ts                   1fps 캡처, 창 포커스 있을 때만
+src/apps/spaceApps.ts · useSpaceApps.ts       공간의 앱 집합 → main
+src/focus/appTime.ts (+ .test.ts)             순수함수, vitest
+src/stores/appTimeStore.ts                    space-app-time-v1
+src/focus/FocusInsights.tsx                   앱별 분해 + Focus Desk 잔차
 ```
 
-## 리스크 (미검증 — 해당 Phase에서 실측)
-| 항목 | 내용 |
+## 리스크
+| 항목 | 상태 |
 |---|---|
-| 창 재바인딩 | VSCode는 프로젝트별 창이 여러 개. `winId`는 앱 재시작 시 바뀜 → 창 제목으로 재바인딩. Phase C에서 가장 지저분한 부분 |
-| 최소 창 크기 | 앱이 일정 이하로 못 줄어듦 → 그보다 작으면 LIVE 진입 차단 |
-| macOS Spaces | 다른 데스크탑에 창이 있으면 안 따라옴 → 강제 이동 필요 |
-| 렌더 스로틀 | 가려진 창은 macOS가 렌더를 늦출 수 있음 → 썸네일이 정지처럼 보일 가능성. **Phase B에서 실측** |
-| 공증 | 헬퍼 바이너리도 서명·공증 대상 → 대기 중인 D-027과 같이 처리 |
+| 여러 창 | `AXMainWindow` 하나만 대상. VSCode 프로젝트별 창을 따로 지정하는 건 불가 (D-040) |
+| 최소 창 크기 | 앱이 못 줄어들면 위젯보다 크게 삐져나옴. `placed` 이벤트가 실제 rect를 돌려주지만 아직 표시에 쓰지 않음 |
+| macOS Spaces | 다른 데스크탑에 창이 있으면 안 따라옴 — 미해결 |
+| 렌더 스로틀 | 가려진 창의 썸네일이 정지처럼 보일 가능성 — 실사용에서 확인 필요 |
+| 공증 | 헬퍼 바이너리도 서명·공증 대상 → D-027과 같이 처리 |
+| 권한 이관 | 접근성·화면기록은 바이너리 경로 기준. dev에서 준 권한은 패키징본에 안 따라옴 |
 
 ## 결정됨
 - 외부 앱을 쓰는 동안 Focus Desk 창이 최소화/뒤에 있어도 **카운트한다**(공간=프로젝트). 창 상태는 판정에 안 넣는다

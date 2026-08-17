@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { useCameraControls } from './useCameraControls';
+import { useCameraMotion } from './useCameraMotion';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { WidgetFrame } from './WidgetFrame';
 
@@ -20,6 +21,7 @@ export const Canvas: React.FC = () => {
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen);
   const maximizedId = useUiStore((s) => s.maximizedWidgetId);
   const { isSpaceHeld, isPanning } = useCameraControls(viewportRef);
+  const isCameraMoving = useCameraMotion(camera ?? { x: 0, y: 0, zoom: 1 });
   useKeyboardShortcuts();
 
   // Only used while a widget is maximised, but the canvas has to re-measure when
@@ -57,9 +59,12 @@ export const Canvas: React.FC = () => {
       }}
     >
       <div
-        className="absolute top-0 left-0 origin-top-left will-change-transform"
+        className="absolute top-0 left-0 origin-top-left"
         style={{
           transform: `translate(${-camera.x * camera.zoom}px, ${-camera.y * camera.zoom}px) scale(${camera.zoom})`,
+          // Only while moving: a permanently promoted layer never repaints, so
+          // zooming in scales a bitmap of the text rather than redrawing it.
+          willChange: isCameraMoving ? 'transform' : 'auto',
         }}
       >
         {ids.map((id) => (

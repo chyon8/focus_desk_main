@@ -22,6 +22,18 @@ contextBridge.exposeInMainWorld('activity', {
 contextBridge.exposeInMainWorld('apps', {
   list: () => ipcRenderer.invoke('apps:list'),
   launch: (appKey: string) => ipcRenderer.invoke('apps:launch', appKey),
+  /** Which of the two macOS permissions this feature needs are granted. */
+  permissions: () => ipcRenderer.invoke('apps:permissions'),
+  askCaptureAccess: () => ipcRenderer.invoke('apps:ask-capture-access'),
+  /** Opens the Accessibility pane and reveals the binary to add; returns its path. */
+  showAccessibilitySettings: () => ipcRenderer.invoke('apps:show-accessibility-settings'),
+  /** One frame of the app's window as a JPEG data URI, or null if there is none. */
+  capture: (appKey: string, maxWidth: number) =>
+    ipcRenderer.invoke('apps:capture', appKey, maxWidth),
+  /** Rect is in window coordinates; the main process adds the window's origin. */
+  place: (appKey: string, rect: { x: number; y: number; width: number; height: number }) =>
+    ipcRenderer.invoke('apps:place', appKey, rect),
+  release: (appKey: string) => ipcRenderer.invoke('apps:release', appKey),
   /** Which apps count as "still at the desk" while this space is open (D-039). */
   setSpaceApps: (appKeys: string[]) => ipcRenderer.invoke('activity:set-space-apps', appKeys),
   onFrontmost: (handler: (appKey: string | null) => void) => {

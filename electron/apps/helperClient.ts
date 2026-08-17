@@ -14,7 +14,12 @@ export interface HelperClient {
   stop: () => void;
 }
 
-function helperPath() {
+/**
+ * The binary macOS grants Accessibility to — not the app bundle, since this is
+ * the process that asks. Worth showing the user when the permission has to be
+ * added by hand.
+ */
+export function helperPath() {
   return app.isPackaged
     ? path.join(process.resourcesPath, 'focusdesk-helper')
     : path.join(__dirname, '../resources/focusdesk-helper');

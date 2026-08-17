@@ -1,59 +1,161 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { RotateCcw, Search } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUpRight, RotateCcw, Search } from 'lucide-react';
+import { useAppSurface, type PlaceFailure } from '../apps/useAppSurface';
+import { useAppThumbnail } from '../apps/useAppThumbnail';
 import { secondsOnApp } from '../focus/appTime';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
 import { AppData } from '../spaces/types';
 import { useAppTimeStore } from '../stores/appTimeStore';
 import { useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
 import { useWidgetData } from './useWidgetData';
 
 /**
- * A real application standing in the space (D-038). Phase A launches it and
- * counts the time; thumbnails and live placement come later.
+ * Why a window could not be moved here. Every one of these is the user's to
+ * undo — macOS offers no way to carry a window across a Space boundary, and a
+ * fullscreen app is given a Space entirely of its own.
+ */
+const PLACE_PROBLEMS: Record<PlaceFailure, string> = {
+  accessibility: 'Focus Desk is not allowed to move windows yet.',
+  fullscreen:
+    'It is fullscreen, which macOS gives a desktop of its own. Leave fullscreen (⌃⌘F) and click again.',
+  otherSpace:
+    'Its window is on another desktop — fullscreen apps get one to themselves. Bring it to this desktop, then click again.',
+  notRunning: 'It would not start.',
+  noWindow: 'It has no window open yet.',
+  minimized: 'Its window is minimised.',
+  unknown: 'macOS would not let its window be moved.',
+};
+
+/**
+ * A real application standing in the space (D-038). Maximise it and the actual
+ * window comes and sits here; on the canvas it is a launcher that also knows how
+ * long this space has spent in that app.
  */
 export const AppWidget: React.FC<{ id: string }> = ({ id }) => {
   const [data, update] = useWidgetData<AppData>(id);
 
   return data.appKey ? (
-    <AppFace data={data} onClear={() => update({ appKey: '', name: '', icon: null })} />
+    <AppFace id={id} data={data} onClear={() => update({ appKey: '', name: '', icon: null })} />
   ) : (
     <AppPicker onPick={update} />
   );
 };
 
-const AppFace: React.FC<{ data: AppData; onClear: () => void }> = ({ data, onClear }) => {
+const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
+  id,
+  data,
+  onClear,
+}) => {
   const today = useToday();
   const spaceId = useSpaceStore((s) => s.activeSpaceId);
   const seconds = useAppTimeStore((s) => secondsOnApp(s.time, spaceId, today, data.appKey));
+  // The real window is placed over this element, so it is what gets measured.
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const { isLive, placement } = useAppSurface(id, data.appKey, surfaceRef);
+  const thumbnail = useAppThumbnail(data.appKey, !isLive, surfaceRef);
+  const [permissions, setPermissions] = useState({ accessibility: true, screenRecording: true });
+
+  // Re-read on going live: this is when the user is asked, and when the answer
+  // decides whether anything happens at all.
+  useEffect(() => {
+    void window.apps?.permissions().then(setPermissions);
+  }, [isLive]);
+
+  if (isLive) {
+    return (
+      <div
+        ref={surfaceRef}
+        className="t-ink h-full w-full flex flex-col items-center justify-center gap-2 p-6 text-center"
+      >
+        {permissions.accessibility ? (
+          placement && !placement.ok ? (
+            <>
+              <span className="t-ink text-sm">Can’t bring {data.name} here</span>
+              <span className="t-faint text-xs max-w-[40ch]">{PLACE_PROBLEMS[placement.reason]}</span>
+            </>
+          ) : (
+            // Covered by the real window the moment it lands. Visible only in the
+            // gap before that.
+            <span className="t-faint text-xs">Bringing {data.name} here…</span>
+          )
+        ) : (
+          <>
+            <span className="t-ink text-sm">Accessibility access needed</span>
+            <span className="t-faint text-xs max-w-[38ch]">
+              Bringing {data.name} here means moving its real window, which macOS guards. Allow
+              Focus Desk once, then click this widget again.
+            </span>
+            <button
+              onClick={() => void window.apps?.showAccessibilitySettings()}
+              className="chrome-button mt-1 px-3 h-7 rounded-md text-[11px]"
+            >
+              Open Accessibility settings
+            </button>
+            <span className="t-faint text-[10px] max-w-[38ch]">
+              If nothing is listed, drag in the file that Finder just revealed.
+            </span>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="t-ink h-full w-full flex flex-col items-center justify-center gap-3 p-5 text-center">
+    <div ref={surfaceRef} className="t-ink h-full w-full flex flex-col p-3 gap-2">
+      {/* Clicking brings the app into the space rather than switching away to it,
+          which is the whole point of the widget. Leaving is the ↗ button. */}
       <button
-        onClick={() => void window.apps?.launch(data.appKey)}
-        title={`Open ${data.name}`}
-        className="flex flex-col items-center gap-3 min-w-0"
+        onClick={() => useUiStore.getState().toggleMaximized(id)}
+        title={`Bring ${data.name} here`}
+        className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2.5"
       >
-        {data.icon ? (
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt=""
+            draggable={false}
+            className="border-hair max-w-full max-h-full object-contain rounded-lg border"
+          />
+        ) : data.icon ? (
           <img src={data.icon} alt="" className="w-16 h-16" draggable={false} />
         ) : (
           <div className="glass w-16 h-16 rounded-2xl" />
         )}
-        <span className="text-sm font-medium truncate max-w-full">{data.name}</span>
+        {!thumbnail && <span className="text-sm font-medium truncate max-w-full">{data.name}</span>}
       </button>
 
-      <span className="t-soft text-xs tabular-nums">
-        {seconds > 0 ? `${formatDuration(seconds)} today` : 'Not opened today'}
-      </span>
-
-      <button
-        onClick={onClear}
-        title="Pick a different app"
-        className="t-faint hover:t-ink flex items-center gap-1 text-[10px] uppercase tracking-widest"
-      >
-        <RotateCcw size={10} />
-        Change
-      </button>
+      <div className="flex items-center justify-between gap-2 px-1">
+        <span className="t-soft text-[11px] tabular-nums truncate">
+          {placement?.ok && !placement.resizable
+            ? `${data.name} · sets its own size`
+            : seconds > 0
+              ? `${formatDuration(seconds)} today`
+              : data.name}
+        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {!permissions.screenRecording && (
+            <button
+              onClick={() => void window.apps?.askCaptureAccess()}
+              title="Show this app's window in the widget"
+              className="t-faint hover:t-ink text-[10px] uppercase tracking-widest"
+            >
+              Preview
+            </button>
+          )}
+          <button
+            onClick={() => void window.apps?.launch(data.appKey)}
+            title={`Switch to ${data.name} outside Focus Desk`}
+            className="t-faint hover:t-ink"
+          >
+            <ArrowUpRight size={12} />
+          </button>
+          <button onClick={onClear} title="Pick a different app" className="t-faint hover:t-ink">
+            <RotateCcw size={10} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
