@@ -1,8 +1,11 @@
-export const WALLPAPERS = [
-  '/wallpapers/lofi_cat.jpeg',
-  '/wallpapers/lofi_fireplace.jpeg',
-  '/wallpapers/sunset_landscape.png',
-];
+/**
+ * Bundled wallpapers are stored as `/wallpapers/…`, but the packaged app loads
+ * from `file://`, where a leading slash means the root of the disk. Addressing
+ * them relative to the document works in both the dev server and the build.
+ */
+export function assetUrl(src: string) {
+  return src.startsWith('/') ? `.${src}` : src;
+}
 
 export const SOLID_COLORS = [
   '#1e1e24', // charcoal

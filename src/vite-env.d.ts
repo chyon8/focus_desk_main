@@ -16,6 +16,8 @@ declare global {
     };
     images?: {
       save: (buffer: ArrayBuffer, fileName: string) => Promise<string>;
+      /** Everything currently sitting in the public/wallpapers folder. */
+      wallpapers: () => Promise<string[]>;
     };
     windowMode?: {
       setMini: (enabled: boolean) => Promise<void>;

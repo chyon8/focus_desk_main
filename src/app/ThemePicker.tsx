@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Palette, Upload } from 'lucide-react';
-import { SOLID_COLORS, WALLPAPERS } from '../spaces/backgrounds';
+import { assetUrl, SOLID_COLORS } from '../spaces/backgrounds';
 import { useSpaceStore } from '../stores/spaceStore';
 import { THEMES } from '../themes/themes';
 import type { SceneSpec } from '../themes/types';
@@ -9,7 +9,11 @@ import type { SceneSpec } from '../themes/types';
 function thumbStyle(scene: SceneSpec): React.CSSProperties {
   switch (scene.kind) {
     case 'image':
-      return { backgroundImage: `url(${scene.src})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+      return {
+        backgroundImage: `url(${assetUrl(scene.src)})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      };
     case 'gradient':
       return { backgroundImage: scene.value };
     case 'color':
@@ -28,6 +32,13 @@ export const ThemePicker: React.FC = () => {
   const themeId = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.themeId);
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const fileInput = useRef<HTMLInputElement>(null);
+  const [wallpapers, setWallpapers] = useState<string[]>([]);
+
+  // Re-read the folder every time the panel opens, so a picture dropped in
+  // while the app is running is there the moment you look for it.
+  useEffect(() => {
+    if (isOpen) void window.images?.wallpapers().then(setWallpapers);
+  }, [isOpen]);
 
   const uploadWallpaper = async (file: File) => {
     if (!file.type.startsWith('image/')) return;
@@ -78,13 +89,13 @@ export const ThemePicker: React.FC = () => {
             </div>
 
             <Label>My wallpaper</Label>
-            <div className="grid grid-cols-4 gap-2 mb-4">
-              {WALLPAPERS.map((url) => (
+            <div className="grid grid-cols-3 gap-2 mb-4 max-h-40 overflow-y-auto pr-1">
+              {wallpapers.map((url) => (
                 <button
                   key={url}
                   onClick={() => setBackground({ type: 'IMAGE', value: url })}
                   className="aspect-video rounded-lg bg-cover bg-center transition-transform hover:scale-[1.06]"
-                  style={{ backgroundImage: `url(${url})`, ...ring(override?.value === url) }}
+                  style={{ backgroundImage: `url(${assetUrl(url)})`, ...ring(override?.value === url) }}
                 />
               ))}
               <button

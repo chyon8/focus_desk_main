@@ -82,7 +82,9 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, ful
 
   return (
     <div
-      className="widget-glass absolute rounded-2xl overflow-hidden"
+      /* no-drag: a widget sitting under the window's top drag strip must move
+         itself when its header is dragged, not the whole window (App.tsx). */
+      className="widget-glass no-drag absolute rounded-2xl overflow-hidden"
       style={{
         left: box.x,
         top: box.y,

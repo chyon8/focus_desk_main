@@ -18,7 +18,21 @@ export function registerImageProtocolScheme() {
   ]);
 }
 
+const WALLPAPER_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif']);
+
 export function registerImagesIpc() {
+  // The wallpapers folder is a drop zone: whatever is in it shows up in the
+  // picker, so adding a picture is copying a file — no code change.
+  ipcMain.handle('images:wallpapers', () => {
+    const dir = path.join(process.env.VITE_PUBLIC!, 'wallpapers');
+    if (!fs.existsSync(dir)) return [];
+    return fs
+      .readdirSync(dir)
+      .filter((name) => WALLPAPER_EXTS.has(path.extname(name).toLowerCase()))
+      .sort()
+      .map((name) => `/wallpapers/${name}`);
+  });
+
   protocol.handle(IMAGE_SCHEME, (request) => {
     // Only ever serve out of the images directory, whatever the URL claims.
     const name = path.basename(decodeURIComponent(new URL(request.url).pathname));

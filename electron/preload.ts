@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('spaces', {
 contextBridge.exposeInMainWorld('images', {
   save: (buffer: ArrayBuffer, fileName: string) =>
     ipcRenderer.invoke('images:save', buffer, fileName),
+  wallpapers: () => ipcRenderer.invoke('images:wallpapers'),
 });
 
 contextBridge.exposeInMainWorld('windowMode', {

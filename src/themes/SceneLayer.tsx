@@ -1,5 +1,6 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { assetUrl } from '../spaces/backgrounds';
 import { useSpaceStore } from '../stores/spaceStore';
 import { ParticleLayer } from './ParticleLayer';
 import type { Atmosphere, Glow, SceneSpec, Theme } from './types';
@@ -8,7 +9,7 @@ function sceneStyle(scene: SceneSpec): React.CSSProperties {
   switch (scene.kind) {
     case 'image':
       return {
-        backgroundImage: `url(${scene.src})`,
+        backgroundImage: `url(${assetUrl(scene.src)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       };
