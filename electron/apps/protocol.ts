@@ -29,6 +29,8 @@ export type HelperCmd =
   | { cmd: 'permissions' }
   /** Move the app's main window onto this rectangle and raise it. */
   | { cmd: 'place'; appKey: string; rect: Rect }
+  /** Bring the app's window back to the front, on top of Focus Desk. */
+  | { cmd: 'raise'; appKey: string }
   /** Put the window back where it was before the first `place`. */
   | { cmd: 'restore'; appKey: string }
   /** One frame of the app's biggest window, for the widget's thumbnail. */

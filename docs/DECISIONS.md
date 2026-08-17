@@ -2,6 +2,16 @@
 
 > 형식: 날짜 / 결정 / 이유 / 버린 대안. 뒤집을 때는 삭제하지 말고 새 항목으로 추가.
 
+## D-041 (2026-08-17) macOS Spaces — 앱을 데려오지 말고 데스크가 따라간다
+전체화면 앱은 macOS가 **전용 Space**를 주고, 그 Space의 창은 **접근성 API에 아예 안 보인다**(FL Studio·Antigravity 둘 다 `AXWindows` 0개, `CGWindowList`엔 존재). 창을 Space 사이로 옮기는 공개 API는 없다.
+
+- **처음에 "전체화면이면 거부"로 막았던 것은 오판이었다.** FL Studio 하나를 보고 만든 규칙이 전체화면에서도 잘 되던 앱까지 죽였다. 창 크기를 2px로 비교해 "다른 Space"를 추정하던 `isOnCurrentSpace`도 멀쩡한 창을 오판해서 함께 제거. **거부가 아니라 시도가 기본이어야 한다**
+- **순서**: ① AX에 창이 없고 `CGWindowList`엔 있으면 = 다른 Space → LaunchServices로 앱을 활성화해 그 Space를 앞으로 꺼낸다 ② 이제 보이는 창이 전체화면이면 `AXFullScreen = false`로 **풀어달라고 요청** ③ 일반 창이 되면 배치. 각 단계는 0.5초 간격 재시도(최대 12회)로 이어진다
+- **활성화는 `NSRunningApplication.activate()`가 아니라 `NSWorkspace.openApplication`.** 헬퍼는 `.prohibited` 백그라운드 프로세스라 스스로 활성 상태가 될 수 없고, macOS는 그런 프로세스의 활성화 요청을 무시한다(실측: activate()는 아무 일도 안 일어남, LaunchServices는 동작)
+- **데스크가 따라간다**: 앱을 꺼내도 Focus Desk가 그 Space에 없으면 소용없는데, 창을 옮길 방법은 없지만 **우리 창을 모든 Space에 띄우는 방법은 있다**. LIVE 진입 시 `setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })`, 해제 시 되돌린다
+- **앱 자신의 전체화면은 `setSimpleFullScreen`**(D-030·031의 `setFullScreen`을 대체). 네이티브 전체화면은 Focus Desk도 전용 Space로 보내버려서 그 상태에선 어떤 외부 창도 들어올 수 없다
+- 사용자가 미션 컨트롤로 앱을 고르면 되던 것은 **우연이 아니라 같은 원리**였다. 그 Space를 앞으로 꺼내주면 재시도 루프가 창을 찾아 배치에 성공한 것 — 이제 그 동작을 앱이 대신 한다
+
 ## D-040 (2026-08-17) 앱 서피스 구현에서 설계와 달라진 것들 (D-038 보강)
 Phase A~C를 만들면서 초안을 실물에 맞게 줄인 부분. 방향은 D-038 그대로.
 

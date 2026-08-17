@@ -159,6 +159,15 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     live = { appKey, rect };
     const cmd = placeCmd();
     if (!cmd) return null;
+
+    // Follow the app rather than expecting it to come to us. Its window may live
+    // on another Space — a fullscreen app is given one of its own — and macOS has
+    // no way to carry a window across. This window can be on all of them, so
+    // whichever desktop the app is reached on, the desk is already there (D-041).
+    const win = getWindow();
+    if (win && !win.isDestroyed()) {
+      win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    }
     return ask<PlaceResult>(
       helper,
       cmd,
@@ -179,15 +188,30 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   ipcMain.handle('apps:release', (_event, appKey: string) => {
     live = null;
     helper.send({ cmd: 'restore', appKey });
-    // Focus Desk comes back in front; the app drops behind it rather than being
-    // hidden, which is also what keeps it capturable later.
     const win = getWindow();
-    if (win && !win.isDestroyed()) win.focus();
+    if (win && !win.isDestroyed()) {
+      win.setVisibleOnAllWorkspaces(false);
+      // Focus Desk comes back in front; the app drops behind it rather than being
+      // hidden, which is also what keeps it capturable later.
+      win.focus();
+    }
   });
 
   app.on('browser-window-created', (_event, win) => {
     win.on('move', follow);
     win.on('resize', follow);
+  });
+
+  // Once a window has landed, the desk has to be the thing directly behind it.
+  // Chasing the app can leave Focus Desk buried on that desktop, which is what
+  // makes an app look like it just opened on its own (D-041). Raising the desk
+  // first and the app second puts them in the right order.
+  helper.on((event) => {
+    if (event.ev !== 'placed' || !live || event.appKey !== live.appKey) return;
+    const win = getWindow();
+    if (!win || win.isDestroyed()) return;
+    win.showInactive();
+    helper.send({ cmd: 'raise', appKey: event.appKey });
   });
 
   // The renderer needs the frontmost app by name, not just the "am I here" flag,

@@ -154,14 +154,25 @@ private func runningApp(_ appKey: String) -> NSRunningApplication? {
     NSRunningApplication.runningApplications(withBundleIdentifier: appKey).first
 }
 
-/// The app's biggest window — its document window rather than a palette or an
-/// inspector, and the same one the thumbnail captures.
+/// The window an app widget stands for: the one the user was last in, falling
+/// back to the biggest.
 ///
-/// Not `AXMainWindow`: apps whose windows are drawn by their own framework do
-/// not report one at all (FL Studio answers with an error), and the attribute is
-/// unset on plenty of apps that do have an obvious document window.
+/// With several windows open — three projects in an editor — the focused one is
+/// what "bring it here" should mean. Biggest is the fallback because it picks the
+/// document window over a palette, and because it is what the thumbnail captures.
+///
+/// Not `AXMainWindow`: apps whose windows are drawn by their own framework do not
+/// report one at all (FL Studio answers with an error), and it is unset on plenty
+/// of apps that do have an obvious document window.
 private func documentWindow(of app: NSRunningApplication) -> AXUIElement? {
     let axApp = AXUIElementCreateApplication(app.processIdentifier)
+
+    var focused: AnyObject?
+    if AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focused)
+        == .success, let window = focused, CFGetTypeID(window) == AXUIElementGetTypeID() {
+        return (window as! AXUIElement)
+    }
+
     var all: AnyObject?
     guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &all) == .success,
           let windows = all as? [AXUIElement]
@@ -174,13 +185,26 @@ private func documentWindow(of app: NSRunningApplication) -> AXUIElement? {
     return windows.max { area($0) < area($1) }
 }
 
-/// An app in native fullscreen owns a Space of its own, and macOS lets no other
-/// window join it. Nothing can be placed there; the user has to leave fullscreen.
+private let fullScreenAttribute = "AXFullScreen" as CFString
+
+/// An app in native fullscreen owns a Space of its own, which no other window can
+/// join. Most windows will leave fullscreen when asked, though, so this is a thing
+/// to undo rather than a reason to refuse.
 private func isFullScreen(_ window: AXUIElement) -> Bool {
     var value: AnyObject?
-    guard AXUIElementCopyAttributeValue(window, "AXFullScreen" as CFString, &value) == .success
+    guard AXUIElementCopyAttributeValue(window, fullScreenAttribute, &value) == .success
     else { return false }
     return (value as? Bool) ?? false
+}
+
+/// Asks the window to leave fullscreen. False when it will not be asked.
+private func leaveFullScreen(_ window: AXUIElement) -> Bool {
+    var settable: DarwinBoolean = false
+    guard AXUIElementIsAttributeSettable(window, fullScreenAttribute, &settable) == .success,
+          settable.boolValue
+    else { return false }
+    AXUIElementSetAttributeValue(window, fullScreenAttribute, false as CFTypeRef)
+    return true
 }
 
 private func isMinimized(_ window: AXUIElement) -> Bool {
@@ -212,32 +236,6 @@ private func hasWindowsSomewhere(pid: pid_t) -> Bool {
         // Past the menu-bar strips and zero-sized helpers an app keeps around.
         return bounds.width > 200 && bounds.height > 200
     }
-}
-
-/// Whether the window sits on the desktop the user is currently looking at.
-///
-/// Windows on another Space are not "on screen", and no public API moves them
-/// across — activating the app switches the user's desktop instead, which is why
-/// a window on another Space appears to do nothing until Mission Control is used.
-/// Bounds rather than window ids, because the id an AXUIElement wraps is private.
-private func isOnCurrentSpace(pid: pid_t, frame: CGRect) -> Bool {
-    guard let list = CGWindowListCopyWindowInfo(
-        [.optionOnScreenOnly, .excludeDesktopElements],
-        kCGNullWindowID
-    ) as? [[String: Any]] else {
-        return true  // Cannot tell — never block on a guess.
-    }
-
-    for entry in list {
-        guard entry[kCGWindowOwnerPID as String] as? pid_t == pid,
-              let boxed = entry[kCGWindowBounds as String] as? NSDictionary,
-              let bounds = CGRect(dictionaryRepresentation: boxed)
-        else { continue }
-        if abs(bounds.width - frame.width) < 2 && abs(bounds.height - frame.height) < 2 {
-            return true
-        }
-    }
-    return false
 }
 
 /// Whether the window will accept a new size at all. Plenty will not: a window
@@ -342,10 +340,19 @@ private func place(_ appKey: String, _ rect: CGRect, attempt: Int = 0) {
         return
     }
     guard let window = documentWindow(of: app), let current = frame(of: window) else {
-        // Windows on another Space are invisible to Accessibility, so an empty
-        // list can mean either "not opened yet" or "over there".
+        // Accessibility cannot see a window that lives on another Space, so an
+        // empty list means either "no window yet" or "over there".
+        //
+        // Over there is recoverable: activating the app brings its Space forward,
+        // and from there the window is an ordinary window again — which is
+        // exactly what reaching for Mission Control was doing by hand. Once it is
+        // visible the fullscreen check below sends it back to a shared desktop.
         if hasWindowsSomewhere(pid: app.processIdentifier) {
-            emitError("place", "otherSpace")
+            // Through LaunchServices, not `activate()`: this helper is a
+            // background process and never active itself, and macOS ignores an
+            // activation request from one of those.
+            if attempt == 0 { launch(appKey) }
+            if !again() { emitError("place", "otherSpace") }
             return
         }
         if !again() { emitError("place", "noWindow") }
@@ -358,14 +365,12 @@ private func place(_ appKey: String, _ rect: CGRect, attempt: Int = 0) {
         if !again() { emitError("place", "minimized") }
         return
     }
-    // Both of these are the user's to undo — macOS offers no way across a Space
-    // boundary, and activating the app would drag them off this desktop instead.
+    // Fullscreen means a Space of its own, which this window cannot be placed
+    // into — but asking it to leave usually works, and refusing outright would
+    // break every app that would have come quietly.
     if isFullScreen(window) {
+        if leaveFullScreen(window), again() { return }
         emitError("place", "fullscreen")
-        return
-    }
-    if !isOnCurrentSpace(pid: app.processIdentifier, frame: current) {
-        emitError("place", "otherSpace")
         return
     }
 
@@ -547,6 +552,17 @@ private func handle(_ line: String) {
             return
         }
         place(appKey, CGRect(x: x, y: y, width: width, height: height))
+    case "raise":
+        guard let appKey = object["appKey"] as? String else {
+            emitError("raise", "missing appKey")
+            return
+        }
+        // Through LaunchServices for the same reason `place` does: a background
+        // process cannot activate anything by asking directly.
+        launch(appKey)
+        if let app = runningApp(appKey), let window = documentWindow(of: app) {
+            AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+        }
     case "restore":
         guard let appKey = object["appKey"] as? String else {
             emitError("restore", "missing appKey")

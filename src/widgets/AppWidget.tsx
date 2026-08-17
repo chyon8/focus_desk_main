@@ -73,11 +73,24 @@ const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
           placement && !placement.ok ? (
             <>
               <span className="t-ink text-sm">Can’t bring {data.name} here</span>
-              <span className="t-faint text-xs max-w-[40ch]">{PLACE_PROBLEMS[placement.reason]}</span>
+              <span className="t-faint text-xs max-w-[40ch]">
+                {PLACE_PROBLEMS[placement.reason]}
+              </span>
+              {/* Failing to seat it in the space is no reason to also block the
+                  user from the app they asked for. */}
+              <button
+                onClick={() => void window.apps?.launch(data.appKey)}
+                className="chrome-button mt-1 px-3 h-7 rounded-md text-[11px]"
+              >
+                Open it anyway
+              </button>
             </>
+          ) : placement?.ok ? (
+            // The window is on top of this. Seen again whenever the user clicks
+            // Focus Desk, which puts this window in front — so it must read as a
+            // resting state, not as work still in progress.
+            <span className="t-faint text-xs">{data.name} is here · Esc to restore</span>
           ) : (
-            // Covered by the real window the moment it lands. Visible only in the
-            // gap before that.
             <span className="t-faint text-xs">Bringing {data.name} here…</span>
           )
         ) : (
