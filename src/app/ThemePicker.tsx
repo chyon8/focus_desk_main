@@ -18,12 +18,7 @@ function thumbStyle(scene: SceneSpec): React.CSSProperties {
 }
 
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div
-    className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-2"
-    style={{ color: 'var(--ink-soft)' }}
-  >
-    {children}
-  </div>
+  <div className="t-soft text-[10px] font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
 );
 
 export const ThemePicker: React.FC = () => {
@@ -49,12 +44,7 @@ export const ThemePicker: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Theme"
-        className="p-2.5 rounded-xl backdrop-blur-md border transition-all shadow-lg hover:brightness-125"
-        style={{
-          background: 'var(--panel)',
-          borderColor: 'var(--panel-border)',
-          color: 'var(--ink)',
-        }}
+        className="glass chrome-button p-2.5 rounded-xl shadow-lg"
       >
         <Palette size={18} />
       </button>
@@ -65,8 +55,7 @@ export const ThemePicker: React.FC = () => {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="absolute right-0 mt-2 w-72 p-4 rounded-2xl backdrop-blur-2xl border shadow-2xl"
-            style={{ background: 'var(--panel)', borderColor: 'var(--panel-border)' }}
+            className="glass-panel absolute right-0 mt-2 w-72 p-4 rounded-2xl shadow-2xl"
           >
             <Label>Theme</Label>
             <div className="grid grid-cols-2 gap-2 mb-5">
@@ -79,8 +68,8 @@ export const ThemePicker: React.FC = () => {
                 >
                   <div className="aspect-[4/3] w-full" style={thumbStyle(theme.scene)} />
                   <div
-                    className="px-2 py-1.5 text-[11px] font-medium"
-                    style={{ color: 'var(--ink)', background: 'rgba(0,0,0,0.25)' }}
+                    className="t-ink px-2 py-1.5 text-[11px] font-medium"
+                    style={{ background: 'color-mix(in srgb, var(--surface) 80%, transparent)' }}
                   >
                     {theme.name}
                   </div>
@@ -101,8 +90,7 @@ export const ThemePicker: React.FC = () => {
               <button
                 onClick={() => fileInput.current?.click()}
                 title="Use your own image"
-                className="aspect-video rounded-lg border border-dashed flex items-center justify-center transition-colors"
-                style={{ borderColor: 'var(--panel-border)', color: 'var(--ink-soft)' }}
+                className="border-hair t-soft aspect-video rounded-lg border border-dashed flex items-center justify-center transition-colors"
               >
                 <Upload size={13} />
               </button>

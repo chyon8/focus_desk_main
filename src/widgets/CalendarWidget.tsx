@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react';
-import { CalendarData } from '../spaces/types';
-import { useWidgetData } from './useWidgetData';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export const CalendarWidget: React.FC<{ id: string }> = ({ id }) => {
-  const [data, update] = useWidgetData<CalendarData>(id);
+export const CalendarWidget: React.FC = () => {
   const [viewMonth, setViewMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const isDark = data.theme === 'DARK';
 
   const today = new Date();
   const year = viewMonth.getFullYear();
@@ -27,18 +23,9 @@ export const CalendarWidget: React.FC<{ id: string }> = ({ id }) => {
   ];
 
   return (
-    <div
-      className={`h-full w-full flex flex-col p-5 transition-colors duration-300 ${
-        isDark ? 'bg-[#18181b] text-zinc-300' : 'bg-white text-slate-800'
-      }`}
-    >
+    <div className="t-ink h-full w-full flex flex-col p-5">
       <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => shiftMonth(-1)}
-          className={`p-1 rounded-md transition-colors ${
-            isDark ? 'text-zinc-600 hover:text-zinc-200' : 'text-slate-300 hover:text-slate-600'
-          }`}
-        >
+        <button onClick={() => shiftMonth(-1)} className="chrome-button p-1 rounded-md">
           <ChevronLeft size={16} />
         </button>
 
@@ -46,32 +33,14 @@ export const CalendarWidget: React.FC<{ id: string }> = ({ id }) => {
           {viewMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}
         </span>
 
-        <div className="flex items-center">
-          <button
-            onClick={() => shiftMonth(1)}
-            className={`p-1 rounded-md transition-colors ${
-              isDark ? 'text-zinc-600 hover:text-zinc-200' : 'text-slate-300 hover:text-slate-600'
-            }`}
-          >
-            <ChevronRight size={16} />
-          </button>
-          <button
-            onClick={() => update({ theme: isDark ? 'LIGHT' : 'DARK' })}
-            className={`p-1 rounded-md opacity-50 hover:opacity-100 transition-all ${
-              isDark ? 'text-zinc-500' : 'text-slate-400'
-            }`}
-          >
-            {isDark ? <Sun size={13} /> : <Moon size={13} />}
-          </button>
-        </div>
+        <button onClick={() => shiftMonth(1)} className="chrome-button p-1 rounded-md">
+          <ChevronRight size={16} />
+        </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEKDAYS.map((day, i) => (
-          <div
-            key={i}
-            className={`text-center text-[10px] font-bold ${isDark ? 'text-zinc-600' : 'text-slate-300'}`}
-          >
+          <div key={i} className="t-faint text-center text-[10px] font-bold">
             {day}
           </div>
         ))}
@@ -90,12 +59,13 @@ export const CalendarWidget: React.FC<{ id: string }> = ({ id }) => {
               {day !== null && (
                 <span
                   className={`w-7 h-7 flex items-center justify-center rounded-full text-xs tabular-nums transition-colors ${
-                    isToday
-                      ? 'bg-indigo-500 text-white font-semibold'
-                      : isDark
-                        ? 'text-zinc-400'
-                        : 'text-slate-600'
+                    isToday ? 'font-semibold' : 't-soft'
                   }`}
+                  style={
+                    isToday
+                      ? { background: 'var(--accent)', color: 'var(--surface)' }
+                      : undefined
+                  }
                 >
                   {day}
                 </span>

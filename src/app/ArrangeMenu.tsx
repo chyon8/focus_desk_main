@@ -38,8 +38,8 @@ export const ArrangeMenu: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Arrange (G)"
-        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 ${
-          isOpen ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+        className={`chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95 ${
+          isOpen ? 'row-on' : ''
         }`}
       >
         <LayoutGrid size={18} />
@@ -53,19 +53,19 @@ export const ArrangeMenu: React.FC = () => {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
-              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[90] w-52 p-2 rounded-2xl bg-black/85 backdrop-blur-xl border border-white/10 shadow-2xl"
+              className="glass-panel absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[90] w-52 p-2 rounded-2xl shadow-2xl"
             >
-              <div className="px-2 pt-1 pb-2 text-[10px] font-bold uppercase tracking-widest text-white/30">
+              <div className="t-faint px-2 pt-1 pb-2 text-[10px] font-bold uppercase tracking-widest">
                 Columns
               </div>
 
               <button
                 onClick={() => runGrid()}
-                className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                className="row w-full flex items-center gap-3 px-2 py-2 rounded-xl"
               >
                 <GridPreview columns={autoColumns} />
                 <span className="flex-1 text-left text-xs font-medium">Auto</span>
-                <span className="text-[10px] text-white/25">{autoColumns} wide</span>
+                <span className="t-faint text-[10px]">{autoColumns} wide</span>
               </button>
 
               <div className="grid grid-cols-5 gap-1 px-1 pt-1">
@@ -74,22 +74,22 @@ export const ArrangeMenu: React.FC = () => {
                     key={columns}
                     onClick={() => runGrid(columns)}
                     title={`${columns} column${columns > 1 ? 's' : ''}`}
-                    className="h-9 flex items-center justify-center rounded-lg text-xs font-medium tabular-nums text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                    className="chrome-button h-9 flex items-center justify-center rounded-lg text-xs font-medium tabular-nums"
                   >
                     {columns}
                   </button>
                 ))}
               </div>
 
-              <div className="my-1 h-px bg-white/10" />
+              <div className="bg-hair my-1 h-px" />
 
               <button
                 onClick={runCascade}
-                className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                className="row w-full flex items-center gap-3 px-2 py-2 rounded-xl"
               >
                 <Layers size={15} />
                 <span className="flex-1 text-left text-xs font-medium">Cascade</span>
-                <span className="text-[10px] text-white/25">Overlapping</span>
+                <span className="t-faint text-[10px]">Overlapping</span>
               </button>
             </motion.div>
           </>

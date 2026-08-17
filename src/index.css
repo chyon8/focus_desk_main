@@ -7,20 +7,6 @@ body {
 
 /* --- Backdrop finishing passes (see themes/SceneLayer) --- */
 
-/* A very slow push on the backdrop. Long and gentle enough that you notice it
-   only as the room being alive, never as movement. */
-.scene-drift {
-  animation: scene-drift 64s ease-in-out infinite alternate;
-}
-@keyframes scene-drift {
-  from {
-    transform: scale(1) translate3d(0, 0, 0);
-  }
-  to {
-    transform: scale(1.06) translate3d(-1.2%, -0.8%, 0);
-  }
-}
-
 /* The light in the room. `screen` lets it lift the scene instead of washing it out. */
 .scene-glow {
   mix-blend-mode: screen;
@@ -79,7 +65,127 @@ body {
   mix-blend-mode: overlay;
 }
 
-/* --- Widget chrome, painted from the active theme's tokens --- */
+/* --- Theme-driven UI, painted from the active theme's tokens ---
+   Every surface, text colour and control in the app reads from these, so a theme
+   change repaints the whole thing. Raw colours are only for danger states. --- */
+
+/* A floating bar or dock. */
+.glass {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+/* A popover or dialog, where content has to stay readable over a busy backdrop.
+   The same tint is laid down twice, which compounds its alpha without needing a
+   second, hand-maintained token per theme. */
+.glass-panel {
+  background-image:
+    linear-gradient(var(--panel), var(--panel)),
+    linear-gradient(var(--panel), var(--panel));
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(30px) saturate(1.25);
+}
+
+.t-ink {
+  color: var(--ink);
+}
+.t-soft {
+  color: var(--ink-soft);
+}
+.t-faint {
+  color: color-mix(in srgb, var(--ink) 32%, transparent);
+}
+.t-accent {
+  color: var(--accent);
+}
+.border-hair {
+  border-color: var(--panel-border);
+}
+.bg-hair {
+  background: var(--panel-border);
+}
+
+/* An icon button in the chrome: quiet until hovered. */
+.chrome-button {
+  color: var(--ink-soft);
+  transition: background-color 0.15s, color 0.15s;
+}
+.chrome-button:hover {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  color: var(--ink);
+}
+
+/* Its on/active state, tinted with the theme's accent. */
+.chrome-button-on {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+}
+
+/* A text input. */
+.field {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  color: var(--ink);
+  transition: background-color 0.15s;
+}
+.field::placeholder {
+  color: color-mix(in srgb, var(--ink) 28%, transparent);
+}
+.field:focus {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+/* A row in a list: hoverable, and selectable. */
+.row {
+  color: var(--ink-soft);
+  transition: background-color 0.15s, color 0.15s;
+}
+.row:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  color: var(--ink);
+}
+.row-on {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  color: var(--ink);
+}
+
+/* The dimmer behind a modal. Tinted from the theme's own surface, so a light
+   room fogs over rather than being blacked out. */
+.scrim-overlay {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+
+/* Photos and sketches are printed objects: they keep their own sheet of paper
+   rather than going see-through like the rest of the widgets. */
+.photo-paper {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* The clock is a physical face, lifted slightly off the glass behind it. */
+.clock-face {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    0 20px 40px -10px rgba(0, 0, 0, 0.4);
+}
+
+/* The floating mini window is its own OS window, with no wallpaper behind it,
+   so it is the one place that paints an opaque surface. */
+.mini-shell {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* A volume slider. All three layers used to have their own hue; they now share
+   the theme's accent, which is what keeps the dock from fighting the room. */
+.ambience-slider {
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+  accent-color: var(--accent);
+}
+
+/* --- Widget chrome --- */
 
 .widget-glass {
   background: var(--panel);
@@ -96,15 +202,6 @@ body {
 .widget-header {
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015));
   border-bottom: 1px solid var(--panel-border);
-}
-
-.chrome-button {
-  color: var(--ink-soft);
-  transition: background-color 0.15s, color 0.15s;
-}
-.chrome-button:hover {
-  background: color-mix(in srgb, var(--ink) 14%, transparent);
-  color: var(--ink);
 }
 
 /* Electron frameless window drag region */

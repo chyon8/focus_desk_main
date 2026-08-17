@@ -37,7 +37,7 @@ export const FocusSessionBar: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             onClick={() => start()}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all shadow-lg"
+            className="glass chrome-button flex items-center gap-2 px-4 py-2 rounded-full shadow-lg"
           >
             <TimerIcon size={14} />
             <span className="text-xs font-medium">Start focus</span>
@@ -48,27 +48,28 @@ export const FocusSessionBar: React.FC = () => {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-3 pl-4 pr-2 py-2 rounded-full bg-indigo-500/25 backdrop-blur-xl border border-indigo-400/30 shadow-lg"
+            className="chrome-button-on flex items-center gap-3 pl-4 pr-2 py-2 rounded-full border shadow-lg"
           >
             <span
-              className={`w-2 h-2 rounded-full ${isRunning ? 'bg-indigo-300 animate-pulse' : 'bg-white/30'}`}
+              className={`w-2 h-2 rounded-full ${isRunning ? 'animate-pulse' : 'opacity-40'}`}
+              style={{ background: 'currentColor' }}
             />
-            <span className="text-sm font-mono font-semibold tabular-nums text-white">
+            <span className="t-ink text-sm font-mono font-semibold tabular-nums">
               {formatClock(elapsed)}
             </span>
-            {taskName && <span className="text-xs text-white/60 max-w-40 truncate">{taskName}</span>}
+            {taskName && <span className="t-soft text-xs max-w-40 truncate">{taskName}</span>}
 
             <button
               onClick={isRunning ? pause : resume}
               title={isRunning ? 'Pause' : 'Resume'}
-              className="p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              className="chrome-button p-1.5 rounded-full"
             >
               {isRunning ? <Pause size={13} /> : <Play size={13} />}
             </button>
             <button
               onClick={stop}
               title="Finish and record"
-              className="p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              className="chrome-button p-1.5 rounded-full"
             >
               <Square size={13} />
             </button>

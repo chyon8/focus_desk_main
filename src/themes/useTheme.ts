@@ -18,10 +18,11 @@ export function useActiveTheme(): Theme {
 export function useThemeVariables(theme: Theme) {
   useEffect(() => {
     const { style } = document.documentElement;
-    const { ink, inkSoft, panel, panelBorder, accent, font } = theme.tokens;
+    const { ink, inkSoft, panel, surface, panelBorder, accent, font } = theme.tokens;
     style.setProperty('--ink', ink);
     style.setProperty('--ink-soft', inkSoft);
     style.setProperty('--panel', panel);
+    style.setProperty('--surface', surface);
     style.setProperty('--panel-border', panelBorder);
     style.setProperty('--accent', accent);
     style.setProperty('--font-ui', FONT_STACKS[font]);

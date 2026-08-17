@@ -15,14 +15,14 @@ const MiniView: React.FC<{ id: string }> = ({ id }) => {
   const Body = entry.Component;
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#1e1e24] overflow-hidden">
-      <div className="h-7 shrink-0 flex items-center px-3 gap-2 bg-white/10 border-b border-white/10 titlebar-drag-region">
-        <entry.icon size={12} className="text-white/50" />
-        <span className="text-xs text-white/70">{entry.label}</span>
+    <div className="mini-shell fixed inset-0 flex flex-col overflow-hidden">
+      <div className="widget-header h-7 shrink-0 flex items-center px-3 gap-2 titlebar-drag-region">
+        <entry.icon size={12} className="t-soft" />
+        <span className="t-ink text-xs">{entry.label}</span>
         <button
           onClick={exitMini}
           title="Back to canvas"
-          className="ml-auto p-1 -mr-1 rounded text-white/50 hover:text-white transition-colors no-drag"
+          className="chrome-button ml-auto p-1 -mr-1 rounded no-drag"
         >
           <Minimize2 size={12} />
         </button>

@@ -32,7 +32,7 @@ export const App: React.FC = () => {
 
   if (isMini) {
     return (
-      <div className="w-screen h-screen overflow-hidden text-white font-sans">
+      <div className="w-screen h-screen overflow-hidden" style={{ fontFamily: 'var(--font-ui)' }}>
         <MiniViewHost />
       </div>
     );
@@ -40,7 +40,7 @@ export const App: React.FC = () => {
 
   return (
     <div
-      className="relative w-screen h-screen overflow-hidden text-white"
+      className="t-ink relative w-screen h-screen overflow-hidden"
       style={{ fontFamily: 'var(--font-ui)' }}
     >
       <SceneLayer theme={theme} />

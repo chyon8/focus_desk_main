@@ -4,10 +4,10 @@ import { CloudRain, Coffee, Flame, Volume2 } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { AmbienceEngine, AmbienceLayer, SILENT_AMBIENCE } from './engine';
 
-const LAYERS: { key: AmbienceLayer; label: string; icon: typeof CloudRain; accent: string }[] = [
-  { key: 'rain', label: 'Rain', icon: CloudRain, accent: 'accent-blue-400' },
-  { key: 'fire', label: 'Fire', icon: Flame, accent: 'accent-orange-400' },
-  { key: 'cafe', label: 'Cafe', icon: Coffee, accent: 'accent-yellow-600' },
+const LAYERS: { key: AmbienceLayer; label: string; icon: typeof CloudRain }[] = [
+  { key: 'rain', label: 'Rain', icon: CloudRain },
+  { key: 'fire', label: 'Fire', icon: Flame },
+  { key: 'cafe', label: 'Cafe', icon: Coffee },
 ];
 
 export const AmbienceDock: React.FC = () => {
@@ -36,10 +36,8 @@ export const AmbienceDock: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Ambience"
-        className={`p-2.5 rounded-xl backdrop-blur-md border transition-all shadow-lg ${
-          isPlaying
-            ? 'bg-indigo-500/30 border-indigo-400/40 text-indigo-200'
-            : 'bg-black/40 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
+        className={`p-2.5 rounded-xl border transition-all shadow-lg ${
+          isPlaying ? 'chrome-button-on' : 'glass chrome-button'
         }`}
       >
         <Volume2 size={18} />
@@ -51,26 +49,26 @@ export const AmbienceDock: React.FC = () => {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="absolute right-0 mt-2 w-64 p-4 rounded-2xl bg-black/70 backdrop-blur-xl border border-white/10 shadow-2xl"
+            className="glass-panel absolute right-0 mt-2 w-64 p-4 rounded-2xl shadow-2xl"
           >
-            <div className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3">
+            <div className="t-faint text-[10px] font-bold uppercase tracking-widest mb-3">
               Ambience
             </div>
 
             <div className="space-y-3">
-              {LAYERS.map(({ key, label, icon: Icon, accent }) => (
+              {LAYERS.map(({ key, label, icon: Icon }) => (
                 <div key={key} className="flex items-center gap-3 group">
-                  <Icon size={16} className="text-white/50 group-hover:text-white/80 transition-colors" />
+                  <Icon size={16} className="t-soft group-hover:opacity-100 transition-opacity" />
                   <input
                     type="range"
                     min={0}
                     max={100}
                     value={ambience[key]}
                     onChange={(e) => setAmbience({ ...ambience, [key]: Number(e.target.value) })}
-                    className={`flex-1 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer ${accent}`}
+                    className="ambience-slider flex-1 h-1 rounded-lg appearance-none cursor-pointer"
                     title={label}
                   />
-                  <span className="w-7 text-right text-[10px] tabular-nums text-white/40">
+                  <span className="t-faint w-7 text-right text-[10px] tabular-nums">
                     {ambience[key]}
                   </span>
                 </div>
@@ -80,7 +78,7 @@ export const AmbienceDock: React.FC = () => {
             {isPlaying && (
               <button
                 onClick={() => setAmbience({ ...SILENT_AMBIENCE })}
-                className="mt-4 w-full py-1.5 rounded-lg text-[10px] font-medium text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+                className="row mt-4 w-full py-1.5 rounded-lg text-[10px] font-medium"
               >
                 Silence
               </button>

@@ -18,7 +18,7 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
 
   return (
     <div
-      className="h-full w-full flex flex-col p-3 bg-white"
+      className="photo-paper h-full w-full flex flex-col p-3"
       onDragOver={(e) => {
         e.preventDefault();
         setIsDropTarget(true);
@@ -32,16 +32,18 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
       }}
     >
       <div
-        className={`flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-sm transition-colors ${
-          isDropTarget ? 'bg-indigo-50 ring-2 ring-indigo-300' : 'bg-slate-100'
-        }`}
+        className="flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-sm transition-all"
+        style={{
+          background: 'color-mix(in srgb, var(--ink) 8%, transparent)',
+          boxShadow: isDropTarget ? '0 0 0 2px var(--accent)' : undefined,
+        }}
       >
         {data.url ? (
           <img src={data.url} alt={data.caption} className="w-full h-full object-cover" />
         ) : (
           <button
             onClick={() => fileInput.current?.click()}
-            className="flex flex-col items-center gap-2 text-slate-300 hover:text-slate-400 transition-colors"
+            className="t-faint hover:opacity-70 flex flex-col items-center gap-2 transition-opacity"
           >
             <ImagePlus size={28} />
             <span className="text-xs">Drop or choose a photo</span>
@@ -54,8 +56,7 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
         value={data.caption}
         onChange={(e) => update({ caption: e.target.value })}
         placeholder="Write a caption"
-        className="mt-3 mb-1 shrink-0 bg-transparent text-center text-sm text-slate-600 placeholder-slate-300 outline-none"
-        style={{ fontFamily: 'ui-rounded, "Inter", sans-serif' }}
+        className="field mt-3 mb-1 shrink-0 !bg-transparent text-center text-sm outline-none"
       />
 
       <input

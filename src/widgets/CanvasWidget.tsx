@@ -74,28 +74,24 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-white">
-      <div className="h-9 shrink-0 flex items-center gap-2 px-3 border-b border-slate-100">
+    <div className="photo-paper h-full w-full flex flex-col">
+      <div className="border-hair h-9 shrink-0 flex items-center gap-2 px-3 border-b">
         <button
           onClick={() => setIsErasing(false)}
           title="Draw"
-          className={`p-1.5 rounded-md transition-colors ${
-            isErasing ? 'text-slate-300 hover:text-slate-500' : 'bg-slate-100 text-slate-700'
-          }`}
+          className={`chrome-button p-1.5 rounded-md ${isErasing ? '' : 'row-on'}`}
         >
           <Pen size={13} />
         </button>
         <button
           onClick={() => setIsErasing(true)}
           title="Erase"
-          className={`p-1.5 rounded-md transition-colors ${
-            isErasing ? 'bg-slate-100 text-slate-700' : 'text-slate-300 hover:text-slate-500'
-          }`}
+          className={`chrome-button p-1.5 rounded-md ${isErasing ? 'row-on' : ''}`}
         >
           <Eraser size={13} />
         </button>
 
-        <div className="w-px h-4 bg-slate-100 mx-0.5" />
+        <div className="bg-hair w-px h-4 mx-0.5" />
 
         {COLORS.map((c) => (
           <button
@@ -105,22 +101,23 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
               setIsErasing(false);
             }}
             className={`w-4 h-4 rounded-full transition-transform ${
-              color === c && !isErasing ? 'ring-2 ring-offset-1 ring-slate-300 scale-110' : ''
+              color === c && !isErasing ? 'scale-110' : ''
             }`}
-            style={{ backgroundColor: c }}
+            style={{
+              backgroundColor: c,
+              boxShadow: color === c && !isErasing ? '0 0 0 2px var(--accent)' : undefined,
+            }}
           />
         ))}
 
-        <div className="w-px h-4 bg-slate-100 mx-0.5" />
+        <div className="bg-hair w-px h-4 mx-0.5" />
 
         {WIDTHS.map((w) => (
           <button
             key={w}
             onClick={() => setWidth(w)}
             title={`${w}px`}
-            className={`p-1 rounded transition-colors ${
-              width === w ? 'text-slate-700' : 'text-slate-300 hover:text-slate-500'
-            }`}
+            className={`chrome-button p-1 rounded ${width === w ? 't-ink' : ''}`}
           >
             <Minus size={13} strokeWidth={w} />
           </button>
@@ -129,7 +126,7 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
         <button
           onClick={() => update({ strokes: [] })}
           title="Clear"
-          className="ml-auto p-1.5 rounded-md text-slate-300 hover:text-red-500 transition-colors"
+          className="t-faint hover:!text-red-400 ml-auto p-1.5 rounded-md transition-colors"
         >
           <Trash2 size={13} />
         </button>

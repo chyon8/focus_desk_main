@@ -34,8 +34,6 @@ export interface Atmosphere {
   /** The colour that veil tints toward, as `r, g, b` — warm rooms veil warm. */
   scrimTint: string;
   glow?: Glow;
-  /** Slow Ken Burns push, so a photo backdrop is never quite still. */
-  drift?: boolean;
 }
 
 export interface ThemeTokens {
@@ -45,6 +43,8 @@ export interface ThemeTokens {
   inkSoft: string;
   /** Widget glass fill. */
   panel: string;
+  /** Opaque version of the same, for windows with no wallpaper behind them. */
+  surface: string;
   panelBorder: string;
   /** Selection, focus rings, active states. */
   accent: string;

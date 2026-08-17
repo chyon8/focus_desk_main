@@ -12,10 +12,10 @@ const BarButton: React.FC<{ label: string; onClick: () => void; children: React.
   <button
     onClick={onClick}
     title={label}
-    className="group relative w-10 h-10 flex items-center justify-center rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+    className="chrome-button group relative w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
   >
     {children}
-    <span className="absolute bottom-full mb-2 px-2 py-1 rounded-md bg-black/80 text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+    <span className="glass-panel t-ink absolute bottom-full mb-2 px-2 py-1 rounded-md text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
       {label}
     </span>
   </button>
@@ -32,7 +32,7 @@ export const ControlBar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenIns
   const zoom = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera.zoom ?? 1);
 
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-2 py-2 rounded-2xl bg-black/50 backdrop-blur-xl border border-white/10 shadow-2xl">
+    <div className="glass-panel fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-2 py-2 rounded-2xl shadow-2xl">
       {WIDGET_TYPES.map((type) => {
         const entry = WIDGET_REGISTRY[type];
         return (
@@ -46,7 +46,7 @@ export const ControlBar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenIns
         <Music size={18} />
       </BarButton>
 
-      <div className="w-px h-6 bg-white/10 mx-1" />
+      <div className="bg-hair w-px h-6 mx-1" />
 
       <ArrangeMenu />
       <BarButton label="Fit to widgets (F)" onClick={fitToWidgets}>
@@ -62,7 +62,7 @@ export const ControlBar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenIns
         <BarChart2 size={18} />
       </BarButton>
 
-      <span className="px-2 text-xs text-white/40 tabular-nums">{Math.round(zoom * 100)}%</span>
+      <span className="t-faint px-2 text-xs tabular-nums">{Math.round(zoom * 100)}%</span>
     </div>
   );
 };

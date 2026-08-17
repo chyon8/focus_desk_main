@@ -22,7 +22,7 @@ const NavButton: React.FC<{
     title={label}
     disabled={disabled}
     onClick={onClick}
-    className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/10 disabled:text-white/20 disabled:hover:bg-transparent transition-colors"
+    className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-md disabled:opacity-30 disabled:hover:bg-transparent"
   >
     {children}
   </button>
@@ -86,9 +86,9 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   }, [update]);
 
   return (
-    <div className="h-full w-full flex flex-col bg-black/40">
+    <div className="h-full w-full flex flex-col">
       <form
-        className="h-9 shrink-0 flex items-center px-2 gap-1 border-b border-white/10"
+        className="border-hair h-9 shrink-0 flex items-center px-2 gap-1 border-b"
         onSubmit={(e) => {
           e.preventDefault();
           const url = normalizeUrl(address);
@@ -117,7 +117,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="Enter a URL"
-          className="flex-1 min-w-0 bg-white/5 rounded-md px-2 py-1 text-xs text-white/80 placeholder-white/25 outline-none focus:bg-white/10"
+          className="field flex-1 min-w-0 rounded-md px-2 py-1 text-xs outline-none"
         />
       </form>
 
