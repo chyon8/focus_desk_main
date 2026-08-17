@@ -30,6 +30,24 @@ docs/
 - 줌: 커서 중심(zoom-to-cursor). 팬: 스페이스바 드래그 + 트랙패드
 - 위젯 드래그 중에는 transient 업데이트(리렌더 최소화), 드롭 시 스토어 커밋
 
+## 캔버스 밀도·가독성 (미착수 — STATUS "다음 할 일" 1번)
+위젯 6개를 펼쳐두면 미션 컨트롤보다 훨씬 작고 구멍이 많고 위가 잘려 보인다. 원인 4개:
+
+1. **`canvasArea()`가 상단 크롬을 안 뺀다** — [uiStore.ts](../src/stores/uiStore.ts)가 `y: 0`, `height = innerHeight − 76`(컨트롤바)만 계산하는데, 위쪽 84px(`Canvas.tsx`의 `TOP_CHROME_HEIGHT` — 드래그 스트립 + 플로팅 버튼)은 실제로 덮여 있다. fit·arrange·새 위젯 배치가 전부 이 틀린 사각형을 쓴다 → **맨 윗줄이 크롬 아래로 들어가 잘린다**
+2. **`packGrid`의 셀 폭이 전체 최대 폭** — [layout.ts](../src/canvas/layout.ts) `cellWidth = Math.max(...widths)`. 브라우저(900) 하나가 있으면 메모(360)까지 900폭 칸에 놓여 가로로 구멍이 생기고, bounding box가 부풀어 fit이 더 줌아웃한다. `FIT_PADDING = 48`이 양쪽 96px을 더 먹는다
+3. **미션 컨트롤은 크기를 유지하지 않는다** — 창을 격자 셀에 꼭 맞게 개별 스케일해 화면을 채운다. 우리 `arrange`는 "preserving each box's size"라 위치만 옮긴다. 게다가 미션 컨트롤은 전체화면 + 크롬 0인데 우리는 사이드바 256 + 컨트롤바 76 + 상단 84
+4. **글자는 레이아웃으로 못 고친다** — 위젯 본문은 월드 CSS px로 그려진 뒤 scale된다. 줌 0.43이면 글자도 0.43배. "6개를 한 화면"은 각자 1/6 면적이라는 산수이고 미션 컨트롤도 같다 — 거기가 괜찮은 건 축소본을 **읽지 않고 알아보기만** 하기 때문이다
+
+**고치는 순서**
+| | 할 일 | 검증 |
+|---|---|---|
+| 1 | `canvasArea()`에 상단 84 인셋 | fit 후 맨 윗줄이 안 잘림. 새 위젯도 크롬 아래에 안 생김 |
+| 2 | `cellWidth`를 열별 최대 폭으로, `FIT_PADDING` 48 → 20 | 같은 공간에서 fit 줌이 올라감 |
+| 3 | fit/arrange 시 사이드바 자동 접기 | 가로 256px 회수 |
+| 4 | 여기까지 눈으로 보고, 아래가 정말 필요한지 판단 | |
+
+**그 다음(판단 후)**: ⓐ "한눈에 보기" = 배치할 때 위젯 **크기까지** 화면 격자에 맞추는 모드(원래 크기를 기억해 되돌릴 수 있어야 함) ⓑ 위젯 헤더만 `scale(1/zoom)` 역보정(D-049 기법) → 축소해도 무슨 위젯인지 읽힘 ⓒ 줌 0.6 미만이면 브라우저 위젯 본문을 대표 얼굴(제목·favicon·썸네일)로 = LOD. 미션 컨트롤에 제일 가깝지만 제일 비싸다
+
 ## 상태 모델 (stores/)
 - `spaceStore`: 스페이스 문서 단위. `{ id, name, schemaVersion, themeId, background, camera, ambience, widgets{} }`
   - `themeId`가 테마를, `background`는 사용자가 직접 고른 월페이퍼/색(**없으면 null** → 테마의 씬을 씀)
@@ -49,6 +67,21 @@ docs/
 - 스페이스별 `partition="persist:space-<id>"` → 로그인 분리
 - 스페이스 전환 = 언마운트 = 웹 컨텐츠 파괴. 돌아오면 `data.url`(마지막 방문 주소)로 재로드
 - ⚠️ 과거 WebContentsView 방식은 D-029에서 폐기. 그 흔적(스냅샷·hibernation·클리핑)은 코드에 남아 있지 않음
+
+### 링크가 안 열리는 문제 (미착수 — STATUS "다음 할 일" 2번)
+유튜브 설명란 링크를 클릭하면 **아무 일도 안 일어난다. 앱 밖에도 새 창이 안 뜬다**(2026-08-17 사용자 확인). 유튜브 설명란 링크는 `youtube.com/redirect?q=…`를 `target="_blank"`로 여니까 팝업 경로를 탄다. 지금 [BrowserWidget.tsx](../src/widgets/BrowserWidget.tsx)에 `allowpopups`는 켜져 있지만 **`setWindowOpenHandler`가 코드베이스 어디에도 없다** — 목적지를 아무도 정해주지 않는다.
+
+원인 후보 둘, 구분법은 싸다:
+- **ⓐ 클릭이 링크에 안 닿는다** — `<webview>`가 `scale()`된 월드 컨테이너 안에 있어 히트테스트가 어긋난다. 큰 타깃(썸네일)은 맞고 작은 타깃(설명란 링크)만 빗나가는 증상과 맞는다
+- **ⓑ 팝업이 만들어졌다가 조용히 버려진다** — webview에서 난 팝업은 embedder가 받아줘야 표시되는데 아무도 안 받는다
+- **구분**: 줌을 정확히 1.0으로 두고(또는 위젯을 최대화해 `scale(1/zoom)`이 1이 되게) 같은 링크를 클릭. 열리면 ⓐ, 여전히 안 열리면 ⓑ
+
+**고치는 방향** (ⓐⓑ 어느 쪽이든 목적지는 우리가 정해야 한다): [main.ts](../electron/main.ts)의 `web-contents-created`가 이미 webview를 잡고 있으니 그 자리에서 `setWindowOpenHandler` → `deny` + 아래 하나. **결정 필요 — 개발할 때 사용자에게 물어본다.**
+- ⓐ 같은 위젯에서 열기(`loadURL`). 뒤로가기 버튼이 이미 있어 복귀 가능, 가장 예측 가능 → 기본값 후보
+- ⓑ 그 공간에 새 브라우저 위젯 생성 = "새 탭"의 Focus Desk식 번역. 컨셉엔 맞지만 클릭 한 번에 위젯이 늘어남 → ⌘클릭에 배정하는 편이 낫다
+- ⓒ `shell.openExternal`로 기본 브라우저에 내보내기. 위젯은 공간별 로그인 세션(`partition`)을 갖고 있어 기본으로 삼으면 로그인 상태를 잃는다
+
+**같이 고쳐야 하는 버그**: [apps.ts](../electron/ipc/apps.ts)의 `app.on('browser-window-created')`가 **모든** 새 창에 `close → restoreLive()`를 붙인다. 팝업이 실제로 열리기 시작하면, 그 팝업을 닫는 것만으로 배치된 앱이 원래 크기로 돌아가고 LIVE가 풀린다 → 메인 창인지 확인하는 가드 필요.
 
 ## 배경 (themes/)
 - `Theme = { scene, atmosphere, particles?, tokens }`. `SceneLayer`가 아래에서 위로 씬 → 스크림 → 글로우 → 파티클 → 비네트 → 그레인을 쌓는다
