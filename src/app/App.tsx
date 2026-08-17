@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFocusStore } from '../stores/focusStore';
-import { useSpaceStore } from '../stores/spaceStore';
+import { flushSaves, useSpaceStore } from '../stores/spaceStore';
 import { AmbienceDock } from '../ambience/AmbienceDock';
 import { FocusInsights } from '../focus/FocusInsights';
 import { FocusSessionBar } from '../focus/FocusSessionBar';
@@ -29,6 +29,12 @@ export const App: React.FC = () => {
     void useFocusStore.getState().load();
     void useSpaceTimeStore.getState().load();
     void useAppTimeStore.getState().load();
+  }, []);
+
+  // Saves are debounced, so closing the window right after an edit would drop it.
+  useEffect(() => {
+    window.addEventListener('beforeunload', flushSaves);
+    return () => window.removeEventListener('beforeunload', flushSaves);
   }, []);
 
   if (!isLoaded) {

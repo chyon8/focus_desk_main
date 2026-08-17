@@ -34,6 +34,13 @@ export function registerSpacesIpc() {
     fs.writeFileSync(fileFor(doc.id), JSON.stringify(doc, null, 2), 'utf-8');
   });
 
+  // Blocking twin, for the debounced writes still pending when the window goes
+  // away: an `invoke` sent from `beforeunload` loses the race with the teardown.
+  ipcMain.on('spaces:save-sync', (event, doc: { id: string }) => {
+    fs.writeFileSync(fileFor(doc.id), JSON.stringify(doc, null, 2), 'utf-8');
+    event.returnValue = true;
+  });
+
   ipcMain.handle('spaces:delete', (_event, id: string) => {
     const file = fileFor(id);
     if (fs.existsSync(file)) fs.unlinkSync(file);

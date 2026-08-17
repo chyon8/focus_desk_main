@@ -83,6 +83,22 @@ function topZ(space: SpaceDoc) {
 
 const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+/**
+ * Writes out every space whose debounced save has not fired yet. Called from
+ * `beforeunload`, so it has to be the blocking channel: the window is being torn
+ * down and an async write would never land (same reason as the time stores).
+ */
+export function flushSaves() {
+  if (saveTimers.size === 0) return;
+  const { spaces } = useSpaceStore.getState();
+  for (const [id, timer] of saveTimers) {
+    clearTimeout(timer);
+    const doc = spaces[id];
+    if (doc) window.spaces?.saveSync(doc);
+  }
+  saveTimers.clear();
+}
+
 function scheduleSave(doc: SpaceDoc) {
   const existing = saveTimers.get(doc.id);
   if (existing) clearTimeout(existing);

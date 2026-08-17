@@ -51,6 +51,8 @@ declare global {
     spaces?: {
       list: () => Promise<unknown[]>;
       save: (doc: unknown) => Promise<void>;
+      /** Blocking save, for the last write before the window goes away. */
+      saveSync: (doc: unknown) => void;
       delete: (id: string) => Promise<void>;
     };
     images?: {

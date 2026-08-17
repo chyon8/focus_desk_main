@@ -51,6 +51,10 @@ contextBridge.exposeInMainWorld('apps', {
 contextBridge.exposeInMainWorld('spaces', {
   list: () => ipcRenderer.invoke('spaces:list'),
   save: (doc: unknown) => ipcRenderer.invoke('spaces:save', doc),
+  // Only for the flush on window close, where an async write would be dropped.
+  saveSync: (doc: unknown) => {
+    ipcRenderer.sendSync('spaces:save-sync', doc);
+  },
   delete: (id: string) => ipcRenderer.invoke('spaces:delete', id),
 });
 
