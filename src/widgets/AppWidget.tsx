@@ -64,10 +64,12 @@ const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
   }, [isLive]);
 
   if (isLive) {
+    const resting = permissions.accessibility && placement?.ok;
     return (
       <div
         ref={surfaceRef}
-        className="t-ink h-full w-full flex flex-col items-center justify-center gap-2 p-6 text-center"
+        onClick={resting ? () => void window.apps?.raise(data.appKey) : undefined}
+        className={`t-ink h-full w-full flex flex-col items-center justify-center gap-2 p-6 text-center ${resting ? 'cursor-pointer' : ''}`}
       >
         {permissions.accessibility ? (
           placement && !placement.ok ? (
@@ -86,10 +88,14 @@ const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
               </button>
             </>
           ) : placement?.ok ? (
-            // The window is on top of this. Seen again whenever the user clicks
-            // Focus Desk, which puts this window in front — so it must read as a
-            // resting state, not as work still in progress.
-            <span className="t-faint text-xs">{data.name} is here · Esc to restore</span>
+            // Two real windows share no z-order, so any click on Focus Desk
+            // buries the app behind it with no way back on its own — clicking
+            // this surface (the whole card, via the container's onClick) is that
+            // way back. Seen whenever Focus Desk comes forward, which is often,
+            // so it must read as a resting state, not as something wrong.
+            <span className="t-faint text-xs">
+              {data.name} is here · click to return, or ⌥Space
+            </span>
           ) : (
             <span className="t-faint text-xs">Bringing {data.name} here…</span>
           )

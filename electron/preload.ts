@@ -34,6 +34,8 @@ contextBridge.exposeInMainWorld('apps', {
   place: (appKey: string, rect: { x: number; y: number; width: number; height: number }) =>
     ipcRenderer.invoke('apps:place', appKey, rect),
   release: (appKey: string) => ipcRenderer.invoke('apps:release', appKey),
+  /** Brings the app's window back in front of Focus Desk. */
+  raise: (appKey: string) => ipcRenderer.invoke('apps:raise', appKey),
   /** Which apps count as "still at the desk" while this space is open (D-039). */
   setSpaceApps: (appKeys: string[]) => ipcRenderer.invoke('activity:set-space-apps', appKeys),
   onFrontmost: (handler: (appKey: string | null) => void) => {

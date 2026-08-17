@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron';
 import { helperPath, type HelperClient } from '../apps/helperClient';
 import type {
   AppInfo,
@@ -18,6 +18,12 @@ const CAPTURE_TIMEOUT_MS = 5_000;
 const PLACE_TIMEOUT_MS = 8_000;
 /** Window drags fire continuously; the placed window follows in steps this big. */
 const FOLLOW_MS = 60;
+/**
+ * Brings Focus Desk forward from inside a live app (D-041 follow-up). A global
+ * shortcut rather than a widget click because the app owns keyboard and mouse
+ * input while it is in front — there is nothing in Focus Desk left to click.
+ */
+const RETURN_SHORTCUT = 'Alt+Space';
 
 /** Sends a command and waits for the one reply that answers it. */
 function ask<T>(
@@ -155,6 +161,18 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     }, FOLLOW_MS);
   };
 
+  // Round-tripping through the desk and back is otherwise a dead end: two real
+  // windows have no shared z-order, so Focus Desk coming forward (any click on
+  // it) buries the app with no way back short of Mission Control — which is
+  // exactly what going looking for the app the hard way was.
+  const registerReturnShortcut = () => {
+    if (globalShortcut.isRegistered(RETURN_SHORTCUT)) return;
+    globalShortcut.register(RETURN_SHORTCUT, () => {
+      const win = getWindow();
+      if (win && !win.isDestroyed()) win.focus();
+    });
+  };
+
   ipcMain.handle('apps:place', (_event, appKey: string, rect: Rect) => {
     live = { appKey, rect };
     const cmd = placeCmd();
@@ -168,6 +186,7 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     if (win && !win.isDestroyed()) {
       win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     }
+    registerReturnShortcut();
     return ask<PlaceResult>(
       helper,
       cmd,
@@ -187,6 +206,7 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
 
   ipcMain.handle('apps:release', (_event, appKey: string) => {
     live = null;
+    globalShortcut.unregister(RETURN_SHORTCUT);
     helper.send({ cmd: 'restore', appKey });
     const win = getWindow();
     if (win && !win.isDestroyed()) {
@@ -197,10 +217,22 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     }
   });
 
+  // The mouse-driven half of the same round trip: once Focus Desk has come
+  // forward (any click on it, not just the shortcut), clicking the widget again
+  // — now visible, since it is what the app was sitting on — brings the app back.
+  ipcMain.handle('apps:raise', (_event, appKey: string) => {
+    if (!live || live.appKey !== appKey) return;
+    const win = getWindow();
+    if (win && !win.isDestroyed()) win.showInactive();
+    helper.send({ cmd: 'raise', appKey });
+  });
+
   app.on('browser-window-created', (_event, win) => {
     win.on('move', follow);
     win.on('resize', follow);
   });
+
+  app.on('will-quit', () => globalShortcut.unregister(RETURN_SHORTCUT));
 
   // Once a window has landed, the desk has to be the thing directly behind it.
   // Chasing the app can leave Focus Desk buried on that desktop, which is what

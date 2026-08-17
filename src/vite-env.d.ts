@@ -37,6 +37,8 @@ declare global {
       ) => Promise<import('./apps/useAppSurface').PlaceResult>;
       /** Puts the window back where it was and brings Focus Desk forward. */
       release: (appKey: string) => Promise<void>;
+      /** Brings the app's window back in front of Focus Desk. */
+      raise: (appKey: string) => Promise<void>;
       /** Which apps count as "still at the desk" while this space is open. */
       setSpaceApps: (appKeys: string[]) => Promise<void>;
       onFrontmost: (handler: (appKey: string | null) => void) => () => void;
