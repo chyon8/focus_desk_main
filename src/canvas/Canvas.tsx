@@ -35,16 +35,22 @@ export const Canvas: React.FC = () => {
 
   if (!camera) return null;
 
-  // The world rect that covers the visible canvas, minus the strip the floating
-  // chrome sits in — otherwise the sidebar toggle and the focus pill land on the
+  // The rect that covers the visible canvas, minus the strip the floating chrome
+  // sits in — otherwise the sidebar toggle and the focus pill land on the
   // maximised widget's own toolbar. Handing this to a widget blows it up in place,
   // with no reparenting, so a browser widget keeps its page.
+  //
+  // Its origin is in world units (it lives in the scaled container) but its size
+  // is in screen pixels, undone by `scale` on the frame itself: a maximised
+  // widget has to be 1:1 with the screen, or its header and buttons shrink with
+  // the camera until "Restore" is too small to find.
   const area = canvasArea();
   const fullRect = {
     x: camera.x,
     y: camera.y + TOP_CHROME_HEIGHT / camera.zoom,
-    width: area.width / camera.zoom,
-    height: (area.height - TOP_CHROME_HEIGHT) / camera.zoom,
+    width: area.width,
+    height: area.height - TOP_CHROME_HEIGHT,
+    scale: 1 / camera.zoom,
   };
 
   return (

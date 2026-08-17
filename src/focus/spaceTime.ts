@@ -23,6 +23,29 @@ export function usableDelta(now: number, previous: number) {
   return Math.min(delta, MAX_TICK_MS);
 }
 
+/** A calendar day cannot hold more than this, so anything past it is not time. */
+export const MAX_DAY_SECONDS = 86_400;
+
+/**
+ * Drops entries that cannot be time. Loading used to add the stored copy to
+ * whatever was already in memory, which doubled every total on each run that
+ * loaded twice (StrictMode does), and the result is unrecoverable rather than
+ * merely wrong — the real seconds cannot be read back out of it.
+ */
+export function sanitizeTime(time: SpaceTime): SpaceTime {
+  const clean: SpaceTime = {};
+  for (const [spaceId, days] of Object.entries(time ?? {})) {
+    const kept: Record<string, number> = {};
+    for (const [date, seconds] of Object.entries(days ?? {})) {
+      if (Number.isFinite(seconds) && seconds >= 0 && seconds <= MAX_DAY_SECONDS) {
+        kept[date] = seconds;
+      }
+    }
+    clean[spaceId] = kept;
+  }
+  return clean;
+}
+
 export function addSpaceSeconds(
   time: SpaceTime,
   spaceId: string,

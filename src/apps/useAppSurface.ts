@@ -1,4 +1,4 @@
-import { RefObject, useEffect, useState } from 'react';
+import { RefObject, useEffect, useRef, useState } from 'react';
 import { useUiStore } from '../stores/uiStore';
 
 export type PlaceFailure =
@@ -11,9 +11,20 @@ export type PlaceFailure =
   | 'unknown';
 
 export type PlaceResult =
-  /** `resizable` is false when the app owns its size and only its position moved. */
-  | { ok: true; resizable: boolean }
+  /**
+   * `resizable` is false when the app owns its size and only its position moved;
+   * `title` is the window that was chosen, which the widget remembers.
+   */
+  | { ok: true; resizable: boolean; title: string | null }
   | { ok: false; reason: PlaceFailure };
+
+/** Which window this widget means, for an app that keeps several open (D-045). */
+export interface WindowChoice {
+  /** The one it was placed on last time. */
+  title?: string;
+  /** The ones other widgets in this space already stand for. */
+  avoid?: string[];
+}
 
 /**
  * How still the rectangle has to be before the real window follows it. Only for
@@ -37,12 +48,19 @@ const SETTLE_MS = 60;
 export function useAppSurface(
   widgetId: string,
   appKey: string,
-  ref: RefObject<HTMLElement | null>
+  ref: RefObject<HTMLElement | null>,
+  choice: WindowChoice,
+  onWindowTitle: (title: string | undefined) => void
 ) {
   const isLive = useUiStore((s) => s.maximizedWidgetId === widgetId) && !!appKey;
   // Kept across leaving live so the widget can keep saying that this app sets
   // its own size, which is worth knowing before opening it again.
   const [placement, setPlacement] = useState<PlaceResult | null>(null);
+  // Read at placement time rather than depended on: which window is wanted only
+  // matters when the command is sent, and a new object every render would
+  // otherwise tear the placement down and redo it.
+  const latest = useRef({ choice, onWindowTitle });
+  latest.current = { choice, onWindowTitle };
 
   useEffect(() => {
     if (!isLive) return;
@@ -55,10 +73,17 @@ export function useAppSurface(
     const place = () => {
       const box = ref.current?.getBoundingClientRect();
       if (!box) return;
+      const { choice, onWindowTitle } = latest.current;
       void window.apps
-        ?.place(appKey, { x: box.x, y: box.y, width: box.width, height: box.height })
+        ?.place(appKey, { x: box.x, y: box.y, width: box.width, height: box.height }, choice)
         .then((result) => {
-          if (alive && result) setPlacement(result);
+          if (!alive || !result) return;
+          setPlacement(result);
+          // Rewritten rather than kept from the first time, so a window whose
+          // title changes — a different project in the same editor — stays the
+          // one this widget means. Only on a change: this runs on every follow.
+          const title = (result.ok && result.title) || undefined;
+          if (result.ok && title !== choice.title) onWindowTitle(title);
         });
     };
 

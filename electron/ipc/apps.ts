@@ -2,18 +2,19 @@ import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron';
 import { helperPath, type HelperClient } from '../apps/helperClient';
 import type {
   AppInfo,
+  AppWindows,
   HelperCmd,
   HelperEvent,
   Permissions,
   PlaceFailure,
   PlaceResult,
   Rect,
+  WindowChoice,
 } from '../apps/protocol';
 
 /** Long enough for a cold scan of /Applications, short enough to not hang a click. */
 const LIST_TIMEOUT_MS = 15_000;
 const ASK_TIMEOUT_MS = 3_000;
-const CAPTURE_TIMEOUT_MS = 5_000;
 /** The helper keeps waiting for a window while an app starts up; outlast that. */
 const PLACE_TIMEOUT_MS = 8_000;
 /** Window drags fire continuously; the placed window follows in steps this big. */
@@ -75,26 +76,33 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     return listing;
   });
 
-  ipcMain.handle('apps:launch', (_event, appKey: string) => {
-    helper.send({ cmd: 'launch', appKey });
+  ipcMain.handle('apps:launch', (_event, appKey: string, activate = true) => {
+    helper.send({ cmd: 'launch', appKey, activate });
   });
+
+  // Asked for when the user opens the widget's window list, not on a timer.
+  ipcMain.handle('apps:windows', (_event, appKey: string) =>
+    ask<AppWindows>(
+      helper,
+      { cmd: 'windows', appKey },
+      (event) =>
+        event.ev === 'windows' && event.appKey === appKey
+          ? { running: event.running, windows: event.windows, elsewhere: event.elsewhere }
+          : undefined,
+      ASK_TIMEOUT_MS,
+      { running: false, windows: [], elsewhere: 0 }
+    )
+  );
 
   ipcMain.handle('apps:permissions', () =>
     ask<Permissions>(
       helper,
       { cmd: 'permissions' },
-      (event) =>
-        event.ev === 'permissions'
-          ? { accessibility: event.accessibility, screenRecording: event.screenRecording }
-          : undefined,
+      (event) => (event.ev === 'permissions' ? { accessibility: event.accessibility } : undefined),
       ASK_TIMEOUT_MS,
-      { accessibility: false, screenRecording: false }
+      { accessibility: false }
     )
   );
-
-  ipcMain.handle('apps:ask-capture-access', () => {
-    helper.send({ cmd: 'ask-capture-access' });
-  });
 
   // Accessibility normally adds itself to the list when first asked for. This is
   // for when it did not: the pane, and the binary to drag into it, which is the
@@ -107,29 +115,13 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     return helperPath();
   });
 
-  // One frame, requested again by the renderer for as long as it wants a live
-  // thumbnail. Null when the app has no window to capture.
-  ipcMain.handle('apps:capture', (_event, appKey: string, maxWidth: number) =>
-    ask<string | null>(
-      helper,
-      { cmd: 'capture', appKey, maxWidth },
-      (event) => {
-        if (event.ev === 'capture' && event.appKey === appKey) return event.image;
-        if (event.ev === 'error' && event.cmd === 'capture') return null;
-        return undefined;
-      },
-      CAPTURE_TIMEOUT_MS,
-      null
-    )
-  );
-
   // --- Live placement (D-038) ---
   //
   // The renderer measures the widget in window coordinates; turning that into
   // screen coordinates needs the window's own origin, which only the main
   // process knows. Both are top-left points, so this is the whole conversion.
 
-  let live: { appKey: string; rect: Rect } | null = null;
+  let live: { appKey: string; rect: Rect; title?: string; avoid?: string[] } | null = null;
   let followTimer: ReturnType<typeof setTimeout> | null = null;
 
   const placeCmd = (): HelperCmd | null => {
@@ -139,6 +131,8 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     return {
       cmd: 'place',
       appKey: live.appKey,
+      title: live.title,
+      avoid: live.avoid,
       rect: {
         x: Math.round(bounds.x + live.rect.x),
         y: Math.round(bounds.y + live.rect.y),
@@ -175,8 +169,8 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     });
   };
 
-  ipcMain.handle('apps:place', (_event, appKey: string, rect: Rect) => {
-    live = { appKey, rect };
+  ipcMain.handle('apps:place', (_event, appKey: string, rect: Rect, window?: WindowChoice) => {
+    live = { appKey, rect, title: window?.title, avoid: window?.avoid };
     const cmd = placeCmd();
     if (!cmd) return null;
 
@@ -194,7 +188,7 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
       cmd,
       (event) => {
         if (event.ev === 'placed' && event.appKey === appKey) {
-          return { ok: true, resizable: event.resizable, rect: event.rect };
+          return { ok: true, resizable: event.resizable, title: event.title, rect: event.rect };
         }
         if (event.ev === 'error' && event.cmd === 'place') {
           return { ok: false, reason: event.reason as PlaceFailure };

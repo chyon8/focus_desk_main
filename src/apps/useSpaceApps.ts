@@ -5,7 +5,8 @@ import { spaceAppKeys } from './spaceApps';
 /**
  * Keeps the main process told which apps the current space claims, so it can
  * judge whether the user is still at the desk while one of them is in front
- * (D-039). Mount once, from App.
+ * (D-039), and opens those apps as the space is entered (D-046). Mount once,
+ * from App.
  */
 export function useSpaceApps() {
   const space = useActiveSpace();
@@ -14,6 +15,11 @@ export function useSpaceApps() {
   const keys = useMemo(() => spaceAppKeys(space).join('\n'), [space]);
 
   useEffect(() => {
-    void window.apps?.setSpaceApps(keys ? keys.split('\n') : []);
+    const appKeys = keys ? keys.split('\n') : [];
+    void window.apps?.setSpaceApps(appKeys);
+    // Opening a space is opening the project, so its apps come up with it —
+    // in the background, since the point of switching to a space is to be in
+    // it, not in the last app that finished starting.
+    for (const appKey of appKeys) void window.apps?.launch(appKey, false);
   }, [keys]);
 }

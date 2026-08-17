@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { addAppSeconds, AppTime, dropSpace } from '../focus/appTime';
+import { addAppSeconds, AppTime, dropSpace, sanitizeAppTime } from '../focus/appTime';
 
 // A key of its own, so the space totals in `space-time-v1` need no migration (D-039).
 const KEY = 'space-app-time-v1';
@@ -17,6 +17,13 @@ interface AppTimeState {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * The load runs once per process, however often it is asked for. It merges the
+ * stored copy into whatever has been banked meanwhile, so a second call would
+ * add the whole history to itself — which is exactly what StrictMode's repeated
+ * effect did, doubling every total on every run.
+ */
+let loading: Promise<void> | null = null;
 
 export const useAppTimeStore = create<AppTimeState>((set, get) => {
   const scheduleSave = () => {
@@ -32,11 +39,17 @@ export const useAppTimeStore = create<AppTimeState>((set, get) => {
     time: {},
     isLoaded: false,
 
-    load: async () => {
-      const stored = (await window.store?.get(KEY)) as AppTime | undefined;
-      // Anything banked while loading wins over the stored copy, so nothing is
-      // lost to the round trip.
-      set((state) => ({ time: mergeTime(stored ?? {}, state.time), isLoaded: true }));
+    load: () => {
+      loading ??= (async () => {
+        const stored = (await window.store?.get(KEY)) as AppTime | undefined;
+        // Anything banked while loading wins over the stored copy, so nothing is
+        // lost to the round trip.
+        set((state) => ({
+          time: mergeTime(sanitizeAppTime(stored ?? {}), state.time),
+          isLoaded: true,
+        }));
+      })();
+      return loading;
     },
 
     add: (spaceId, appKey, seconds, date) => {

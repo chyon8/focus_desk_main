@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { addAppSeconds, appTotals, dropSpace, secondsOnApp, type AppTime } from './appTime';
+import {
+  addAppSeconds,
+  appTotals,
+  dropSpace,
+  sanitizeAppTime,
+  secondsOnApp,
+  type AppTime,
+} from './appTime';
 
 const CODE = 'com.microsoft.VSCode';
 const PS = 'com.adobe.Photoshop';
@@ -78,5 +85,14 @@ describe('dropSpace', () => {
   it('returns the same object when there is nothing to drop', () => {
     const time: AppTime = {};
     expect(dropSpace(time, 's1')).toBe(time);
+  });
+});
+
+describe('sanitizeAppTime', () => {
+  it('drops app entries that cannot be a day of time', () => {
+    const time: AppTime = {
+      s1: { '2026-08-17': { [CODE]: 1.3e29, [PS]: 900 } },
+    };
+    expect(sanitizeAppTime(time)).toEqual({ s1: { '2026-08-17': { [PS]: 900 } } });
   });
 });

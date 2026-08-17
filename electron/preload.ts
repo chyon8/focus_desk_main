@@ -21,18 +21,21 @@ contextBridge.exposeInMainWorld('activity', {
 
 contextBridge.exposeInMainWorld('apps', {
   list: () => ipcRenderer.invoke('apps:list'),
-  launch: (appKey: string) => ipcRenderer.invoke('apps:launch', appKey),
-  /** Which of the two macOS permissions this feature needs are granted. */
+  /** `activate: false` starts it in the background, for a space being entered. */
+  launch: (appKey: string, activate = true) =>
+    ipcRenderer.invoke('apps:launch', appKey, activate),
+  /** The app's open windows on this desktop, plus a count of the ones elsewhere. */
+  windows: (appKey: string) => ipcRenderer.invoke('apps:windows', appKey),
+  /** Whether macOS lets Focus Desk move windows yet. */
   permissions: () => ipcRenderer.invoke('apps:permissions'),
-  askCaptureAccess: () => ipcRenderer.invoke('apps:ask-capture-access'),
   /** Opens the Accessibility pane and reveals the binary to add; returns its path. */
   showAccessibilitySettings: () => ipcRenderer.invoke('apps:show-accessibility-settings'),
-  /** One frame of the app's window as a JPEG data URI, or null if there is none. */
-  capture: (appKey: string, maxWidth: number) =>
-    ipcRenderer.invoke('apps:capture', appKey, maxWidth),
   /** Rect is in window coordinates; the main process adds the window's origin. */
-  place: (appKey: string, rect: { x: number; y: number; width: number; height: number }) =>
-    ipcRenderer.invoke('apps:place', appKey, rect),
+  place: (
+    appKey: string,
+    rect: { x: number; y: number; width: number; height: number },
+    window?: { title?: string; avoid?: string[] }
+  ) => ipcRenderer.invoke('apps:place', appKey, rect, window),
   release: (appKey: string) => ipcRenderer.invoke('apps:release', appKey),
   /** Brings the app's window back in front of Focus Desk. */
   raise: (appKey: string) => ipcRenderer.invoke('apps:raise', appKey),

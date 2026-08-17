@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { addSpaceSeconds, dropSpace, SpaceTime } from '../focus/spaceTime';
+import { addSpaceSeconds, dropSpace, sanitizeTime, SpaceTime } from '../focus/spaceTime';
 
 const KEY = 'space-time-v1';
 /** Ticks land every second; writing to disk that often would be silly. */
@@ -18,6 +18,8 @@ interface SpaceTimeState {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+/** Once per process: a second load would add the whole history to itself. */
+let loading: Promise<void> | null = null;
 
 export const useSpaceTimeStore = create<SpaceTimeState>((set, get) => {
   const scheduleSave = () => {
@@ -33,14 +35,17 @@ export const useSpaceTimeStore = create<SpaceTimeState>((set, get) => {
     time: {},
     isLoaded: false,
 
-    load: async () => {
-      const stored = (await window.store?.get(KEY)) as SpaceTime | undefined;
-      // Anything banked while loading (the tick starts straight away) wins over
-      // the stored copy for those spaces, so nothing is lost to the round trip.
-      set((state) => ({
-        time: mergeTime(stored ?? {}, state.time),
-        isLoaded: true,
-      }));
+    load: () => {
+      loading ??= (async () => {
+        const stored = (await window.store?.get(KEY)) as SpaceTime | undefined;
+        // Anything banked while loading (the tick starts straight away) wins over
+        // the stored copy for those spaces, so nothing is lost to the round trip.
+        set((state) => ({
+          time: mergeTime(sanitizeTime(stored ?? {}), state.time),
+          isLoaded: true,
+        }));
+      })();
+      return loading;
     },
 
     add: (spaceId, seconds, date) => {

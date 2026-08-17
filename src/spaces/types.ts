@@ -125,4 +125,11 @@ export interface AppData {
   name: string;
   /** PNG data URI, copied in when the app was picked so it survives offline. */
   icon: string | null;
+  /**
+   * The window this widget was last placed on, for apps that keep several open
+   * (D-045). Rewritten on every placement so it follows a window whose title
+   * changes, and only ever a hint — an unmatched title falls back to the app's
+   * focused window.
+   */
+  windowTitle?: string;
 }

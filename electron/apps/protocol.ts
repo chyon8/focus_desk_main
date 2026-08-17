@@ -21,35 +21,69 @@ export interface Rect {
   height: number;
 }
 
+/**
+ * How a widget says which window it means, for the apps that have several. Both
+ * fields are hints — the helper falls back to its usual choice when neither
+ * matches anything (D-045).
+ */
+export interface WindowChoice {
+  /** The window this widget was placed on last time. */
+  title?: string;
+  /** Titles other widgets in this space already stand for. */
+  avoid?: string[];
+}
+
 export type HelperCmd =
   | { cmd: 'list' }
-  | { cmd: 'launch'; appKey: string }
+  /** `activate: false` starts it without taking the front away (space entry). */
+  | { cmd: 'launch'; appKey: string; activate?: boolean }
   /** Subscribe to frontmost-application changes. */
   | { cmd: 'watch' }
   | { cmd: 'permissions' }
-  /** Move the app's main window onto this rectangle and raise it. */
-  | { cmd: 'place'; appKey: string; rect: Rect }
+  /** The app's open windows on this desktop, for the user to pick one (D-048). */
+  | { cmd: 'windows'; appKey: string }
+  /**
+   * Move the app's window onto this rectangle and raise it. `title` is the window
+   * this widget used last time and `avoid` the ones other widgets have claimed —
+   * both only steer the choice when the app has several windows (D-045).
+   */
+  | { cmd: 'place'; appKey: string; rect: Rect; title?: string; avoid?: string[] }
   /** Bring the app's window back to the front, on top of Focus Desk. */
   | { cmd: 'raise'; appKey: string }
   /** Put the window back where it was before the first `place`. */
-  | { cmd: 'restore'; appKey: string }
-  /** One frame of the app's biggest window, for the widget's thumbnail. */
-  | { cmd: 'capture'; appKey: string; maxWidth: number }
-  | { cmd: 'ask-capture-access' };
+  | { cmd: 'restore'; appKey: string };
+
+/** One open window, as far as accessibility can describe it without a title bar. */
+export interface AppWindow {
+  /** Null for a window that reports no title — it cannot be bound to. */
+  title: string | null;
+  width: number;
+  height: number;
+  minimized: boolean;
+}
+
+export interface AppWindows {
+  running: boolean;
+  windows: AppWindow[];
+  /**
+   * Windows on another desktop or in fullscreen. Accessibility cannot see them
+   * at all, and their titles would need Screen Recording, so all that can be
+   * said is how many there are — the user has to bring them over (D-048).
+   */
+  elsewhere: number;
+}
 
 export type HelperEvent =
   | { ev: 'apps'; apps: AppInfo[] }
+  | ({ ev: 'windows'; appKey: string } & AppWindows)
   | { ev: 'frontmost'; appKey: string | null }
-  | { ev: 'permissions'; accessibility: boolean; screenRecording: boolean }
+  | { ev: 'permissions'; accessibility: boolean }
   /** Where the window actually landed, and whether it accepted a size at all. */
-  | { ev: 'placed'; appKey: string; resizable: boolean; rect: Rect }
-  /** A JPEG data URI. */
-  | { ev: 'capture'; appKey: string; image: string }
+  | { ev: 'placed'; appKey: string; resizable: boolean; title: string | null; rect: Rect }
   | { ev: 'error'; cmd: string; reason: string };
 
 export interface Permissions {
   accessibility: boolean;
-  screenRecording: boolean;
 }
 
 export type PlaceFailure =
@@ -64,6 +98,10 @@ export type PlaceFailure =
   | 'unknown';
 
 export type PlaceResult =
-  /** `resizable` is false when the app owns its size and only its position moved. */
-  | { ok: true; resizable: boolean; rect: Rect }
+  /**
+   * `resizable` is false when the app owns its size and only its position moved;
+   * `title` names the window that was chosen, which the widget keeps so it can
+   * ask for the same one next time.
+   */
+  | { ok: true; resizable: boolean; title: string | null; rect: Rect }
   | { ok: false; reason: PlaceFailure };

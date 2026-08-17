@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, RotateCcw, Search } from 'lucide-react';
+import { ArrowUpRight, Layers, RotateCcw, Search, X } from 'lucide-react';
+import { claimedWindowTitles } from '../apps/spaceApps';
 import { useAppSurface, type PlaceFailure } from '../apps/useAppSurface';
-import { useAppThumbnail } from '../apps/useAppThumbnail';
 import { secondsOnApp } from '../focus/appTime';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
 import { AppData } from '../spaces/types';
 import { useAppTimeStore } from '../stores/appTimeStore';
-import { useSpaceStore } from '../stores/spaceStore';
+import { useActiveSpace, useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 import { useWidgetData } from './useWidgetData';
 
@@ -21,7 +21,7 @@ const PLACE_PROBLEMS: Record<PlaceFailure, string> = {
   fullscreen:
     'It is fullscreen, which macOS gives a desktop of its own. Leave fullscreen (⌃⌘F) and click again.',
   otherSpace:
-    'Its window is on another desktop — fullscreen apps get one to themselves. Bring it to this desktop, then click again.',
+    'That window is on another desktop, which macOS hides from other apps. Bring it to this desktop — or assign a different window — then click again.',
   notRunning: 'It would not start.',
   noWindow: 'It has no window open yet.',
   minimized: 'Its window is minimised.',
@@ -37,25 +37,38 @@ export const AppWidget: React.FC<{ id: string }> = ({ id }) => {
   const [data, update] = useWidgetData<AppData>(id);
 
   return data.appKey ? (
-    <AppFace id={id} data={data} onClear={() => update({ appKey: '', name: '', icon: null })} />
+    <AppFace
+      id={id}
+      data={data}
+      update={update}
+      onClear={() => update({ appKey: '', name: '', icon: null, windowTitle: undefined })}
+    />
   ) : (
     <AppPicker onPick={update} />
   );
 };
 
-const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
-  id,
-  data,
-  onClear,
-}) => {
+const AppFace: React.FC<{
+  id: string;
+  data: AppData;
+  update: (patch: Partial<AppData>) => void;
+  onClear: () => void;
+}> = ({ id, data, update, onClear }) => {
   const today = useToday();
   const spaceId = useSpaceStore((s) => s.activeSpaceId);
   const seconds = useAppTimeStore((s) => secondsOnApp(s.time, spaceId, today, data.appKey));
   // The real window is placed over this element, so it is what gets measured.
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const { isLive, placement } = useAppSurface(id, data.appKey, surfaceRef);
-  const thumbnail = useAppThumbnail(data.appKey, !isLive, surfaceRef);
-  const [permissions, setPermissions] = useState({ accessibility: true, screenRecording: true });
+  const space = useActiveSpace();
+  const choice = useMemo(
+    () => ({ title: data.windowTitle, avoid: claimedWindowTitles(space, id, data.appKey) }),
+    [space, id, data.appKey, data.windowTitle]
+  );
+  const { isLive, placement } = useAppSurface(id, data.appKey, surfaceRef, choice, (windowTitle) =>
+    update({ windowTitle })
+  );
+  const [permissions, setPermissions] = useState({ accessibility: true });
+  const [picking, setPicking] = useState(false);
 
   // Re-read on going live: this is when the user is asked, and when the answer
   // decides whether anything happens at all.
@@ -121,6 +134,21 @@ const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
     );
   }
 
+  if (picking) {
+    return (
+      <WindowPicker
+        appKey={data.appKey}
+        name={data.name}
+        current={data.windowTitle}
+        onPick={(windowTitle) => {
+          update({ windowTitle });
+          setPicking(false);
+        }}
+        onClose={() => setPicking(false)}
+      />
+    );
+  }
+
   return (
     <div ref={surfaceRef} className="t-ink h-full w-full flex flex-col p-3 gap-2">
       {/* Clicking brings the app into the space rather than switching away to it,
@@ -130,19 +158,23 @@ const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
         title={`Bring ${data.name} here`}
         className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2.5"
       >
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt=""
-            draggable={false}
-            className="border-hair max-w-full max-h-full object-contain rounded-lg border"
-          />
-        ) : data.icon ? (
+        {data.icon ? (
           <img src={data.icon} alt="" className="w-16 h-16" draggable={false} />
         ) : (
           <div className="glass w-16 h-16 rounded-2xl" />
         )}
-        {!thumbnail && <span className="text-sm font-medium truncate max-w-full">{data.name}</span>}
+        <span className="text-sm font-medium truncate max-w-full">{data.name}</span>
+      </button>
+
+      {/* Which window this widget stands for. Its own row rather than a label on
+          the icon, because it is also the way to change it (D-048). */}
+      <button
+        onClick={() => setPicking(true)}
+        title="Choose which window this widget opens"
+        className="row t-faint hover:t-ink px-1.5 py-0.5 rounded-md text-[11px] flex items-center gap-1 min-w-0"
+      >
+        <Layers size={10} className="shrink-0" />
+        <span className="truncate">{data.windowTitle ?? 'Any window'}</span>
       </button>
 
       <div className="flex items-center justify-between gap-2 px-1">
@@ -154,15 +186,6 @@ const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
               : data.name}
         </span>
         <div className="flex items-center gap-2 shrink-0">
-          {!permissions.screenRecording && (
-            <button
-              onClick={() => void window.apps?.askCaptureAccess()}
-              title="Show this app's window in the widget"
-              className="t-faint hover:t-ink text-[10px] uppercase tracking-widest"
-            >
-              Preview
-            </button>
-          )}
           <button
             onClick={() => void window.apps?.launch(data.appKey)}
             title={`Switch to ${data.name} outside Focus Desk`}
@@ -175,6 +198,98 @@ const AppFace: React.FC<{ id: string; data: AppData; onClear: () => void }> = ({
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+type AppWindows = Awaited<ReturnType<NonNullable<Window['apps']>['windows']>>;
+
+/**
+ * Assigns one of the app's open windows to this widget (D-048). Two widgets on
+ * one editor is the case that needs it: without a choice they both open whichever
+ * window was focused last, and the second space never gets its own project.
+ *
+ * Windows on another desktop cannot be listed — accessibility does not see them
+ * and their titles would need Screen Recording — so all this can do is say how
+ * many there are and ask for them to be brought over.
+ */
+const WindowPicker: React.FC<{
+  appKey: string;
+  name: string;
+  current?: string;
+  onPick: (title: string | undefined) => void;
+  onClose: () => void;
+}> = ({ appKey, name, current, onPick, onClose }) => {
+  const [state, setState] = useState<AppWindows | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setState(null);
+    void window.apps?.windows(appKey).then((next) => {
+      if (alive) setState(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [appKey]);
+
+  return (
+    <div className="t-ink h-full w-full flex flex-col p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="t-soft text-[11px] font-semibold uppercase tracking-widest truncate">
+          {name} windows
+        </span>
+        <button onClick={onClose} className="t-faint hover:t-ink ml-auto shrink-0">
+          <X size={12} />
+        </button>
+      </div>
+
+      {state === null ? (
+        <div className="t-faint text-xs">Looking…</div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-0.5">
+          <button
+            onClick={() => onPick(undefined)}
+            className={`row !text-[inherit] w-full px-2 py-1.5 rounded-lg text-left text-xs truncate ${
+              current ? '' : 't-ink font-medium'
+            }`}
+          >
+            Any window
+          </button>
+
+          {state.windows.map((entry, index) =>
+            entry.title ? (
+              <button
+                key={entry.title + index}
+                onClick={() => onPick(entry.title ?? undefined)}
+                className={`row !text-[inherit] w-full px-2 py-1.5 rounded-lg text-left text-xs truncate ${
+                  entry.title === current ? 't-ink font-medium' : ''
+                }`}
+              >
+                {entry.title}
+                {entry.minimized && <span className="t-faint"> · minimised</span>}
+              </button>
+            ) : (
+              // No title means nothing to remember it by; the app is drawing its
+              // own window frame (FL Studio does).
+              <div key={index} className="t-faint px-2 py-1.5 text-xs truncate">
+                Untitled window · can’t be assigned
+              </div>
+            )
+          )}
+
+          {!state.running && <div className="t-faint px-2 py-1.5 text-xs">Not running.</div>}
+          {state.running && state.windows.length === 0 && state.elsewhere === 0 && (
+            <div className="t-faint px-2 py-1.5 text-xs">No windows open.</div>
+          )}
+          {state.elsewhere > 0 && (
+            <div className="t-faint px-2 pt-2 text-[11px] leading-snug">
+              {state.elsewhere} more on another desktop or in fullscreen. macOS hides those from
+              other apps — move them to this desktop, then open this list again.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

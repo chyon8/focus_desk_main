@@ -34,9 +34,13 @@ const HeaderButton: React.FC<{
  *
  * `fullRect` (set only while maximised) overrides that box with one covering the
  * whole canvas. The widget is not moved in the tree, so its content — a browser
- * widget's live page included — survives the change.
+ * widget's live page included — survives the change. Its `scale` undoes the
+ * camera zoom so the maximised widget is drawn 1:1 with the screen.
  */
-export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, fullRect }) => {
+export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: number } }> = ({
+  id,
+  fullRect,
+}) => {
   const widget = useWidget(id);
   const drag = useRef<{ pointerId: number; lastX: number; lastY: number; mode: 'move' | 'resize' } | null>(
     null
@@ -91,6 +95,10 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect }> = ({ id, ful
         width: box.width,
         height: box.height,
         zIndex: fullRect ? MAXIMIZED_Z : widget.z,
+        ...(fullRect && {
+          transform: `scale(${fullRect.scale})`,
+          transformOrigin: 'top left',
+        }),
       }}
       onPointerDownCapture={() => useSpaceStore.getState().bringToFront(id)}
     >

@@ -9,7 +9,6 @@
 import AppKit
 import ApplicationServices
 import Foundation
-import ScreenCaptureKit
 
 // MARK: - Output
 
@@ -120,7 +119,12 @@ private func listApps() {
 
 // MARK: - Launch
 
-private func launch(_ appKey: String) {
+/// Starts the app, or brings it forward if it is already running.
+///
+/// `activate: false` is for opening a space's apps as it is entered: they are
+/// wanted running and capturable, but taking the front away from the desk on
+/// every space switch would be the opposite of what the switch was for.
+private func launch(_ appKey: String, activate: Bool = true) {
     guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: appKey) else {
         emitError("launch", "not installed: \(appKey)")
         return
@@ -128,7 +132,7 @@ private func launch(_ appKey: String) {
     let config = NSWorkspace.OpenConfiguration()
     // Already running is the common case, and this brings it forward rather than
     // starting a second copy.
-    config.activates = true
+    config.activates = activate
     NSWorkspace.shared.openApplication(at: url, configuration: config) { _, error in
         if let error { emitError("launch", error.localizedDescription) }
     }
@@ -145,6 +149,10 @@ private func launch(_ appKey: String) {
 /// the user their window back rather than leaving it widget-shaped.
 private var savedFrames: [String: CGRect] = [:]
 
+/// The title of the window each app was last placed by, so `raise` and `restore`
+/// stay on that window rather than following the app's focus elsewhere.
+private var placedTitles: [String: String] = [:]
+
 private func hasAccessibility(prompt: Bool) -> Bool {
     let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
     return AXIsProcessTrustedWithOptions([key: prompt] as CFDictionary)
@@ -154,35 +162,73 @@ private func runningApp(_ appKey: String) -> NSRunningApplication? {
     NSRunningApplication.runningApplications(withBundleIdentifier: appKey).first
 }
 
-/// The window an app widget stands for: the one the user was last in, falling
-/// back to the biggest.
+private func title(of window: AXUIElement) -> String? {
+    var value: AnyObject?
+    guard AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &value) == .success,
+          let text = value as? String, !text.isEmpty
+    else { return nil }
+    return text
+}
+
+/// The window an app widget stands for: the one it had last time, else the one
+/// the user was last in, else the biggest.
 ///
-/// With several windows open — three projects in an editor — the focused one is
-/// what "bring it here" should mean. Biggest is the fallback because it picks the
-/// document window over a palette, and because it is what the thumbnail captures.
+/// There is no window id in this protocol (D-040), so `wanted` — the title of the
+/// window this widget placed before — is how one editor window is told from
+/// another. It is only a preference: a title that no longer exists (the project
+/// was closed) falls through to the same choice as before rather than failing.
+///
+/// `avoid` holds the titles other widgets in the space have already claimed, so
+/// a second widget pointed at the same app does not land on the first one's
+/// window — which is what happens otherwise, since the window the first widget
+/// just used is also the focused one.
 ///
 /// Not `AXMainWindow`: apps whose windows are drawn by their own framework do not
 /// report one at all (FL Studio answers with an error), and it is unset on plenty
 /// of apps that do have an obvious document window.
-private func documentWindow(of app: NSRunningApplication) -> AXUIElement? {
+private func axWindows(of app: NSRunningApplication) -> [AXUIElement] {
     let axApp = AXUIElementCreateApplication(app.processIdentifier)
+    var all: AnyObject?
+    guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &all) == .success
+    else { return [] }
+    return (all as? [AXUIElement]) ?? []
+}
 
-    var focused: AnyObject?
-    if AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focused)
-        == .success, let window = focused, CFGetTypeID(window) == AXUIElementGetTypeID() {
-        return (window as! AXUIElement)
+private func documentWindow(
+    of app: NSRunningApplication,
+    wanted: String? = nil,
+    avoid: Set<String> = []
+) -> AXUIElement? {
+    let windows = axWindows(of: app)
+
+    if let wanted, let match = windows.first(where: { title(of: $0) == wanted }) {
+        return match
     }
 
-    var all: AnyObject?
-    guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &all) == .success,
-          let windows = all as? [AXUIElement]
-    else { return nil }
+    let free = windows.filter { window in
+        guard let text = title(of: window) else { return true }
+        return !avoid.contains(text)
+    }
+
+    var focused: AnyObject?
+    if AXUIElementCopyAttributeValue(
+        AXUIElementCreateApplication(app.processIdentifier),
+        kAXFocusedWindowAttribute as CFString,
+        &focused
+    ) == .success, let window = focused, CFGetTypeID(window) == AXUIElementGetTypeID() {
+        let element = window as! AXUIElement
+        // Skipping the focused window is only right when there is another one to
+        // go to; a single claimed window still beats nothing at all.
+        if avoid.isEmpty || free.isEmpty || free.contains(where: { CFEqual($0, element) }) {
+            return element
+        }
+    }
 
     let area = { (window: AXUIElement) -> CGFloat in
         guard let box = frame(of: window) else { return 0 }
         return box.width * box.height
     }
-    return windows.max { area($0) < area($1) }
+    return (free.isEmpty ? windows : free).max { area($0) < area($1) }
 }
 
 private let fullScreenAttribute = "AXFullScreen" as CFString
@@ -215,19 +261,23 @@ private func isMinimized(_ window: AXUIElement) -> Bool {
     return (value as? Bool) ?? false
 }
 
-/// Real windows the app owns anywhere, on this desktop or not.
+/// How many real windows the app owns anywhere, on this desktop or not.
 ///
 /// Accessibility reports an empty window list both for an app that has not opened
 /// a window yet and for one whose windows live on another Space — a fullscreen
 /// app shows nothing at all. This tells the two apart, so waiting six seconds for
-/// a window that will never appear can be skipped.
-private func hasWindowsSomewhere(pid: pid_t) -> Bool {
+/// a window that will never appear can be skipped, and the difference between the
+/// two counts is how many windows are on some other desktop.
+///
+/// Only the count: window *titles* from this list would need Screen Recording,
+/// which this app no longer asks for (D-047).
+private func windowCount(pid: pid_t) -> Int {
     guard let list = CGWindowListCopyWindowInfo(
         [.optionAll, .excludeDesktopElements],
         kCGNullWindowID
-    ) as? [[String: Any]] else { return false }
+    ) as? [[String: Any]] else { return 0 }
 
-    return list.contains { entry in
+    return list.filter { entry in
         guard entry[kCGWindowOwnerPID as String] as? pid_t == pid,
               entry[kCGWindowLayer as String] as? Int == 0,
               let boxed = entry[kCGWindowBounds as String] as? NSDictionary,
@@ -235,7 +285,48 @@ private func hasWindowsSomewhere(pid: pid_t) -> Bool {
         else { return false }
         // Past the menu-bar strips and zero-sized helpers an app keeps around.
         return bounds.width > 200 && bounds.height > 200
+    }.count
+}
+
+private func hasWindowsSomewhere(pid: pid_t) -> Bool { windowCount(pid: pid) > 0 }
+
+/// Every window the app has open on this desktop, for the user to pick from, plus
+/// how many it has somewhere else. A widget stands for one window (D-048), and
+/// guessing is only right until the second window opens.
+private func listWindows(_ appKey: String) {
+    guard let app = runningApp(appKey) else {
+        emit(["ev": "windows", "appKey": appKey, "running": false,
+              "windows": [], "elsewhere": 0])
+        return
     }
+    guard hasAccessibility(prompt: true) else {
+        emitError("windows", "accessibility")
+        return
+    }
+
+    let axApp = AXUIElementCreateApplication(app.processIdentifier)
+    var all: AnyObject?
+    let windows =
+        AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &all) == .success
+        ? (all as? [AXUIElement]) ?? [] : []
+
+    let described = windows.map { window -> [String: Any] in
+        let box = frame(of: window) ?? .zero
+        return [
+            "title": title(of: window) ?? NSNull(),
+            "width": box.width,
+            "height": box.height,
+            "minimized": isMinimized(window),
+        ]
+    }
+    emit([
+        "ev": "windows",
+        "appKey": appKey,
+        "running": true,
+        "windows": described,
+        // Windows macOS will not show accessibility: another Space, or fullscreen.
+        "elsewhere": max(0, windowCount(pid: app.processIdentifier) - windows.count),
+    ])
 }
 
 /// Whether the window will accept a new size at all. Plenty will not: a window
@@ -319,7 +410,13 @@ private func setFrame(_ window: AXUIElement, _ rect: CGRect) {
 private let placeAttempts = 12
 private let placeRetryDelay = 0.5
 
-private func place(_ appKey: String, _ rect: CGRect, attempt: Int = 0) {
+private func place(
+    _ appKey: String,
+    _ rect: CGRect,
+    wanted: String? = nil,
+    avoid: Set<String> = [],
+    attempt: Int = 0
+) {
     guard hasAccessibility(prompt: true) else {
         emitError("place", "accessibility")
         return
@@ -328,7 +425,7 @@ private func place(_ appKey: String, _ rect: CGRect, attempt: Int = 0) {
     let again = {
         if attempt + 1 >= placeAttempts { return false }
         DispatchQueue.main.asyncAfter(deadline: .now() + placeRetryDelay) {
-            place(appKey, rect, attempt: attempt + 1)
+            place(appKey, rect, wanted: wanted, avoid: avoid, attempt: attempt + 1)
         }
         return true
     }
@@ -339,7 +436,21 @@ private func place(_ appKey: String, _ rect: CGRect, attempt: Int = 0) {
         if !again() { emitError("place", "notRunning") }
         return
     }
-    guard let window = documentWindow(of: app), let current = frame(of: window) else {
+    // An assigned window that is not here has to be waited for, not replaced: the
+    // widget was pointed at that window on purpose, and moving whichever other
+    // window happens to be focused is worse than saying where it went. Only when
+    // the app has none hidden away is a missing title treated as gone for good.
+    if let wanted,
+       !axWindows(of: app).contains(where: { title(of: $0) == wanted }),
+       windowCount(pid: app.processIdentifier) > axWindows(of: app).count {
+        if attempt == 0 { launch(appKey) }
+        if !again() { emitError("place", "otherSpace") }
+        return
+    }
+
+    guard let window = documentWindow(of: app, wanted: wanted, avoid: avoid),
+          let current = frame(of: window)
+    else {
         // Accessibility cannot see a window that lives on another Space, so an
         // empty list means either "no window yet" or "over there".
         //
@@ -377,6 +488,9 @@ private func place(_ appKey: String, _ rect: CGRect, attempt: Int = 0) {
     // Only the first placement is the user's own layout; following the widget
     // around afterwards must not overwrite it.
     if savedFrames[appKey] == nil { savedFrames[appKey] = current }
+    // What `raise` and `restore` should act on, so they keep meaning this window
+    // even once the user has focused another one of the app's.
+    placedTitles[appKey] = title(of: window)
 
     let resizable = isResizable(window)
     // A window that will not resize keeps its size, so centre it on the widget.
@@ -409,79 +523,21 @@ private func place(_ appKey: String, _ rect: CGRect, attempt: Int = 0) {
         "ev": "placed",
         "appKey": appKey,
         "resizable": resizable,
+        // The widget stores this and asks for the same window next time.
+        "title": placedTitles[appKey] ?? NSNull(),
         "rect": ["x": actual.origin.x, "y": actual.origin.y,
                  "width": actual.size.width, "height": actual.size.height],
     ])
 }
 
 private func restore(_ appKey: String) {
+    let placed = placedTitles.removeValue(forKey: appKey)
     guard let saved = savedFrames.removeValue(forKey: appKey),
           let app = runningApp(appKey),
-          let window = documentWindow(of: app)
+          let window = documentWindow(of: app, wanted: placed)
     else { return }
     // Clamped too: the window may have been saved from a display that is gone.
     setFrame(window, clamp(saved, into: visibleBounds(containing: saved)))
-}
-
-// MARK: - Window capture
-
-// A widget shows the app's window as a live thumbnail while it is not placed.
-// The window is behind Focus Desk rather than hidden at that point, which is
-// exactly why it can still be captured — a hidden window cannot be (D-038).
-
-private func captureWindow(_ appKey: String, maxWidth: Int) {
-    guard CGPreflightScreenCaptureAccess() else {
-        emitError("capture", "screenRecording")
-        return
-    }
-
-    Task {
-        do {
-            let content = try await SCShareableContent.excludingDesktopWindows(
-                true,
-                onScreenWindowsOnly: false
-            )
-            // Biggest window wins: the document window rather than a palette or
-            // an inspector.
-            let windows = content.windows.filter {
-                $0.owningApplication?.bundleIdentifier == appKey
-                    && $0.frame.width > 120 && $0.frame.height > 120
-            }
-            guard let window = windows.max(by: {
-                $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height
-            }) else {
-                emitError("capture", "no window")
-                return
-            }
-
-            let config = SCStreamConfiguration()
-            let scale = min(1.0, Double(maxWidth) / window.frame.width)
-            config.width = Int(window.frame.width * scale)
-            config.height = Int(window.frame.height * scale)
-            config.showsCursor = false
-
-            let image = try await SCScreenshotManager.captureImage(
-                contentFilter: SCContentFilter(desktopIndependentWindow: window),
-                configuration: config
-            )
-            // JPEG, not PNG: this crosses the pipe once a second, and a screenshot
-            // of a UI encodes to roughly a tenth of the size with no visible cost
-            // at thumbnail scale.
-            guard let jpeg = NSBitmapImageRep(cgImage: image)
-                .representation(using: .jpeg, properties: [.compressionFactor: 0.6])
-            else {
-                emitError("capture", "encode failed")
-                return
-            }
-            emit([
-                "ev": "capture",
-                "appKey": appKey,
-                "image": "data:image/jpeg;base64," + jpeg.base64EncodedString(),
-            ])
-        } catch {
-            emitError("capture", error.localizedDescription)
-        }
-    }
 }
 
 // MARK: - Frontmost application
@@ -524,24 +580,20 @@ private func handle(_ line: String) {
             emitError("launch", "missing appKey")
             return
         }
-        launch(appKey)
+        launch(appKey, activate: object["activate"] as? Bool ?? true)
+    case "windows":
+        guard let appKey = object["appKey"] as? String else {
+            emitError("windows", "missing appKey")
+            return
+        }
+        listWindows(appKey)
     case "watch":
         startWatching()
     case "permissions":
         emit([
             "ev": "permissions",
             "accessibility": hasAccessibility(prompt: false),
-            "screenRecording": CGPreflightScreenCaptureAccess(),
         ])
-    case "ask-capture-access":
-        // Shows the system prompt; the answer only takes effect on a restart.
-        CGRequestScreenCaptureAccess()
-    case "capture":
-        guard let appKey = object["appKey"] as? String else {
-            emitError("capture", "missing appKey")
-            return
-        }
-        captureWindow(appKey, maxWidth: object["maxWidth"] as? Int ?? 480)
     case "place":
         guard let appKey = object["appKey"] as? String,
               let rect = object["rect"] as? [String: Double],
@@ -551,7 +603,12 @@ private func handle(_ line: String) {
             emitError("place", "bad arguments")
             return
         }
-        place(appKey, CGRect(x: x, y: y, width: width, height: height))
+        place(
+            appKey,
+            CGRect(x: x, y: y, width: width, height: height),
+            wanted: object["title"] as? String,
+            avoid: Set(object["avoid"] as? [String] ?? [])
+        )
     case "raise":
         guard let appKey = object["appKey"] as? String else {
             emitError("raise", "missing appKey")
@@ -560,7 +617,8 @@ private func handle(_ line: String) {
         // Through LaunchServices for the same reason `place` does: a background
         // process cannot activate anything by asking directly.
         launch(appKey)
-        if let app = runningApp(appKey), let window = documentWindow(of: app) {
+        if let app = runningApp(appKey),
+           let window = documentWindow(of: app, wanted: placedTitles[appKey]) {
             AXUIElementPerformAction(window, kAXRaiseAction as CFString)
         }
     case "restore":

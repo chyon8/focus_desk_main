@@ -1,3 +1,4 @@
+import { MAX_DAY_SECONDS } from './spaceTime';
 import { todayKey } from './stats';
 
 /**
@@ -10,6 +11,25 @@ import { todayKey } from './stats';
  * never has to count time against itself.
  */
 export type AppTime = Record<string, Record<string, Record<string, number>>>;
+
+/** The same repair as `sanitizeTime`, for the per-app breakdown. */
+export function sanitizeAppTime(time: AppTime): AppTime {
+  const clean: AppTime = {};
+  for (const [spaceId, days] of Object.entries(time ?? {})) {
+    const keptDays: Record<string, Record<string, number>> = {};
+    for (const [date, apps] of Object.entries(days ?? {})) {
+      const kept: Record<string, number> = {};
+      for (const [appKey, seconds] of Object.entries(apps ?? {})) {
+        if (Number.isFinite(seconds) && seconds >= 0 && seconds <= MAX_DAY_SECONDS) {
+          kept[appKey] = seconds;
+        }
+      }
+      keptDays[date] = kept;
+    }
+    clean[spaceId] = keptDays;
+  }
+  return clean;
+}
 
 export function addAppSeconds(
   time: AppTime,

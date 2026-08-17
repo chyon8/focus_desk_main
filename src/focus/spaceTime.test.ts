@@ -4,6 +4,7 @@ import {
   dropSpace,
   MAX_TICK_MS,
   recentDateKeys,
+  sanitizeTime,
   secondsOn,
   totalOver,
   totalsBySpace,
@@ -65,5 +66,13 @@ describe('space time', () => {
   it('lists the recent days oldest first, ending today', () => {
     const keys = recentDateKeys(3, new Date(2026, 7, 17, 12, 0));
     expect(keys).toEqual(['2026-08-15', '2026-08-16', '2026-08-17']);
+  });
+
+  it('drops days that hold more seconds than a day has', () => {
+    const time = {
+      a: { '2026-08-16': 3_600, '2026-08-17': 1.3e29 },
+      b: { '2026-08-17': Number.POSITIVE_INFINITY },
+    };
+    expect(sanitizeTime(time)).toEqual({ a: { '2026-08-16': 3_600 }, b: {} });
   });
 });

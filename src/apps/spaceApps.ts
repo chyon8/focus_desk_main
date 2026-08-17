@@ -9,6 +9,22 @@ export function appWidgets(space: SpaceDoc | undefined): (WidgetDoc & { data: Ap
 }
 
 /**
+ * The windows of the same app that other widgets here already stand for, so a
+ * widget looking for its first window skips them (D-045). Without this, two
+ * widgets pointed at one editor both land on whichever window was focused last.
+ */
+export function claimedWindowTitles(
+  space: SpaceDoc | undefined,
+  widgetId: string,
+  appKey: string
+): string[] {
+  return appWidgets(space)
+    .filter((widget) => widget.id !== widgetId && widget.data.appKey === appKey)
+    .map((widget) => widget.data.windowTitle)
+    .filter((title): title is string => !!title);
+}
+
+/**
  * The apps a space claims. Being in one of these counts as being at the desk,
  * and time spent in them is banked against this space (D-039).
  */
