@@ -29,6 +29,13 @@ function createWindow() {
     },
   });
 
+  // Browser widgets reopen on their last URL, so a saved YouTube page would start
+  // playing the moment the app launches. Media waits until the user has touched
+  // that page — after that, clicking through the site autoplays as usual.
+  win.webContents.on('will-attach-webview', (_e, webPreferences) => {
+    webPreferences.autoplayPolicy = 'document-user-activation-required';
+  });
+
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
     win.webContents.openDevTools();
