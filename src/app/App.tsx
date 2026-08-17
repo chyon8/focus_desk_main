@@ -6,6 +6,8 @@ import { AmbienceDock } from '../ambience/AmbienceDock';
 import { FocusInsights } from '../focus/FocusInsights';
 import { FocusSessionBar } from '../focus/FocusSessionBar';
 import { useSpaceTimeTracker } from '../focus/useSpaceTimeTracker';
+import { useSpaceApps } from '../apps/useSpaceApps';
+import { useAppTimeStore } from '../stores/appTimeStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { useUiStore } from '../stores/uiStore';
 import { SceneLayer } from '../themes/SceneLayer';
@@ -23,11 +25,13 @@ export const App: React.FC = () => {
 
   useThemeVariables(theme);
   useSpaceTimeTracker();
+  useSpaceApps();
 
   useEffect(() => {
     void useSpaceStore.getState().load();
     void useFocusStore.getState().load();
     void useSpaceTimeStore.getState().load();
+    void useAppTimeStore.getState().load();
   }, []);
 
   if (!isLoaded) {

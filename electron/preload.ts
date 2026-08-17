@@ -19,6 +19,18 @@ contextBridge.exposeInMainWorld('activity', {
   },
 });
 
+contextBridge.exposeInMainWorld('apps', {
+  list: () => ipcRenderer.invoke('apps:list'),
+  launch: (appKey: string) => ipcRenderer.invoke('apps:launch', appKey),
+  /** Which apps count as "still at the desk" while this space is open (D-039). */
+  setSpaceApps: (appKeys: string[]) => ipcRenderer.invoke('activity:set-space-apps', appKeys),
+  onFrontmost: (handler: (appKey: string | null) => void) => {
+    const listener = (_event: unknown, appKey: string | null) => handler(appKey);
+    ipcRenderer.on('apps:frontmost', listener);
+    return () => ipcRenderer.removeListener('apps:frontmost', listener);
+  },
+});
+
 contextBridge.exposeInMainWorld('spaces', {
   list: () => ipcRenderer.invoke('spaces:list'),
   save: (doc: unknown) => ipcRenderer.invoke('spaces:save', doc),

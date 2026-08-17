@@ -5,6 +5,11 @@ directories:
 files:
   - dist/**
   - dist-electron/**
+# The native helper (D-038). Built by `npm run build:helper`, found at runtime
+# under process.resourcesPath.
+extraResources:
+  - from: resources/focusdesk-helper
+    to: focusdesk-helper
 mac:
   # Drawn by build/make_icon.py, so it can be edited as code rather than redrawn.
   icon: build/icon.icns

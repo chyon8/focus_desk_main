@@ -1,9 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CalendarDays, CheckCircle2, Clock, X } from 'lucide-react';
+import { appWidgets } from '../apps/spaceApps';
+import { useAppTimeStore } from '../stores/appTimeStore';
 import { useFocusStore } from '../stores/focusStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
+import { appTotals } from './appTime';
 import { recentDateKeys, totalOver, totalsBySpace } from './spaceTime';
 import { formatDuration } from './stats';
 import { useToday } from './useToday';
@@ -17,8 +20,21 @@ const WEEK = 7;
 export const FocusInsights: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const today = useToday();
   const time = useSpaceTimeStore((s) => s.time);
+  const appTime = useAppTimeStore((s) => s.time);
   const spaceNames = useSpaceStore((s) => s.spaces);
   const tasksToday = useFocusStore((s) => s.stats[today]?.tasksCompleted ?? 0);
+
+  // An app removed from its space keeps its hours but loses its name, so fall
+  // back to the tail of the bundle id rather than showing nothing.
+  const appNames = React.useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const space of Object.values(spaceNames)) {
+      for (const { data } of appWidgets(space)) {
+        if (data.appKey) names[data.appKey] = data.name;
+      }
+    }
+    return names;
+  }, [spaceNames]);
 
   const week = recentDateKeys(WEEK, new Date(`${today}T12:00:00`));
   const perDay = week.map((date) => ({ date, seconds: totalOver(time, [date]) }));
@@ -100,11 +116,50 @@ export const FocusInsights: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                     style={{ width: `${(seconds / spaceMax) * 100}%`, background: 'var(--accent)' }}
                   />
                 </div>
+                <AppBreakdown
+                  apps={appTotals(appTime, spaceId, week)}
+                  names={appNames}
+                  total={seconds}
+                />
               </div>
             ))}
           </div>
         )}
       </motion.div>
+    </div>
+  );
+};
+
+/**
+ * Which apps a space's hours went to. Whatever the apps do not account for is
+ * Focus Desk's own share, so it never has to be counted (D-039).
+ */
+const AppBreakdown: React.FC<{
+  apps: { appKey: string; seconds: number }[];
+  names: Record<string, string>;
+  total: number;
+}> = ({ apps, names, total }) => {
+  if (apps.length === 0) return null;
+
+  const own = total - apps.reduce((sum, app) => sum + app.seconds, 0);
+  const rows = apps.map((app) => ({
+    key: app.appKey,
+    // The tail of a bundle id is the closest thing to a name we still have.
+    label: names[app.appKey] ?? app.appKey.split('.').pop() ?? app.appKey,
+    seconds: app.seconds,
+  }));
+  if (own > 0) rows.push({ key: 'self', label: 'Focus Desk', seconds: own });
+
+  return (
+    <div className="mt-1.5 pl-2.5 space-y-0.5">
+      {rows.map((row) => (
+        <div key={row.key} className="flex items-baseline justify-between gap-2">
+          <span className="t-faint text-[11px] truncate">{row.label}</span>
+          <span className="t-faint text-[10px] tabular-nums shrink-0">
+            {formatDuration(row.seconds)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 };

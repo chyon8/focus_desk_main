@@ -6,10 +6,11 @@
   "author": "chyon8 <identt94@gmail.com>",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "build:helper": "swiftc -O -o resources/focusdesk-helper electron/helper/macos/FocusDeskHelper.swift",
+    "dev": "npm run build:helper && vite",
     "build": "tsc && vite build",
     "test": "vitest run",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build:helper && npm run build && electron-builder"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

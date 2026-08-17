@@ -14,7 +14,8 @@ export type WidgetType =
   | 'calendar'
   | 'bookmarks'
   | 'photo'
-  | 'sketch';
+  | 'sketch'
+  | 'app';
 
 export interface WidgetDoc<D = Record<string, unknown>> {
   id: string;
@@ -112,4 +113,16 @@ export interface SketchStroke {
 
 export interface SketchData {
   strokes: SketchStroke[];
+}
+
+/**
+ * A real OS application standing in the space (D-038). Also the shape the app
+ * picker lists, since picking one is exactly filling this in.
+ */
+export interface AppData {
+  /** Opaque here: a bundle id on macOS, an exe path on Windows. Empty = unpicked. */
+  appKey: string;
+  name: string;
+  /** PNG data URI, copied in when the app was picked so it survives offline. */
+  icon: string | null;
 }

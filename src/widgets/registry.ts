@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  AppWindow,
   CalendarDays,
   CheckSquare,
   Clock,
@@ -24,6 +25,7 @@ import { CalendarWidget } from './CalendarWidget';
 import { BookmarksWidget } from './BookmarksWidget';
 import { PhotoWidget } from './PhotoWidget';
 import { CanvasWidget } from './CanvasWidget';
+import { AppWidget } from './AppWidget';
 
 export interface WidgetEntry extends WidgetDef {
   icon: LucideIcon;
@@ -41,6 +43,7 @@ const PARTS: Record<WidgetType, { icon: LucideIcon; Component: React.FC<{ id: st
   bookmarks: { icon: Link2, Component: BookmarksWidget },
   photo: { icon: Image, Component: PhotoWidget },
   sketch: { icon: PenLine, Component: CanvasWidget },
+  app: { icon: AppWindow, Component: AppWidget },
 };
 
 export const WIDGET_REGISTRY = Object.fromEntries(

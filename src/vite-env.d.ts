@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-electron/electron-env" />
 
+import type { AppData } from './spaces/types';
+
 declare global {
   interface Window {
     // Exposed by electron/preload.ts. Undefined when running in a plain browser.
@@ -15,6 +17,15 @@ declare global {
     activity?: {
       state: () => Promise<boolean>;
       onChange: (handler: (active: boolean) => void) => () => void;
+    };
+    /** Real applications: the native helper's side of app widgets (D-038). */
+    apps?: {
+      /** Everything installed, fetched once and cached in the main process. */
+      list: () => Promise<AppData[]>;
+      launch: (appKey: string) => Promise<void>;
+      /** Which apps count as "still at the desk" while this space is open. */
+      setSpaceApps: (appKeys: string[]) => Promise<void>;
+      onFrontmost: (handler: (appKey: string | null) => void) => () => void;
     };
     spaces?: {
       list: () => Promise<unknown[]>;

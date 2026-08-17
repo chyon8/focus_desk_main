@@ -59,4 +59,9 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     defaultSize: { width: 520, height: 420 },
     createData: () => ({ strokes: [] }),
   },
+  app: {
+    label: 'App',
+    defaultSize: { width: 280, height: 320 },
+    createData: () => ({ appKey: '', name: '', icon: null }),
+  },
 };
