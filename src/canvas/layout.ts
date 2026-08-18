@@ -13,34 +13,43 @@ export type ArrangeMode = 'grid' | 'cascade';
 
 export const ARRANGE_GAP = 32;
 const CASCADE_STEP = 36;
-const FIT_PADDING = 48;
+const FIT_PADDING = 20;
 
 /** Reading order, so an arrange feels like tidying rather than reshuffling. */
 function inReadingOrder(boxes: Box[]) {
   return [...boxes].sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
 }
 
-function packGrid(boxes: Box[], cols: number): Record<string, { x: number; y: number }> {
-  const cellWidth = Math.max(...boxes.map((b) => b.width));
+/** Running start position of each track, with a gap between them. */
+function offsets(sizes: number[]): number[] {
+  const out: number[] = [];
+  let pos = 0;
+  for (const size of sizes) {
+    out.push(pos);
+    pos += size + ARRANGE_GAP;
+  }
+  return out;
+}
 
-  // Row height is the tallest box in that row, so short rows stay compact.
+function packGrid(boxes: Box[], cols: number): Record<string, { x: number; y: number }> {
+  // Each track is sized by its own widest/tallest box, so one browser widget
+  // doesn't give a note a browser-sized cell and punch a hole in the grid.
+  const colWidths: number[] = [];
   const rowHeights: number[] = [];
   boxes.forEach((box, i) => {
+    const col = i % cols;
     const row = Math.floor(i / cols);
+    colWidths[col] = Math.max(colWidths[col] ?? 0, box.width);
     rowHeights[row] = Math.max(rowHeights[row] ?? 0, box.height);
   });
 
-  const rowOffsets: number[] = [];
-  let y = 0;
-  for (let row = 0; row < rowHeights.length; row++) {
-    rowOffsets[row] = y;
-    y += rowHeights[row] + ARRANGE_GAP;
-  }
+  const colOffsets = offsets(colWidths);
+  const rowOffsets = offsets(rowHeights);
 
   const positions: Record<string, { x: number; y: number }> = {};
   boxes.forEach((box, i) => {
     positions[box.id] = {
-      x: (i % cols) * (cellWidth + ARRANGE_GAP),
+      x: colOffsets[i % cols],
       y: rowOffsets[Math.floor(i / cols)],
     };
   });
@@ -73,11 +82,14 @@ export function arrange(
 
 /**
  * Camera that frames every box inside the given area.
- * `area` is the canvas region in window coordinates — the world container starts
- * at its origin, so only its size matters for the zoom, but the camera must also
- * account for the area being inset from the window.
+ * The world container starts at the area's left edge, so `area.x` doesn't enter
+ * the maths — but it hangs below the top chrome, so `area.y` does: without it the
+ * top row of a fit lands underneath the drag strip and looks cut off.
  */
-export function fitCamera(boxes: Box[], areaWidth: number, areaHeight: number): Camera | null {
+export function fitCamera(
+  boxes: Box[],
+  area: { y: number; width: number; height: number }
+): Camera | null {
   if (boxes.length === 0) return null;
 
   const minX = Math.min(...boxes.map((b) => b.x));
@@ -93,8 +105,8 @@ export function fitCamera(boxes: Box[], areaWidth: number, areaHeight: number): 
     Math.max(
       MIN_ZOOM,
       Math.min(
-        (areaWidth - FIT_PADDING * 2) / contentWidth,
-        (areaHeight - FIT_PADDING * 2) / contentHeight
+        (area.width - FIT_PADDING * 2) / contentWidth,
+        (area.height - FIT_PADDING * 2) / contentHeight
       )
     )
   );
@@ -102,7 +114,7 @@ export function fitCamera(boxes: Box[], areaWidth: number, areaHeight: number): 
   // Put the content's centre at the area's centre.
   return {
     zoom,
-    x: (minX + maxX) / 2 - areaWidth / (2 * zoom),
-    y: (minY + maxY) / 2 - areaHeight / (2 * zoom),
+    x: (minX + maxX) / 2 - area.width / (2 * zoom),
+    y: (minY + maxY) / 2 - (area.y + area.height / 2) / zoom,
   };
 }

@@ -2,6 +2,8 @@ import { create } from 'zustand';
 
 export const SIDEBAR_WIDTH = 256;
 const CONTROL_BAR_HEIGHT = 76;
+// Titlebar drag strip plus the row of floating buttons under it.
+const TOP_CHROME_HEIGHT = 84;
 
 export interface Rect {
   x: number;
@@ -35,15 +37,15 @@ export const useUiStore = create<UiState>((set) => ({
 
 /**
  * The part of the window the canvas owns, in window coordinates. Chrome (sidebar,
- * control bar) sits outside it, so arranging and fitting never park a widget
- * underneath it.
+ * control bar, top strip) sits outside it, so arranging and fitting never park a
+ * widget underneath it — the top strip in particular used to clip the first row.
  */
 export function canvasArea(): Rect {
   const left = useUiStore.getState().isSidebarOpen ? SIDEBAR_WIDTH : 0;
   return {
     x: left,
-    y: 0,
+    y: TOP_CHROME_HEIGHT,
     width: Math.max(1, window.innerWidth - left),
-    height: Math.max(1, window.innerHeight - CONTROL_BAR_HEIGHT),
+    height: Math.max(1, window.innerHeight - TOP_CHROME_HEIGHT - CONTROL_BAR_HEIGHT),
   };
 }

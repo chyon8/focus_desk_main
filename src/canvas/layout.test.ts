@@ -40,6 +40,19 @@ describe('arrange', () => {
     expect(new Set(Object.values(pos).map((p) => p.y)).size).toBe(2);
   });
 
+  it('sizes each column by its own widest box, not the widest overall', () => {
+    // Column 0 holds a (300) and c (300); b's 200 width sits in column 1, so the
+    // 300-wide column decides the second column's x — not some global maximum.
+    const wide: Box[] = [
+      { id: 'a', x: 0, y: 0, width: 300, height: 200 },
+      { id: 'b', x: 400, y: 0, width: 900, height: 200 },
+      { id: 'c', x: 0, y: 300, width: 300, height: 200 },
+    ];
+    const pos = arrange(wide, 'grid', 2);
+    expect(pos['b'].x).toBe(300 + ARRANGE_GAP);
+    expect(pos['c'].x).toBe(0);
+  });
+
   it('cascade staggers boxes diagonally', () => {
     const pos = arrange(boxes, 'cascade');
     expect(pos['a']).toEqual({ x: 0, y: 0 });
@@ -53,8 +66,10 @@ describe('arrange', () => {
 });
 
 describe('fitCamera', () => {
+  const area = { y: 0, width: 1400, height: 900 };
+
   it('frames all boxes inside the area', () => {
-    const camera = fitCamera(boxes, 1400, 900)!;
+    const camera = fitCamera(boxes, area)!;
     for (const box of boxes) {
       const topLeft = worldToScreen(camera, { x: box.x, y: box.y });
       const bottomRight = worldToScreen(camera, { x: box.x + box.width, y: box.y + box.height });
@@ -66,14 +81,23 @@ describe('fitCamera', () => {
   });
 
   it('centres the content in the area', () => {
-    const camera = fitCamera(boxes, 1400, 900)!;
+    const camera = fitCamera(boxes, area)!;
     const centre = worldToScreen(camera, { x: 550, y: 400 }); // bbox centre
     expect(centre.x).toBeCloseTo(700);
     expect(centre.y).toBeCloseTo(450);
   });
 
+  it('keeps the content below a top-inset area, not under the chrome', () => {
+    const inset = fitCamera(boxes, { y: 84, width: 1400, height: 816 })!;
+    // Every box starts below the chrome, and the content is centred in what is left.
+    for (const box of boxes) {
+      expect(worldToScreen(inset, { x: box.x, y: box.y }).y).toBeGreaterThanOrEqual(84);
+    }
+    expect(worldToScreen(inset, { x: 550, y: 400 }).y).toBeCloseTo(84 + 816 / 2);
+  });
+
   it('returns null when there is nothing to frame', () => {
-    expect(fitCamera([], 1400, 900)).toBeNull();
+    expect(fitCamera([], area)).toBeNull();
   });
 });
 

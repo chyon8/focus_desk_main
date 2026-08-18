@@ -7,9 +7,6 @@ import { useCameraMotion } from './useCameraMotion';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { WidgetFrame } from './WidgetFrame';
 
-// Titlebar drag strip plus the row of floating buttons under it.
-const TOP_CHROME_HEIGHT = 84;
-
 export const Canvas: React.FC = () => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const camera = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera);
@@ -47,9 +44,9 @@ export const Canvas: React.FC = () => {
   const area = canvasArea();
   const fullRect = {
     x: camera.x,
-    y: camera.y + TOP_CHROME_HEIGHT / camera.zoom,
+    y: camera.y + area.y / camera.zoom,
     width: area.width,
-    height: area.height - TOP_CHROME_HEIGHT,
+    height: area.height,
     scale: 1 / camera.zoom,
   };
 

@@ -205,14 +205,14 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         widgets[id] = { ...widgets[id], ...pos };
       }
       const area = canvasArea();
-      const camera = fitCamera(Object.values(widgets), area.width, area.height);
+      const camera = fitCamera(Object.values(widgets), area);
       return { ...space, widgets, camera: camera ?? space.camera };
     }),
 
   fitToWidgets: () =>
     updateActive(set, (space) => {
       const area = canvasArea();
-      const camera = fitCamera(Object.values(space.widgets), area.width, area.height);
+      const camera = fitCamera(Object.values(space.widgets), area);
       return camera ? { ...space, camera } : space;
     }),
 
@@ -225,7 +225,10 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         id: crypto.randomUUID(),
         type,
         x: space.camera.x + (area.width / space.camera.zoom - def.defaultSize.width) / 2,
-        y: space.camera.y + (area.height / space.camera.zoom - def.defaultSize.height) / 2,
+        y:
+          space.camera.y +
+          (area.y + (area.height - def.defaultSize.height * space.camera.zoom) / 2) /
+            space.camera.zoom,
         ...def.defaultSize,
         z: topZ(space) + 1,
         data: { ...def.createData(), ...data },
