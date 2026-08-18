@@ -68,20 +68,11 @@ docs/
 - 스페이스 전환 = 언마운트 = 웹 컨텐츠 파괴. 돌아오면 `data.url`(마지막 방문 주소)로 재로드
 - ⚠️ 과거 WebContentsView 방식은 D-029에서 폐기. 그 흔적(스냅샷·hibernation·클리핑)은 코드에 남아 있지 않음
 
-### 링크가 안 열리는 문제 (미착수 — STATUS "다음 할 일" 2번)
-유튜브 설명란 링크를 클릭하면 **아무 일도 안 일어난다. 앱 밖에도 새 창이 안 뜬다**(2026-08-17 사용자 확인). 유튜브 설명란 링크는 `youtube.com/redirect?q=…`를 `target="_blank"`로 여니까 팝업 경로를 탄다. 지금 [BrowserWidget.tsx](../src/widgets/BrowserWidget.tsx)에 `allowpopups`는 켜져 있지만 **`setWindowOpenHandler`가 코드베이스 어디에도 없다** — 목적지를 아무도 정해주지 않는다.
+### 새 창으로 열리는 링크 (고침 2026-08-18, D-055 — 실기 미검증)
+유튜브 설명란 링크(`youtube.com/redirect?q=…`를 `target="_blank"`로)가 앱 안에도 밖에도 아무것도 안 띄우던 문제. `allowpopups`는 켜져 있었지만 `setWindowOpenHandler`가 없어 팝업이 조용히 버려졌다. 지금은 [main.ts](../electron/main.ts)의 `web-contents-created`에서 `deny` + 같은 게스트에 `loadURL` → **클릭한 그 위젯에서 열린다**(D-055).
 
-원인 후보 둘, 구분법은 싸다:
-- **ⓐ 클릭이 링크에 안 닿는다** — `<webview>`가 `scale()`된 월드 컨테이너 안에 있어 히트테스트가 어긋난다. 큰 타깃(썸네일)은 맞고 작은 타깃(설명란 링크)만 빗나가는 증상과 맞는다
-- **ⓑ 팝업이 만들어졌다가 조용히 버려진다** — webview에서 난 팝업은 embedder가 받아줘야 표시되는데 아무도 안 받는다
-- **구분**: 줌을 정확히 1.0으로 두고(또는 위젯을 최대화해 `scale(1/zoom)`이 1이 되게) 같은 링크를 클릭. 열리면 ⓐ, 여전히 안 열리면 ⓑ
-
-**고치는 방향** (ⓐⓑ 어느 쪽이든 목적지는 우리가 정해야 한다): [main.ts](../electron/main.ts)의 `web-contents-created`가 이미 webview를 잡고 있으니 그 자리에서 `setWindowOpenHandler` → `deny` + 아래 하나. **결정 필요 — 개발할 때 사용자에게 물어본다.**
-- ⓐ 같은 위젯에서 열기(`loadURL`). 뒤로가기 버튼이 이미 있어 복귀 가능, 가장 예측 가능 → 기본값 후보
-- ⓑ 그 공간에 새 브라우저 위젯 생성 = "새 탭"의 Focus Desk식 번역. 컨셉엔 맞지만 클릭 한 번에 위젯이 늘어남 → ⌘클릭에 배정하는 편이 낫다
-- ⓒ `shell.openExternal`로 기본 브라우저에 내보내기. 위젯은 공간별 로그인 세션(`partition`)을 갖고 있어 기본으로 삼으면 로그인 상태를 잃는다
-
-**같이 고쳐야 하는 버그**: [apps.ts](../electron/ipc/apps.ts)의 `app.on('browser-window-created')`가 **모든** 새 창에 `close → restoreLive()`를 붙인다. 팝업이 실제로 열리기 시작하면, 그 팝업을 닫는 것만으로 배치된 앱이 원래 크기로 돌아가고 LIVE가 풀린다 → 메인 창인지 확인하는 가드 필요.
+- **남은 후보**: 줌이 1이 아닐 때도 열리는지 확인해야 한다. 안 되면 원인은 `scale()`된 월드 컨테이너 안의 `<webview>` 히트테스트 어긋남 — 위젯을 최대화(`scale(1/zoom)`=1)하고 같은 링크를 눌러 구분한다
+- 같이 고침: `browser-window-created`가 모든 창에 `close → restoreLive()`를 붙여, 개발자도구 창을 닫는 것만으로 배치된 앱이 원래 크기로 돌아갔다 → 메인 창 확인 후 동작
 
 ## 배경 (themes/)
 - `Theme = { scene, atmosphere, particles?, tokens }`. `SceneLayer`가 아래에서 위로 씬 → 스크림 → 글로우 → 파티클 → 비네트 → 그레인을 쌓는다

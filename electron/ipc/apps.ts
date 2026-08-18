@@ -243,12 +243,19 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     return true;
   };
 
-  app.on('browser-window-created', (_event, win) => {
-    win.on('move', follow);
-    win.on('resize', follow);
+  // Every window passes through here — devtools, and any popup a page manages to
+  // open — so each handler checks it is the desk itself. Closing something else
+  // must not hand a placed app its old size back.
+  app.on('browser-window-created', (_event, created) => {
+    // Deferred: at creation time `getWindow()` has not been assigned yet.
+    const isDesk = () => created === getWindow();
+    created.on('move', () => isDesk() && follow());
+    created.on('resize', () => isDesk() && follow());
     // On macOS this is not a quit: the app stays running with no renderer left to
     // ask for the restore.
-    win.on('close', () => void restoreLive());
+    created.on('close', () => {
+      if (isDesk()) void restoreLive();
+    });
   });
 
   // The helper is killed on `will-quit`, so the restore has to be sent one step

@@ -57,6 +57,15 @@ function createWindow() {
 app.on('web-contents-created', (_event, contents) => {
   if (contents.getType() !== 'webview') return;
 
+  // A popup a <webview> opens has no one to display it, so a target="_blank"
+  // link (YouTube's description links go out through youtube.com/redirect) used
+  // to do nothing at all. Keep it in the widget that was clicked: Back returns,
+  // and the space's own login session is the one that follows the link.
+  contents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) void contents.loadURL(url);
+    return { action: 'deny' };
+  });
+
   contents.on('before-input-event', (_e, input) => {
     if (input.type !== 'keyDown' || !win || win.isDestroyed()) return;
 
