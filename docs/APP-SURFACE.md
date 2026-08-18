@@ -89,7 +89,9 @@ active = frontmost ∈ ( {FocusDesk} ∪ 현재 공간의 앱 위젯들 )
 
 Phase A만으로도 "앱 전환하면 시간이 멈추는" 문제가 해결되고 앱별 통계가 생긴다.
 
-## Phase E — 펼침(Spread) · 착수 준비 완료
+## Phase E — 펼침(Spread) · ⏸ 보류 (2026-08-18 사용자 결정)
+
+> 2026-08-18에 한 번 구현했다가 **되돌렸다**. 나중에 다시 볼 것. 아래 계획은 그대로 유효하고, 구현했을 때 실제로 걸렸던 지점은 이 절 끝에 적어둔다.
 
 **왜**: 지금 LIVE는 위젯 최대화 전용이라 "앱 하나, 화면 꽉"이다. 공간이 아니라 앱 전환기다.
 **버린 대안(B)**: 위젯이 뷰포트에 들어오면 자동 배치. **실제 창은 스케일되지 않는다** — 줌 0.5면 창을 *리사이즈*해야 하고 그건 앱 레이아웃 리플로우 + 최소 크기 충돌이라 사실상 줌 1.0에서만 성립한다(D-038이 Windows `SetParent`를 기각한 그 이유). 팬할 때마다 창이 사라졌다 나타나는 깜빡임이 기본 리듬이 된다.
@@ -113,19 +115,20 @@ Phase A만으로도 "앱 전환하면 시간이 멈추는" 문제가 해결되�
 | 1. main N개화 | [`apps.ts`](../electron/ipc/apps.ts)의 `live`가 **단수 변수**라 N개가 안 된다 → Map(appKey). `place`·`raise` 가드·`release`·`follow`·`restoreLive` 전부 N개로 | 앱 2개 place 후 **둘 다** 보임 |
 | 2. 일괄 raise | `placed` 핸들러가 place마다 `win.showInactive()` + 그 앱 raise를 한다 → 순차로 놓으면 **앞의 것이 데스크 뒤로 숨는다**. 펼침 중엔 개별 raise를 끄고, 다 놓은 뒤 z 순서로 한 번에 | 3개도 동시에 보임 |
 | 3. 모드 | `uiStore.spreadMode`(비영속). `useCameraControls`가 팬/줌 무시. Esc 우선순위: 최대화 → 펼침 | 펼침 중 스크롤·핀치해도 안 움직임 |
-| 4. 선별 | 600×400 컷 + `resizable` + `canvasArea` 클램프(헬퍼는 화면 클램프만 함). 탈락 이유 표시 | FL Studio류·작은 위젯이 이유와 함께 빠짐 |
+| 4. 선별 | 600×400 컷 + `resizable` + `canvasArea` 클램프. 탈락 이유 표시 | FL Studio류·작은 위젯이 이유와 함께 빠짐 |
 | 5. 복원 | 이탈 시 전부 `restore`. D-044의 `before-quit`·창 `close` 경로도 N개로 | 펼침 중 ⌘Q → 창들이 원래 크기로 |
 | 6. 왕복 | ⌥Space 전부 raise. 위젯 표면 클릭 `raise`도 펼침에서 동작 | 데스크 클릭 후 ⌥Space로 전원 복귀 |
 
 **1·2가 이번 작업의 8할.** 거기서 "동시에 보이는가"만 확인되면 나머지는 기존 코드 확장이다.
 **새 프로토콜 없음** — `place`/`restore`/`raise` 그대로, 호출 개수만 늘어난다.
 
+**되돌린 구현에서 나온 것**(다시 할 때 출발점): ⓐ 일괄 raise 타이밍은 "마지막 창 착지 후 120ms"가 무난했다 ⓑ ⌥Space는 토글이어야 한다(데스크 포커스면 앱 전부 raise, 아니면 데스크 앞으로) — 펼침 중엔 클릭할 데스크 여백이 거의 없다 ⓒ 리사이즈 거부(`resizable:false`)는 place 응답으로만 알 수 있어 "해보고 빠지는" 처리가 필요하다 ⓓ 사이드바는 접었다 **이탈 시 되돌려야** 한다
+
 **남는 한계**
 - 데스크를 한 번 클릭하면 펼친 창이 **전부** 뒤로 간다(z-order 미공유, 못 막음). ⌥Space 일괄 raise가 유일한 복귀 수단 → 펼친 동안 데스크를 안 건드리게 만드는 게 이 모드의 UX 과제
 - macOS는 앱 단위 활성화라 펼친 창 하나를 클릭하면 그 앱의 *다른* 창까지 앞으로 나온다
 - 14"(1512×982, 사이드바 접으면 캔버스 ≈1512×822) 기준 **2개=각 750×820 쾌적, 3개=500폭 좁음, 4개는 무리** → 펼침은 2~3개짜리 기능이고 외장 모니터에서 빛난다
 - **미결**: `app` 위젯 기본 크기 280×320([defs.ts](../src/widgets/defs.ts))은 600×400 컷에 그대로 걸린다 — 새 앱 위젯은 매번 손으로 키워야 한다. 키울지는 테스트 첫날 느낌 보고 결정
-- 구현 후 **D-054**로 이 결정들을 DECISIONS에 기록할 것
 
 ### 실측 (2026-08-17)
 - 설치 앱 스캔 104개, 아이콘 전부 확보. 목록 1회 응답 829KB → main에서 캐시
@@ -145,7 +148,7 @@ electron/ipc/activity.ts                      판정에 앱 집합 반영 (D-039
 src/widgets/AppWidget.tsx                     앱 피커 / 아이콘 / 창 배정(D-048) / LIVE, 왕복 UI(D-042)
 src/apps/useAppSurface.ts                     최대화 중 실제 창 배치(첫 배치 즉시, 이후 60ms 디바운스),
                                                창 제목 왕복(D-045)
-src/apps/spaceApps.ts · useSpaceApps.ts       공간의 앱 집합 → main, 진입 시 배경 실행(D-046)
+src/apps/spaceApps.ts · useSpaceApps.ts       공간의 앱 집합 → main (자동 실행은 D-054에서 폐기)
 src/focus/appTime.ts (+ .test.ts)             순수함수, vitest
 src/stores/appTimeStore.ts                    space-app-time-v1
 src/focus/FocusInsights.tsx                   앱별 분해 + Focus Desk 잔차

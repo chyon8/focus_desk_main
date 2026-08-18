@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, RotateCw } from 'lucide-react';
 import { BrowserData } from '../spaces/types';
 import { useSpaceStore } from '../stores/spaceStore';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
+import { LINK_SHIM } from './browserLinks';
 import { useWidgetData } from './useWidgetData';
 
 function normalizeUrl(input: string) {
@@ -69,10 +70,11 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       readHistory();
     };
 
-    // Every load gets a fresh page, so the shim goes in on every dom-ready.
+    // Every load gets a fresh page, so the shims go in on every dom-ready.
     const onDomReady = () => {
       void el.insertCSS(FULLSCREEN_CSS);
       void el.executeJavaScript(FULLSCREEN_SHIM);
+      void el.executeJavaScript(LINK_SHIM);
     };
 
     el.addEventListener('dom-ready', onDomReady);
