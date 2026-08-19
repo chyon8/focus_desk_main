@@ -131,6 +131,10 @@ export const Canvas: React.FC = () => {
         left: isSidebarOpen ? SIDEBAR_WIDTH : 0,
         cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default',
       }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
       onDragOver={(e) => {
         // Only palette drags: a file dropped on a widget is that widget's business.
         if (!e.dataTransfer.types.includes(WIDGET_DRAG_TYPE)) return;
