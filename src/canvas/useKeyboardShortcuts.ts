@@ -10,28 +10,30 @@ function isTyping(target: EventTarget | null) {
 
 export function useKeyboardShortcuts() {
   useEffect(() => {
+    // ⌥ makes every widget show a rim on hover, so it is clear what a click picks.
+    const trackAlt = (e: KeyboardEvent) => useUiStore.getState().setAltHeld(e.altKey);
+    const dropAlt = () => useUiStore.getState().setAltHeld(false);
+
     const onKeyDown = (e: KeyboardEvent) => {
+      trackAlt(e);
       // macOS's own fullscreen chord, so it works from anywhere in the app.
       if (e.metaKey && e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         void window.windowMode?.toggleFullscreen();
         return;
       }
+      // Esc backs out of things; it never destroys one. Closing a widget is the ✕
+      // alone (which can be undone) — Esc did it once by accident and that was
+      // enough (D-061).
       if (e.key === 'Escape') {
-        const { maximizedWidgetId, clearMaximized, focusedWidgetId, setFocusedWidget } =
+        const { maximizedWidgetId, clearMaximized, selectedIds, clearSelection } =
           useUiStore.getState();
-        // Leaving a maximised widget wins, and works even from inside a text field.
         if (maximizedWidgetId) {
           e.preventDefault();
           clearMaximized();
-          return;
-        }
-        // Otherwise Esc closes the widget last clicked — but never while its own
-        // field has focus, where Esc means "stop editing".
-        if (focusedWidgetId && !isTyping(e.target)) {
+        } else if (selectedIds.length) {
           e.preventDefault();
-          useSpaceStore.getState().removeWidget(focusedWidgetId);
-          setFocusedWidget(null);
+          clearSelection();
         }
         return;
       }
@@ -75,8 +77,13 @@ export function useKeyboardShortcuts() {
     });
 
     window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', trackAlt);
+    // Switching apps with ⌥ down never sends the keyup.
+    window.addEventListener('blur', dropAlt);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', trackAlt);
+      window.removeEventListener('blur', dropAlt);
       offGuestKey?.();
     };
   }, []);

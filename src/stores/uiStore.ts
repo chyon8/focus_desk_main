@@ -16,11 +16,16 @@ interface UiState {
   // Widget blown up to fill the canvas. Purely a view state: the widget keeps its
   // stored position and size, so leaving maximised puts it back untouched.
   maximizedWidgetId: string | null;
-  /** The widget last clicked — what Esc closes. */
-  focusedWidgetId: string | null;
+  /** Widgets picked out with ⇧-drag or ⌥-click: move, arrange and fit act on these alone. */
+  selectedIds: string[];
+  /** ⌥ is down, so hovering a widget shows it can be picked. */
+  isAltHeld: boolean;
 
   setSidebarOpen: (open: boolean) => void;
-  setFocusedWidget: (widgetId: string | null) => void;
+  setSelection: (ids: string[]) => void;
+  toggleSelected: (widgetId: string) => void;
+  clearSelection: () => void;
+  setAltHeld: (held: boolean) => void;
   toggleMaximized: (widgetId: string) => void;
   clearMaximized: () => void;
 }
@@ -28,11 +33,23 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   isSidebarOpen: true,
   maximizedWidgetId: null,
-  focusedWidgetId: null,
+  selectedIds: [],
+  isAltHeld: false,
 
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
 
-  setFocusedWidget: (focusedWidgetId) => set({ focusedWidgetId }),
+  setSelection: (selectedIds) => set({ selectedIds }),
+
+  toggleSelected: (widgetId) =>
+    set((s) => ({
+      selectedIds: s.selectedIds.includes(widgetId)
+        ? s.selectedIds.filter((id) => id !== widgetId)
+        : [...s.selectedIds, widgetId],
+    })),
+
+  clearSelection: () => set({ selectedIds: [] }),
+
+  setAltHeld: (isAltHeld) => set({ isAltHeld }),
 
   toggleMaximized: (widgetId) =>
     set((s) => ({ maximizedWidgetId: s.maximizedWidgetId === widgetId ? null : widgetId })),

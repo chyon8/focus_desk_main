@@ -61,7 +61,8 @@ docs/
 - Registry 패턴, 2단 분리 (D-011): `defs.ts`(label/defaultSize/createData, React 무관) ↔ `registry.ts`(icon/Component 결합). 스토어는 defs만 import해 순환 참조를 피한다
 - **위젯 추가는 사이드바의 팔레트**([WidgetPalette.tsx](../src/app/WidgetPalette.tsx), D-056): 클릭하면 화면 가운데, 캔버스로 끌어다 놓으면 그 자리(`addWidget(type, data, at)`). 하단 컨트롤바에는 위젯 버튼이 없다
 - **위젯을 키우면 본문도 커진다**(D-059): `WidgetFrame`이 본문에 `scale(width / defaultSize.width)`(0.5~3배)를 건다. 브라우저 위젯만 예외(페이지가 스스로 리플로우)
-- **Esc**: 최대화 상태면 복귀, 아니면 **마지막에 클릭한 위젯을 닫는다**(텍스트 입력 중에는 안 닫힘)
+- **다중 선택**(D-060): ⇧+빈 캔버스 드래그 = 밴드 선택, ⌥+클릭 = 토글, ⌥ 누르는 동안 hover 테두리. 선택이 있으면 정렬·맞춤·드래그가 그것만 건드린다(`uiStore.selectedIds`, 비영속)
+- **Esc는 지우지 않는다**(D-061): 최대화 복귀 → 선택 해제까지만. 위젯 ✕는 8초 Undo 토스트(`UndoToast`)로 되돌릴 수 있다
 - 위젯 컴포넌트는 **`{ id }`만** 받고 `useWidgetData<D>(id)`로 자기 데이터만 구독 (prop drilling 금지)
 - 위젯 **본체는 투명**이고 색은 전부 테마 토큰에서 온다 (D-033). 새 위젯을 만들 때 `bg-white`/`bg-black/40` 같은 색을 직접 쓰지 말 것 — `.glass`, `.t-ink`, `.field`, `.row`, `.chrome-button`을 쓴다
 - 예외: Photo·Sketch는 `.photo-paper`로 불투명 유지 (인쇄물이라는 개념)

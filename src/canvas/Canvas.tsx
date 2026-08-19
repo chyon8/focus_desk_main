@@ -19,6 +19,10 @@ export const Canvas: React.FC = () => {
   );
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen);
   const maximizedId = useUiStore((s) => s.maximizedWidgetId);
+  // Rubber band in screen pixels, live only while ⇧-dragging the background.
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(
+    null
+  );
   const { isSpaceHeld, isPanning } = useCameraControls(viewportRef);
   const isCameraMoving = useCameraMotion(camera ?? { x: 0, y: 0, zoom: 1 });
   useKeyboardShortcuts();
@@ -64,6 +68,59 @@ export const Canvas: React.FC = () => {
     scale: 1 / camera.zoom,
   };
 
+  const pointIn = (e: React.PointerEvent) => {
+    const box = viewportRef.current!.getBoundingClientRect();
+    return { x: e.clientX - box.left, y: e.clientY - box.top };
+  };
+
+  // ⇧-drag on empty canvas draws a band and picks up everything it touches; a
+  // plain click on empty canvas drops the selection again.
+  const onPointerDown = (e: React.PointerEvent) => {
+    // Space-drag is a pan; it must not drop the selection on the way past.
+    if (e.button !== 0 || isSpaceHeld) return;
+    if (!e.shiftKey) {
+      // Only a click on bare canvas clears — one on a widget is that widget's.
+      if (e.target === e.currentTarget) useUiStore.getState().clearSelection();
+      return;
+    }
+    // ⇧ bands from anywhere, widgets included: the frames let the event through.
+    const point = pointIn(e);
+    setMarquee({ x0: point.x, y0: point.y, x1: point.x, y1: point.y });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!marquee) return;
+    const point = pointIn(e);
+    setMarquee({ ...marquee, x1: point.x, y1: point.y });
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!marquee) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    setMarquee(null);
+
+    const a = screenToWorld(camera, { x: marquee.x0, y: marquee.y0 });
+    const b = screenToWorld(camera, { x: marquee.x1, y: marquee.y1 });
+    const band = {
+      left: Math.min(a.x, b.x),
+      right: Math.max(a.x, b.x),
+      top: Math.min(a.y, b.y),
+      bottom: Math.max(a.y, b.y),
+    };
+    const widgets = useSpaceStore.getState().spaces[useSpaceStore.getState().activeSpaceId].widgets;
+    const hits = Object.values(widgets)
+      .filter(
+        (w) =>
+          w.x < band.right &&
+          w.x + w.width > band.left &&
+          w.y < band.bottom &&
+          w.y + w.height > band.top
+      )
+      .map((w) => w.id);
+    useUiStore.getState().setSelection(hits);
+  };
+
   return (
     // Inset by the sidebar so widgets never slide underneath it and become
     // unreachable. The world container's origin is this element's top-left.
@@ -95,6 +152,20 @@ export const Canvas: React.FC = () => {
           <WidgetFrame key={id} id={id} fullRect={id === maximizedId ? fullRect : undefined} />
         ))}
       </div>
+
+      {marquee && (
+        <div
+          className="absolute pointer-events-none rounded-sm"
+          style={{
+            left: Math.min(marquee.x0, marquee.x1),
+            top: Math.min(marquee.y0, marquee.y1),
+            width: Math.abs(marquee.x1 - marquee.x0),
+            height: Math.abs(marquee.y1 - marquee.y0),
+            border: '1px solid var(--accent)',
+            background: 'color-mix(in srgb, var(--accent) 18%, transparent)',
+          }}
+        />
+      )}
     </div>
   );
 };

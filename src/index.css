@@ -192,6 +192,30 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
 
+/* While ⌥ is down, hovering a widget shows the rim it would be picked with, so a
+   selection can be built without guessing what the next click hits. */
+.alt-pick:hover {
+  outline: 3px dashed var(--accent);
+  outline-offset: 3px;
+}
+
+/* Picked out. Two rings, light over dark: the accent alone disappears against a
+   bright wallpaper, so a dark halo sits outside it. */
+.widget-selected {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.widget-selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+}
+
 .widget-header {
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015));
   border-bottom: 1px solid var(--panel-border);

@@ -5,7 +5,7 @@ import type { Camera } from '../canvas/camera';
 import { arrange, ArrangeMode, fitCamera } from '../canvas/layout';
 import { useAppTimeStore } from './appTimeStore';
 import { useSpaceTimeStore } from './spaceTimeStore';
-import { canvasArea } from './uiStore';
+import { canvasArea, useUiStore } from './uiStore';
 import { migrateLegacySpaces, migrateSpace } from '../spaces/migrate';
 import { SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from '../spaces/types';
 import { DEFAULT_THEME_ID } from '../themes/themes';
@@ -40,9 +40,26 @@ interface SpaceState {
   ) => void;
   bringToFront: (id: string) => void;
   moveWidget: (id: string, x: number, y: number) => void;
+  /** Moves a whole selection by one delta, so the group keeps its shape. */
+  moveWidgets: (ids: string[], dx: number, dy: number) => void;
   resizeWidget: (id: string, width: number, height: number) => void;
   updateWidgetData: (id: string, patch: Record<string, unknown>) => void;
   removeWidget: (id: string) => void;
+  /** The last widget closed, kept so the toast can put it back. */
+  lastRemoved: { spaceId: string; widget: WidgetDoc } | null;
+  undoRemove: () => void;
+  dismissRemoved: () => void;
+}
+
+/** Whether the user has singled widgets out — arrange and fit then leave the rest alone. */
+function isSelection(space: SpaceDoc) {
+  return useUiStore.getState().selectedIds.some((id) => space.widgets[id]);
+}
+
+/** The widgets an arrange or a fit acts on: the selection, or everything. */
+function inPlay(space: SpaceDoc) {
+  const selected = useUiStore.getState().selectedIds.filter((id) => space.widgets[id]);
+  return selected.length ? selected.map((id) => space.widgets[id]) : Object.values(space.widgets);
 }
 
 function newSpace(name: string): SpaceDoc {
@@ -198,26 +215,32 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   setAmbience: (ambience) => updateActive(set, (space) => ({ ...space, ambience })),
 
-  // Tidy every widget, then frame the result so the user sees it.
+  // Tidy the widgets in play, then frame the result so the user sees it.
   arrangeWidgets: (mode = 'grid', columns) =>
     updateActive(set, (space) => {
-      const boxes = Object.values(space.widgets);
+      const boxes = inPlay(space);
       if (boxes.length === 0) return space;
+
+      // A selection is tidied where it already sits; everything else goes to the
+      // world origin as before.
+      const anchor = isSelection(space)
+        ? { x: Math.min(...boxes.map((b) => b.x)), y: Math.min(...boxes.map((b) => b.y)) }
+        : { x: 0, y: 0 };
 
       const positions = arrange(boxes, mode, columns);
       const widgets = { ...space.widgets };
       for (const [id, pos] of Object.entries(positions)) {
-        widgets[id] = { ...widgets[id], ...pos };
+        widgets[id] = { ...widgets[id], x: pos.x + anchor.x, y: pos.y + anchor.y };
       }
       const area = canvasArea();
-      const camera = fitCamera(Object.values(widgets), area);
+      const camera = fitCamera(inPlay({ ...space, widgets }), area);
       return { ...space, widgets, camera: camera ?? space.camera };
     }),
 
   fitToWidgets: () =>
     updateActive(set, (space) => {
       const area = canvasArea();
-      const camera = fitCamera(Object.values(space.widgets), area);
+      const camera = fitCamera(inPlay(space), area);
       return camera ? { ...space, camera } : space;
     }),
 
@@ -259,6 +282,16 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       widgets: { ...space.widgets, [id]: { ...space.widgets[id], x, y } },
     })),
 
+  moveWidgets: (ids, dx, dy) =>
+    updateActive(set, (space) => {
+      const widgets = { ...space.widgets };
+      for (const id of ids) {
+        const widget = widgets[id];
+        if (widget) widgets[id] = { ...widget, x: widget.x + dx, y: widget.y + dy };
+      }
+      return { ...space, widgets };
+    }),
+
   resizeWidget: (id, width, height) =>
     updateActive(set, (space) => ({
       ...space,
@@ -281,12 +314,37 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       },
     })),
 
-  removeWidget: (id) =>
+  removeWidget: (id) => {
+    const ui = useUiStore.getState();
+    ui.setSelection(ui.selectedIds.filter((selected) => selected !== id));
+    const { spaces, activeSpaceId } = get();
+    const widget = spaces[activeSpaceId]?.widgets[id];
+    if (widget) set({ lastRemoved: { spaceId: activeSpaceId, widget } });
     updateActive(set, (space) => {
       const widgets = { ...space.widgets };
       delete widgets[id];
       return { ...space, widgets };
+    });
+  },
+
+  lastRemoved: null,
+
+  // Puts it back where it was, in the space it was closed in — which may not be
+  // the one on screen now.
+  undoRemove: () =>
+    set((s) => {
+      const removed = s.lastRemoved;
+      const space = removed && s.spaces[removed.spaceId];
+      if (!removed || !space) return { lastRemoved: null };
+      const next = {
+        ...space,
+        widgets: { ...space.widgets, [removed.widget.id]: removed.widget },
+      };
+      scheduleSave(next);
+      return { lastRemoved: null, spaces: { ...s.spaces, [next.id]: next } };
     }),
+
+  dismissRemoved: () => set({ lastRemoved: null }),
 }));
 
 // --- Selectors ---

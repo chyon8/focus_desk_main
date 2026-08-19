@@ -13,6 +13,7 @@ import { SceneLayer } from '../themes/SceneLayer';
 import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
 import { ThemePicker } from './ThemePicker';
 import { Sidebar } from './Sidebar';
+import { UndoToast } from './UndoToast';
 
 export const App: React.FC = () => {
   const isLoaded = useSpaceStore((s) => s.isLoaded);
@@ -56,6 +57,7 @@ export const App: React.FC = () => {
       <FocusSessionBar />
       <AmbienceDock />
       <ThemePicker />
+      <UndoToast />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
     </div>
   );

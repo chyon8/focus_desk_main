@@ -46,6 +46,8 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   fullRect,
 }) => {
   const widget = useWidget(id);
+  const isSelected = useUiStore((s) => s.selectedIds.includes(id));
+  const isAltHeld = useUiStore((s) => s.isAltHeld);
   const drag = useRef<{ pointerId: number; lastX: number; lastY: number; mode: 'move' | 'resize' } | null>(
     null
   );
@@ -65,6 +67,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
 
   const startGesture = (e: React.PointerEvent, mode: 'move' | 'resize') => {
     if (fullRect) return; // A maximised widget has nowhere to be dragged to.
+    if (e.shiftKey) return; // ⇧-drag is the canvas drawing a selection band.
     e.stopPropagation();
     e.preventDefault();
     drag.current = { pointerId: e.pointerId, lastX: e.clientX, lastY: e.clientY, mode };
@@ -82,7 +85,13 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
     const current = spaces[activeSpaceId].widgets[id];
 
     if (gesture.mode === 'move') {
-      moveWidget(id, current.x + dx, current.y + dy);
+      // Dragging one of a picked-out group moves the whole group with it.
+      const { selectedIds } = useUiStore.getState();
+      if (selectedIds.length > 1 && selectedIds.includes(id)) {
+        useSpaceStore.getState().moveWidgets(selectedIds, dx, dy);
+      } else {
+        moveWidget(id, current.x + dx, current.y + dy);
+      }
     } else {
       resizeWidget(id, current.width + dx, current.height + dy);
     }
@@ -100,7 +109,9 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
     <div
       /* no-drag: a widget sitting under the window's top drag strip must move
          itself when its header is dragged, not the whole window (App.tsx). */
-      className="widget-glass no-drag absolute rounded-2xl overflow-hidden"
+      className={`widget-glass no-drag absolute rounded-2xl overflow-hidden ${
+        isAltHeld ? 'alt-pick' : ''
+      } ${isSelected ? 'widget-selected' : ''}`}
       style={{
         left: box.x,
         top: box.y,
@@ -112,9 +123,25 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
           transformOrigin: 'top left',
         }),
       }}
-      onPointerDownCapture={() => {
+      onPointerDownCapture={(e) => {
+        if (e.shiftKey) return; // Let the canvas band-select over this widget.
+        // ⌥-click anywhere on a widget picks it out instead of using it. (Inside a
+        // browser widget's page the click never reaches here — its header does.)
+        if (e.altKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          useUiStore.getState().toggleSelected(id);
+          return;
+        }
         useSpaceStore.getState().bringToFront(id);
-        useUiStore.getState().setFocusedWidget(id);
+      }}
+      /* A picking click must not also press what is under it — ⌥-clicking an app
+         widget used to launch the app. */
+      onClickCapture={(e) => {
+        if (e.altKey || e.shiftKey) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
       }}
     >
       <div
