@@ -7,7 +7,7 @@ electron/           # main process
   ipc/              # 도메인별 IPC 핸들러 (spaces, storage, images, window-mode)
   preload.ts
 src/
-  app/              # 엔트리, 전역 셸 (Sidebar, ControlBar, ArrangeMenu, ThemePicker)
+  app/              # 엔트리, 전역 셸 (Sidebar, WidgetPalette, ArrangeMenu, ThemePicker)
   canvas/           # ZUI 코어: 카메라, 월드 컨테이너, WidgetFrame, 단축키
   spaces/           # 스페이스 문서 타입, 마이그레이션, 기본 월페이퍼 목록
   themes/           # 테마 정의 + 배경 스택 (SceneLayer, ParticleLayer, useTheme)
@@ -29,6 +29,7 @@ docs/
 - 변환 유틸: `worldToScreen`, `screenToWorld` — vitest 대상
 - 줌: 커서 중심(zoom-to-cursor). 팬: 스페이스바 드래그 + 트랙패드
 - 위젯 드래그 중에는 transient 업데이트(리렌더 최소화), 드롭 시 스토어 커밋
+- 셸은 **사이드바 하나**(D-057). 하단 컨트롤바는 없앴고 정리·맞춤·줌%·통계는 사이드바로 갔다. 단축키 G·F는 웹페이지에 포커스가 있으면 안 오므로 **⌥G·⌥F**가 같은 일을 한다(main의 `before-input-event`가 전달)
 
 ## 캔버스 밀도·가독성 (1·2단계 완료 2026-08-18 — 3단계는 눈으로 보고 판단)
 위젯 6개를 펼쳐두면 미션 컨트롤보다 훨씬 작고 구멍이 많고 위가 잘려 보인다. 원인 4개:
@@ -58,6 +59,7 @@ docs/
 
 ## 위젯 시스템 (widgets/)
 - Registry 패턴, 2단 분리 (D-011): `defs.ts`(label/defaultSize/createData, React 무관) ↔ `registry.ts`(icon/Component 결합). 스토어는 defs만 import해 순환 참조를 피한다
+- **위젯 추가는 사이드바의 팔레트**([WidgetPalette.tsx](../src/app/WidgetPalette.tsx), D-056): 클릭하면 화면 가운데, 캔버스로 끌어다 놓으면 그 자리(`addWidget(type, data, at)`). 하단 컨트롤바에는 위젯 버튼이 없다
 - 위젯 컴포넌트는 **`{ id }`만** 받고 `useWidgetData<D>(id)`로 자기 데이터만 구독 (prop drilling 금지)
 - 위젯 **본체는 투명**이고 색은 전부 테마 토큰에서 온다 (D-033). 새 위젯을 만들 때 `bg-white`/`bg-black/40` 같은 색을 직접 쓰지 말 것 — `.glass`, `.t-ink`, `.field`, `.row`, `.chrome-button`을 쓴다
 - 예외: Photo·Sketch는 `.photo-paper`로 불투명 유지 (인쇄물이라는 개념)

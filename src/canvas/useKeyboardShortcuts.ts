@@ -23,9 +23,27 @@ export function useKeyboardShortcuts() {
         useUiStore.getState().clearMaximized();
         return;
       }
+      const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
+
+      // ⌥G/⌥F do the same as G/F. They exist because a focused web page eats the
+      // plain letters, and only a chord can be told apart from typing well enough
+      // for the main process to forward it out of the guest. `code`, not `key`:
+      // macOS turns ⌥G into '©'.
+      if (e.altKey && !e.metaKey && !e.ctrlKey && !isTyping(e.target)) {
+        if (e.code === 'KeyG') {
+          e.preventDefault();
+          arrangeWidgets();
+          return;
+        }
+        if (e.code === 'KeyF') {
+          e.preventDefault();
+          fitToWidgets();
+          return;
+        }
+      }
+
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
 
-      const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
       if (e.key === 'g' || e.key === 'G') {
         e.preventDefault();
         arrangeWidgets();
@@ -35,10 +53,13 @@ export function useKeyboardShortcuts() {
       }
     };
 
-    // Same two escapes, but pressed while a browser widget had focus.
+    // The same shortcuts, but pressed while a browser widget had focus.
     const offGuestKey = window.windowMode?.onGuestKey((key) => {
+      const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
       if (key === 'escape') useUiStore.getState().clearMaximized();
       else if (key === 'fullscreen') void window.windowMode?.toggleFullscreen();
+      else if (key === 'arrange') arrangeWidgets();
+      else if (key === 'fit') fitToWidgets();
     });
 
     window.addEventListener('keydown', onKeyDown);

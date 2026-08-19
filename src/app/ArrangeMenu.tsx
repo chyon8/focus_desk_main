@@ -37,7 +37,7 @@ export const ArrangeMenu: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        title="Arrange (G)"
+        title="Arrange (G, or ⌥G inside a page)"
         className={`chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95 ${
           isOpen ? 'row-on' : ''
         }`}
@@ -53,7 +53,7 @@ export const ArrangeMenu: React.FC = () => {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
-              className="glass-panel absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[90] w-52 p-2 rounded-2xl shadow-2xl"
+              className="glass-panel absolute bottom-full mb-3 left-0 z-[90] w-52 p-2 rounded-2xl shadow-2xl"
             >
               <div className="t-faint px-2 pt-1 pb-2 text-[10px] font-bold uppercase tracking-widest">
                 Columns

@@ -32,7 +32,12 @@ interface SpaceState {
   setAmbience: (ambience: AmbienceLevels) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
   fitToWidgets: () => void;
-  addWidget: (type: WidgetType, data?: Record<string, unknown>) => void;
+  /** `at` is a world point the widget is centred on — where the palette icon was dropped. */
+  addWidget: (
+    type: WidgetType,
+    data?: Record<string, unknown>,
+    at?: { x: number; y: number }
+  ) => void;
   bringToFront: (id: string) => void;
   moveWidget: (id: string, x: number, y: number) => void;
   resizeWidget: (id: string, width: number, height: number) => void;
@@ -216,19 +221,23 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       return camera ? { ...space, camera } : space;
     }),
 
-  addWidget: (type, data) => {
+  addWidget: (type, data, at) => {
     const def = WIDGET_DEFS[type];
     updateActive(set, (space) => {
-      // Drop it in the middle of the canvas area the user is looking at.
+      // Dropped from the palette: centre it on the pointer. Clicked: the middle of
+      // the canvas area the user is looking at.
       const area = canvasArea();
       const widget: WidgetDoc = {
         id: crypto.randomUUID(),
         type,
-        x: space.camera.x + (area.width / space.camera.zoom - def.defaultSize.width) / 2,
-        y:
-          space.camera.y +
-          (area.y + (area.height - def.defaultSize.height * space.camera.zoom) / 2) /
-            space.camera.zoom,
+        x: at
+          ? at.x - def.defaultSize.width / 2
+          : space.camera.x + (area.width / space.camera.zoom - def.defaultSize.width) / 2,
+        y: at
+          ? at.y - def.defaultSize.height / 2
+          : space.camera.y +
+            (area.y + (area.height - def.defaultSize.height * space.camera.zoom) / 2) /
+              space.camera.zoom,
         ...def.defaultSize,
         z: topZ(space) + 1,
         data: { ...def.createData(), ...data },

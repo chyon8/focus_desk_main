@@ -66,12 +66,19 @@ app.on('web-contents-created', (_event, contents) => {
     return { action: 'deny' };
   });
 
-  contents.on('before-input-event', (_e, input) => {
+  contents.on('before-input-event', (e, input) => {
     if (input.type !== 'keyDown' || !win || win.isDestroyed()) return;
 
     if (input.key === 'Escape') win.webContents.send('guest-key', 'escape');
     else if (input.meta && input.control && input.key.toLowerCase() === 'f') {
       win.webContents.send('guest-key', 'fullscreen');
+    } else if (input.alt && !input.meta && !input.control) {
+      // Arrange and fit. The page keeps plain G/F (it may well be typing), so the
+      // app's copies are ⌥G/⌥F — `code`, because ⌥G arrives as '©'.
+      const action = input.code === 'KeyG' ? 'arrange' : input.code === 'KeyF' ? 'fit' : null;
+      if (!action) return;
+      e.preventDefault();
+      win.webContents.send('guest-key', action);
     }
   });
 });

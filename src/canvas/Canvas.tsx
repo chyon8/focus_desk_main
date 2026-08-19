@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { WIDGET_DRAG_TYPE, WidgetDragPayload } from '../app/WidgetPalette';
 import { useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
+import { screenToWorld } from './camera';
 import { useCameraControls } from './useCameraControls';
 import { useCameraMotion } from './useCameraMotion';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
@@ -32,6 +34,18 @@ export const Canvas: React.FC = () => {
 
   if (!camera) return null;
 
+  // A widget dragged out of the sidebar palette lands where it was let go, so the
+  // pointer has to be read in world units.
+  const onDrop = (e: React.DragEvent) => {
+    const raw = e.dataTransfer.getData(WIDGET_DRAG_TYPE);
+    const box = viewportRef.current?.getBoundingClientRect();
+    if (!raw || !box) return;
+    e.preventDefault();
+    const { type, data } = JSON.parse(raw) as WidgetDragPayload;
+    const at = screenToWorld(camera, { x: e.clientX - box.left, y: e.clientY - box.top });
+    useSpaceStore.getState().addWidget(type, data, at);
+  };
+
   // The rect that covers the visible canvas, minus the strip the floating chrome
   // sits in — otherwise the sidebar toggle and the focus pill land on the
   // maximised widget's own toolbar. Handing this to a widget blows it up in place,
@@ -60,6 +74,13 @@ export const Canvas: React.FC = () => {
         left: isSidebarOpen ? SIDEBAR_WIDTH : 0,
         cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default',
       }}
+      onDragOver={(e) => {
+        // Only palette drags: a file dropped on a widget is that widget's business.
+        if (!e.dataTransfer.types.includes(WIDGET_DRAG_TYPE)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={onDrop}
     >
       <div
         className="absolute top-0 left-0 origin-top-left"

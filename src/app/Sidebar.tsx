@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { BookOpen, ChevronLeft, Coffee, Home, Layout, Monitor, PanelLeft, Plus, Trash2 } from 'lucide-react';
+import { BarChart2, BookOpen, ChevronLeft, Coffee, Home, Layout, Monitor, PanelLeft, Plus, Scan, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
+import { ArrangeMenu } from './ArrangeMenu';
+import { WidgetPalette } from './WidgetPalette';
 
 function spaceIcon(name: string) {
   const n = name.toLowerCase();
@@ -57,7 +59,7 @@ const SpaceRow: React.FC<{ id: string; canDelete: boolean; today: string }> = ({
   );
 };
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights }) => {
   // Shared, because the canvas insets itself by the sidebar's width.
   const isOpen = useUiStore((s) => s.isSidebarOpen);
   const setIsOpen = useUiStore((s) => s.setSidebarOpen);
@@ -68,6 +70,8 @@ export const Sidebar: React.FC = () => {
   // Object.is comparison on every render and loop forever (React #185).
   const spaceIds = useSpaceStore(useShallow((s) => Object.keys(s.spaces)));
   const addSpace = useSpaceStore((s) => s.addSpace);
+  const fitToWidgets = useSpaceStore((s) => s.fitToWidgets);
+  const zoom = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera.zoom ?? 1);
   const today = useToday();
   const todayTotal = useSpaceTimeStore((s) =>
     spaceIds.reduce((sum, id) => sum + (s.time[id]?.[today] ?? 0), 0)
@@ -124,19 +128,24 @@ export const Sidebar: React.FC = () => {
               <span className="t-faint text-[10px] font-bold uppercase tracking-widest">
                 My Spaces
               </span>
-              <span className="t-faint text-[10px] tabular-nums" title="Time here today">
+              <button
+                onClick={onOpenInsights}
+                title="Time here today — open focus insights"
+                className="chrome-button t-faint flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] tabular-nums"
+              >
+                <BarChart2 size={11} />
                 {formatDuration(todayTotal)}
-              </span>
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1 px-1">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1 px-1">
               {spaceIds.map((id) => (
                 <SpaceRow key={id} id={id} canDelete={spaceIds.length > 1} today={today} />
               ))}
             </div>
 
             {isCreating ? (
-              <div className="glass mt-auto p-3 rounded-xl">
+              <div className="glass shrink-0 mt-3 p-3 rounded-xl">
                 <input
                   autoFocus
                   placeholder="Name"
@@ -163,12 +172,30 @@ export const Sidebar: React.FC = () => {
             ) : (
               <button
                 onClick={() => setIsCreating(true)}
-                className="row mt-auto flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium"
+                className="row shrink-0 mt-3 flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium"
               >
                 <Plus size={16} />
                 <span>New Space</span>
               </button>
             )}
+            <WidgetPalette />
+
+            {/* Canvas tools. They were a floating bar across the bottom of the
+                screen; the canvas is worth more than they are. */}
+            <div className="border-hair shrink-0 mt-3 pt-3 flex items-center gap-1 border-t">
+              <ArrangeMenu />
+              <button
+                onClick={fitToWidgets}
+                title="Fit to widgets (F, or ⌥F inside a page)"
+                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
+              >
+                <Scan size={18} />
+              </button>
+              <span className="t-faint ml-auto px-2 text-xs tabular-nums" title="Canvas zoom">
+                {Math.round(zoom * 100)}%
+              </span>
+            </div>
+
           </motion.div>
         )}
       </AnimatePresence>

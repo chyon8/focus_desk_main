@@ -12,7 +12,6 @@ import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { SceneLayer } from '../themes/SceneLayer';
 import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
 import { ThemePicker } from './ThemePicker';
-import { ControlBar } from './ControlBar';
 import { Sidebar } from './Sidebar';
 
 export const App: React.FC = () => {
@@ -53,11 +52,10 @@ export const App: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 h-6 z-0 titlebar-drag-region" />
       <SceneLayer theme={theme} />
       <Canvas />
-      <Sidebar />
+      <Sidebar onOpenInsights={() => setShowInsights(true)} />
       <FocusSessionBar />
       <AmbienceDock />
       <ThemePicker />
-      <ControlBar onOpenInsights={() => setShowInsights(true)} />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
     </div>
   );
