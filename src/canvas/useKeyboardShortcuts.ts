@@ -17,10 +17,22 @@ export function useKeyboardShortcuts() {
         void window.windowMode?.toggleFullscreen();
         return;
       }
-      // Esc leaves a maximised widget, even from inside a text field.
-      if (e.key === 'Escape' && useUiStore.getState().maximizedWidgetId) {
-        e.preventDefault();
-        useUiStore.getState().clearMaximized();
+      if (e.key === 'Escape') {
+        const { maximizedWidgetId, clearMaximized, focusedWidgetId, setFocusedWidget } =
+          useUiStore.getState();
+        // Leaving a maximised widget wins, and works even from inside a text field.
+        if (maximizedWidgetId) {
+          e.preventDefault();
+          clearMaximized();
+          return;
+        }
+        // Otherwise Esc closes the widget last clicked — but never while its own
+        // field has focus, where Esc means "stop editing".
+        if (focusedWidgetId && !isTyping(e.target)) {
+          e.preventDefault();
+          useSpaceStore.getState().removeWidget(focusedWidgetId);
+          setFocusedWidget(null);
+        }
         return;
       }
       const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();

@@ -81,6 +81,8 @@ export interface KanbanData {
 
 export interface BrowserData {
   url: string;
+  /** Page zoom, like a browser's ⌘+/⌘−. 1 is 100%. */
+  zoom?: number;
 }
 
 export interface CalendarData {

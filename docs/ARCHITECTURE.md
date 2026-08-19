@@ -60,13 +60,16 @@ docs/
 ## 위젯 시스템 (widgets/)
 - Registry 패턴, 2단 분리 (D-011): `defs.ts`(label/defaultSize/createData, React 무관) ↔ `registry.ts`(icon/Component 결합). 스토어는 defs만 import해 순환 참조를 피한다
 - **위젯 추가는 사이드바의 팔레트**([WidgetPalette.tsx](../src/app/WidgetPalette.tsx), D-056): 클릭하면 화면 가운데, 캔버스로 끌어다 놓으면 그 자리(`addWidget(type, data, at)`). 하단 컨트롤바에는 위젯 버튼이 없다
+- **위젯을 키우면 본문도 커진다**(D-059): `WidgetFrame`이 본문에 `scale(width / defaultSize.width)`(0.5~3배)를 건다. 브라우저 위젯만 예외(페이지가 스스로 리플로우)
+- **Esc**: 최대화 상태면 복귀, 아니면 **마지막에 클릭한 위젯을 닫는다**(텍스트 입력 중에는 안 닫힘)
 - 위젯 컴포넌트는 **`{ id }`만** 받고 `useWidgetData<D>(id)`로 자기 데이터만 구독 (prop drilling 금지)
 - 위젯 **본체는 투명**이고 색은 전부 테마 토큰에서 온다 (D-033). 새 위젯을 만들 때 `bg-white`/`bg-black/40` 같은 색을 직접 쓰지 말 것 — `.glass`, `.t-ink`, `.field`, `.row`, `.chrome-button`을 쓴다
 - 예외: Photo·Sketch는 `.photo-paper`로 불투명 유지 (인쇄물이라는 개념)
 
 ## 브라우저 (widgets/BrowserWidget)
 - 웹 탭 = 브라우저 위젯 안의 **`<webview>` 엘리먼트**(D-029). 웹 컨텐츠가 페이지 레이아웃 안에 있으므로 위치·스케일·클리핑·z-index를 브라우저가 처리 — main process 동기화 코드 없음
-- 줌은 월드 컨테이너의 CSS 트랜스폼이 그대로 적용됨 → **페이지 리플로우 없음**
+- 캔버스 줌은 월드 컨테이너의 CSS 트랜스폼이라 **페이지 리플로우가 없다**(확대만 된다)
+- 그래서 **페이지 줌이 따로 있다**(D-058): 주소창 −/%/+ 와 ⌘+·⌘−·⌘0 → `setZoomFactor`, `data.zoom`에 영속. 위젯을 드래그해 키우는 건 확대가 아니라 **뷰포트를 넓히는 것**
 - 스페이스별 `partition="persist:space-<id>"` → 로그인 분리
 - 스페이스 전환 = 언마운트 = 웹 컨텐츠 파괴. 돌아오면 `data.url`(마지막 방문 주소)로 재로드
 - ⚠️ 과거 WebContentsView 방식은 D-029에서 폐기. 그 흔적(스냅샷·hibernation·클리핑)은 코드에 남아 있지 않음

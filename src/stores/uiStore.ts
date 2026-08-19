@@ -16,8 +16,11 @@ interface UiState {
   // Widget blown up to fill the canvas. Purely a view state: the widget keeps its
   // stored position and size, so leaving maximised puts it back untouched.
   maximizedWidgetId: string | null;
+  /** The widget last clicked — what Esc closes. */
+  focusedWidgetId: string | null;
 
   setSidebarOpen: (open: boolean) => void;
+  setFocusedWidget: (widgetId: string | null) => void;
   toggleMaximized: (widgetId: string) => void;
   clearMaximized: () => void;
 }
@@ -25,8 +28,11 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   isSidebarOpen: true,
   maximizedWidgetId: null,
+  focusedWidgetId: null,
 
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
+
+  setFocusedWidget: (focusedWidgetId) => set({ focusedWidgetId }),
 
   toggleMaximized: (widgetId) =>
     set((s) => ({ maximizedWidgetId: s.maximizedWidgetId === widgetId ? null : widgetId })),

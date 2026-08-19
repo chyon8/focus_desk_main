@@ -51,6 +51,14 @@ function createWindow() {
   });
 }
 
+// ⌘+ arrives as '=' unless shift is down, and the numpad spells it '+'.
+const ZOOM_KEYS: Record<string, string> = {
+  '=': 'zoom-in',
+  '+': 'zoom-in',
+  '-': 'zoom-out',
+  '0': 'zoom-reset',
+};
+
 // Key presses inside a browser widget stay in that page — the app never sees them.
 // Without this, clicking into a page while a widget is maximised or the window is
 // fullscreen leaves no way out: Esc and ⌃⌘F both go to the site instead.
@@ -72,6 +80,12 @@ app.on('web-contents-created', (_event, contents) => {
     if (input.key === 'Escape') win.webContents.send('guest-key', 'escape');
     else if (input.meta && input.control && input.key.toLowerCase() === 'f') {
       win.webContents.send('guest-key', 'fullscreen');
+    } else if (input.meta && !input.control && ZOOM_KEYS[input.key]) {
+      // Page zoom. The widget owns the value (it persists it), so the chord goes
+      // to the renderer rather than straight to this guest's zoom factor — the id
+      // says which browser widget was in front.
+      e.preventDefault();
+      win.webContents.send('guest-key', ZOOM_KEYS[input.key], contents.id);
     } else if (input.alt && !input.meta && !input.control) {
       // Arrange and fit. The page keeps plain G/F (it may well be typing), so the
       // app's copies are ⌥G/⌥F — `code`, because ⌥G arrives as '©'.

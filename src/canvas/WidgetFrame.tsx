@@ -5,6 +5,10 @@ import { Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 
 const HEADER_HEIGHT = 40;
+// How far a widget's content may be magnified by dragging the frame. Below 1 it
+// shrinks with the frame, so a widget pulled small stays whole instead of clipping.
+const MIN_CONTENT_SCALE = 0.5;
+const MAX_CONTENT_SCALE = 3;
 // Above every other widget, below the app's own chrome.
 const MAXIMIZED_Z = 9000;
 
@@ -50,6 +54,14 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   const Body = entry.Component;
 
   const box = fullRect ?? widget;
+  const bodyHeight = box.height - HEADER_HEIGHT;
+  const contentScale =
+    widget.type === 'browser'
+      ? 1
+      : Math.min(
+          MAX_CONTENT_SCALE,
+          Math.max(MIN_CONTENT_SCALE, box.width / entry.defaultSize.width)
+        );
 
   const startGesture = (e: React.PointerEvent, mode: 'move' | 'resize') => {
     if (fullRect) return; // A maximised widget has nowhere to be dragged to.
@@ -100,7 +112,10 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
           transformOrigin: 'top left',
         }),
       }}
-      onPointerDownCapture={() => useSpaceStore.getState().bringToFront(id)}
+      onPointerDownCapture={() => {
+        useSpaceStore.getState().bringToFront(id);
+        useUiStore.getState().setFocusedWidget(id);
+      }}
     >
       <div
         className={`widget-header group h-10 flex items-center px-3 gap-2 select-none ${
@@ -143,8 +158,21 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
         </div>
       </div>
 
-      <div className="w-full" style={{ height: box.height - HEADER_HEIGHT }}>
-        <Body id={id} />
+      {/* Dragging a widget bigger magnifies what is inside it rather than handing
+          the same content more room: a memo at twice the size is meant to be twice
+          as readable. The browser is the exception — a real page lays itself out
+          again for the space it is given, and scaling it would fight that. */}
+      <div className="w-full overflow-hidden" style={{ height: bodyHeight }}>
+        <div
+          style={{
+            width: box.width / contentScale,
+            height: bodyHeight / contentScale,
+            transform: contentScale === 1 ? undefined : `scale(${contentScale})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          <Body id={id} />
+        </div>
       </div>
 
       {!fullRect && (

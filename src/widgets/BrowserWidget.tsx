@@ -1,10 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, RotateCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { BrowserData } from '../spaces/types';
 import { useSpaceStore } from '../stores/spaceStore';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
 import { LINK_SHIM } from './browserLinks';
 import { useWidgetData } from './useWidgetData';
+
+// The levels a browser's ⌘+/⌘− walks through.
+const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+
+/** The next level in `direction`, or the same one at either end. */
+function stepZoom(zoom: number, direction: 1 | -1) {
+  const nearest = ZOOM_STEPS.reduce((best, step) =>
+    Math.abs(step - zoom) < Math.abs(best - zoom) ? step : best
+  );
+  return ZOOM_STEPS[ZOOM_STEPS.indexOf(nearest) + direction] ?? nearest;
+}
 
 function normalizeUrl(input: string) {
   const trimmed = input.trim();
@@ -45,6 +56,15 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   // src is set once: after that the page navigates itself, and re-rendering with
   // a new src would yank it back.
   const initialUrl = useRef(data.url);
+  // Page zoom — the browser's own ⌘+/⌘−. It re-lays the page out at a new size,
+  // which the canvas zoom cannot do: that only scales what is already drawn.
+  const zoom = data.zoom ?? 1;
+  // Read by the shortcut handler, which must not re-subscribe on every change.
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  // Set on the first dom-ready: which guest this is, and proof it can be zoomed
+  // at all (setZoomFactor throws before the element is attached).
+  const contentsId = useRef<number | null>(null);
 
   useEffect(() => {
     const el = view.current;
@@ -72,6 +92,8 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
 
     // Every load gets a fresh page, so the shims go in on every dom-ready.
     const onDomReady = () => {
+      contentsId.current = el.getWebContentsId();
+      el.setZoomFactor(zoomRef.current);
       void el.insertCSS(FULLSCREEN_CSS);
       void el.executeJavaScript(FULLSCREEN_SHIM);
       void el.executeJavaScript(LINK_SHIM);
@@ -85,6 +107,22 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       el.removeEventListener('did-navigate', onNavigate);
       el.removeEventListener('did-navigate-in-page', onNavigateInPage);
     };
+  }, [update]);
+
+  useEffect(() => {
+    if (contentsId.current !== null) view.current?.setZoomFactor(zoom);
+  }, [zoom]);
+
+  // ⌘+/⌘−/⌘0 pressed inside the page never reach the app, so the main process
+  // forwards them with the id of the guest they happened in.
+  useEffect(() => {
+    const off = window.windowMode?.onGuestKey((key, id) => {
+      if (id === undefined || id !== contentsId.current) return;
+      if (key === 'zoom-in') update({ zoom: stepZoom(zoomRef.current, 1) });
+      else if (key === 'zoom-out') update({ zoom: stepZoom(zoomRef.current, -1) });
+      else if (key === 'zoom-reset') update({ zoom: 1 });
+    });
+    return () => off?.();
   }, [update]);
 
   return (
@@ -121,6 +159,31 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
           placeholder="Enter a URL"
           className="field flex-1 min-w-0 rounded-md px-2 py-1 text-xs outline-none"
         />
+
+        <NavButton
+          label="Zoom out (⌘−)"
+          disabled={zoom <= ZOOM_STEPS[0]}
+          onClick={() => update({ zoom: stepZoom(zoom, -1) })}
+        >
+          <ZoomOut size={12} />
+        </NavButton>
+        {zoom !== 1 && (
+          <button
+            type="button"
+            title="Reset zoom (⌘0)"
+            onClick={() => update({ zoom: 1 })}
+            className="chrome-button shrink-0 px-1 h-6 rounded-md text-[10px] tabular-nums"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+        )}
+        <NavButton
+          label="Zoom in (⌘+)"
+          disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}
+          onClick={() => update({ zoom: stepZoom(zoom, 1) })}
+        >
+          <ZoomIn size={12} />
+        </NavButton>
       </form>
 
       <webview

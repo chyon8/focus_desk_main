@@ -66,9 +66,11 @@ contextBridge.exposeInMainWorld('images', {
 
 contextBridge.exposeInMainWorld('windowMode', {
   toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
-  // Shortcuts pressed while a browser widget had focus, forwarded by the main process.
-  onGuestKey: (handler: (key: string) => void) => {
-    const listener = (_event: unknown, key: string) => handler(key);
+  // Shortcuts pressed while a browser widget had focus, forwarded by the main
+  // process. `contentsId` names the guest they were pressed in.
+  onGuestKey: (handler: (key: string, contentsId?: number) => void) => {
+    const listener = (_event: unknown, key: string, contentsId?: number) =>
+      handler(key, contentsId);
     ipcRenderer.on('guest-key', listener);
     return () => ipcRenderer.removeListener('guest-key', listener);
   },
