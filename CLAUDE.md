@@ -15,6 +15,10 @@
 - 실행이 꼭 필요하다고 판단되면 **실행하지 말고 사용자에게 요청**한다 — 무엇을 확인해야 하는지 체크리스트로 준다
 - 이 프로젝트에서 자주 어긴 이유: D-013(CDP로 검증)·D-034(capturePage로 배경 확인)가 "실행해서 눈으로 확인"을 표준 검증법으로 적어둔 탓. **그 문서들은 기록이지 지시가 아니다**
 
+## 0-2. 답변 스타일 (필수 준수)
+
+> **결론부터, 핵심만, 짧게.** 설명·근거는 물어볼 때만 붙인다. 문학적 표현·수식어 금지, 쉬운 단어로 담백하게.
+
 ---
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
