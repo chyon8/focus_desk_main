@@ -2,9 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { BrowserData } from '../spaces/types';
 import { useSpaceStore } from '../stores/spaceStore';
+import { WIDGET_DEFS } from './defs';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
 import { LINK_SHIM } from './browserLinks';
 import { useWidgetData } from './useWidgetData';
+
+// Space left between a widget and the one a link opened out of it.
+const NEW_TAB_GAP = 32;
 
 // The levels a browser's ⌘+/⌘− walks through.
 const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
@@ -124,6 +128,24 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
     });
     return () => off?.();
   }, [update]);
+
+  // "Open in a new tab" means a new browser widget, laid down beside this one so
+  // both pages are visible at once — the point of a space (D-065).
+  useEffect(() => {
+    const off = window.windowMode?.onGuestOpenUrl((url, guestId) => {
+      if (guestId !== contentsId.current) return;
+      const state = useSpaceStore.getState();
+      const self = state.spaces[state.activeSpaceId]?.widgets[id];
+      if (!self) return;
+      const size = WIDGET_DEFS.browser.defaultSize;
+      // `at` is the new widget's centre.
+      state.addWidget('browser', { url }, {
+        x: self.x + self.width + NEW_TAB_GAP + size.width / 2,
+        y: self.y + size.height / 2,
+      });
+    });
+    return () => off?.();
+  }, [id]);
 
   return (
     <div className="h-full w-full flex flex-col">

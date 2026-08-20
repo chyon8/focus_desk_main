@@ -74,4 +74,12 @@ contextBridge.exposeInMainWorld('windowMode', {
     ipcRenderer.on('guest-key', listener);
     return () => ipcRenderer.removeListener('guest-key', listener);
   },
+  // A guest asked for a new tab or window. `contentsId` names the guest that
+  // asked, so the widget it came from can place the new one next to itself.
+  onGuestOpenUrl: (handler: (url: string, contentsId: number) => void) => {
+    const listener = (_event: unknown, url: string, contentsId: number) =>
+      handler(url, contentsId);
+    ipcRenderer.on('guest-open-url', listener);
+    return () => ipcRenderer.removeListener('guest-open-url', listener);
+  },
 });

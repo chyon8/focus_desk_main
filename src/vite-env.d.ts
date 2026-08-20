@@ -63,6 +63,7 @@ declare global {
     windowMode?: {
       toggleFullscreen: () => Promise<boolean>;
       onGuestKey: (handler: (key: string, contentsId?: number) => void) => () => void;
+      onGuestOpenUrl: (handler: (url: string, contentsId: number) => void) => () => void;
     };
   }
 

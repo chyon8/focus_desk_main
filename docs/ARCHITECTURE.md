@@ -76,7 +76,7 @@ docs/
 - ⚠️ 과거 WebContentsView 방식은 D-029에서 폐기. 그 흔적(스냅샷·hibernation·클리핑)은 코드에 남아 있지 않음
 
 ### 새 창으로 열리는 링크 (고침 2026-08-18, D-055 — 실기 미검증)
-유튜브 설명란 링크(`youtube.com/redirect?q=…`를 `target="_blank"`로)가 앱 안에도 밖에도 아무것도 안 띄우던 문제. `allowpopups`는 켜져 있었지만 `setWindowOpenHandler`가 없어 팝업이 조용히 버려졌다. 지금은 [main.ts](../electron/main.ts)의 `web-contents-created`에서 `deny` + 같은 게스트에 `loadURL` → **클릭한 그 위젯에서 열린다**(D-055).
+유튜브 설명란 링크(`youtube.com/redirect?q=…`를 `target="_blank"`로)가 앱 안에도 밖에도 아무것도 안 띄우던 문제. `allowpopups`는 켜져 있었지만 `setWindowOpenHandler`가 없어 팝업이 조용히 버려졌다. 지금은 [main.ts](../electron/main.ts)의 `web-contents-created`에서 `deny` + URL과 게스트 id를 렌더러로 → **옆에 새 브라우저 위젯이 뜬다**(D-055 → D-065). `LINK_SHIM`은 `<a target="_blank">` 클릭을 가로채 네이티브 `window.open`으로 돌려준다(그래야 핸들러까지 온다).
 
 - **남은 후보**: 줌이 1이 아닐 때도 열리는지 확인해야 한다. 안 되면 원인은 `scale()`된 월드 컨테이너 안의 `<webview>` 히트테스트 어긋남 — 위젯을 최대화(`scale(1/zoom)`=1)하고 같은 링크를 눌러 구분한다
 - 같이 고침: `browser-window-created`가 모든 창에 `close → restoreLive()`를 붙여, 개발자도구 창을 닫는 것만으로 배치된 앱이 원래 크기로 돌아갔다 → 메인 창 확인 후 동작

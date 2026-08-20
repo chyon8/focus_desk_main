@@ -1,12 +1,15 @@
 /**
- * Makes a link that wants a new window open in this widget instead.
+ * Turns a link that wants a new tab into a real `window.open`, which the main
+ * process answers with a new browser widget (D-065).
  *
- * The main process already answers `window.open` for guests (D-055), but a plain
- * `<a target="_blank">` — which is what YouTube's description links are — never
- * gets that far: the browser opens those itself, and a popup from a <webview>
- * has no one to display it, so the click does nothing at all. This closes it in
- * the page, where the click actually is, and so does not depend on `allowpopups`
- * or on the popup being created in the first place.
+ * A plain `<a target="_blank">` — which is what YouTube's description links are —
+ * never reaches `setWindowOpenHandler`: the browser opens those itself, and a
+ * popup from a <webview> has no one to display it, so the click does nothing at
+ * all. Catching the click in the page and calling `window.open` by hand puts it
+ * back on the path the main process listens to.
+ *
+ * Script-driven popups already take that path, so `window.open` is not replaced —
+ * only captured, in case the page swaps it out later.
  *
  * Injected on every dom-ready, in the guest's own world.
  */
@@ -14,9 +17,7 @@ export const LINK_SHIM = `(() => {
   if (window.__focusDeskLinks) return;
   window.__focusDeskLinks = true;
 
-  const go = (url) => {
-    if (url) location.href = String(url);
-  };
+  const open = window.open.bind(window);
 
   document.addEventListener(
     'click',
@@ -33,14 +34,8 @@ export const LINK_SHIM = `(() => {
       if (!link) return;
       e.preventDefault();
       e.stopPropagation();
-      go(link.href);
+      open(link.href, '_blank');
     },
     true
   );
-
-  // The other half: pages that open windows from script rather than from markup.
-  window.open = (url) => {
-    go(url);
-    return null;
-  };
 })();`;

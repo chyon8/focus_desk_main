@@ -65,12 +65,14 @@ const ZOOM_KEYS: Record<string, string> = {
 app.on('web-contents-created', (_event, contents) => {
   if (contents.getType() !== 'webview') return;
 
-  // A popup a <webview> opens has no one to display it, so a target="_blank"
-  // link (YouTube's description links go out through youtube.com/redirect) used
-  // to do nothing at all. Keep it in the widget that was clicked: Back returns,
-  // and the space's own login session is the one that follows the link.
+  // A popup a <webview> opens has no one to display it, so it is always denied.
+  // A link that asked for a new tab becomes a **new browser widget** beside the
+  // one it was clicked in (D-065) — that is what a tab is, in a space. The id
+  // says which guest asked, so the renderer knows where to put it.
   contents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//.test(url)) void contents.loadURL(url);
+    if (/^https?:\/\//.test(url) && win && !win.isDestroyed()) {
+      win.webContents.send('guest-open-url', url, contents.id);
+    }
     return { action: 'deny' };
   });
 
