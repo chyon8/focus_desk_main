@@ -4,6 +4,11 @@ export const SIDEBAR_WIDTH = 256;
 // Titlebar drag strip plus the row of floating buttons under it.
 const TOP_CHROME_HEIGHT = 84;
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
 export interface Rect {
   x: number;
   y: number;
@@ -20,6 +25,13 @@ interface UiState {
   selectedIds: string[];
   /** ⌥ is down, so hovering a widget shows it can be picked. */
   isAltHeld: boolean;
+  /**
+   * The quick-add palette, open at a point: `screen` places the popover in window
+   * coordinates, `world` is where the chosen widget lands. Null when closed.
+   */
+  quickAdd: { screen: Point; world: Point } | null;
+  /** The keyboard cheatsheet. */
+  isShortcutsOpen: boolean;
 
   setSidebarOpen: (open: boolean) => void;
   setSelection: (ids: string[]) => void;
@@ -28,6 +40,9 @@ interface UiState {
   setAltHeld: (held: boolean) => void;
   toggleMaximized: (widgetId: string) => void;
   clearMaximized: () => void;
+  openQuickAdd: (screen: Point, world: Point) => void;
+  closeQuickAdd: () => void;
+  toggleShortcuts: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -35,6 +50,8 @@ export const useUiStore = create<UiState>((set) => ({
   maximizedWidgetId: null,
   selectedIds: [],
   isAltHeld: false,
+  quickAdd: null,
+  isShortcutsOpen: false,
 
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
 
@@ -55,6 +72,12 @@ export const useUiStore = create<UiState>((set) => ({
     set((s) => ({ maximizedWidgetId: s.maximizedWidgetId === widgetId ? null : widgetId })),
 
   clearMaximized: () => set({ maximizedWidgetId: null }),
+
+  openQuickAdd: (screen, world) => set({ quickAdd: { screen, world } }),
+
+  closeQuickAdd: () => set({ quickAdd: null }),
+
+  toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
 }));
 
 /**

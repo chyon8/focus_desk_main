@@ -89,6 +89,17 @@ export const Canvas: React.FC = () => {
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
+  // Double-clicking bare canvas opens the palette right there, so adding a widget
+  // no longer means a round trip to the sidebar (D-063).
+  const onDoubleClick = (e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget) return;
+    const box = viewportRef.current!.getBoundingClientRect();
+    const local = { x: e.clientX - box.left, y: e.clientY - box.top };
+    useUiStore
+      .getState()
+      .openQuickAdd({ x: e.clientX, y: e.clientY }, screenToWorld(camera, local));
+  };
+
   const onPointerMove = (e: React.PointerEvent) => {
     if (!marquee) return;
     const point = pointIn(e);
@@ -132,6 +143,7 @@ export const Canvas: React.FC = () => {
         cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default',
       }}
       onPointerDown={onPointerDown}
+      onDoubleClick={onDoubleClick}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}

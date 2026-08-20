@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { arrange, fitCamera, ARRANGE_GAP, Box } from './layout';
+import { arrange, autoColumns, fitCamera, Box } from './layout';
 import { worldToScreen } from './camera';
 
 const boxes: Box[] = [
@@ -8,60 +8,73 @@ const boxes: Box[] = [
   { id: 'c', x: 0, y: 700, width: 300, height: 100 },
 ];
 
+// Wide window, like the canvas area on a normal display.
+const area = { width: 1400, height: 900 };
+
+/** Boxes with their arranged position and size applied, ready to measure. */
+function placed(input: Box[], ...args: [] | [typeof area, 'grid' | 'cascade', number?]) {
+  const placements = arrange(input, args[0] ?? area, args[1], args[2]);
+  return input.map((box) => ({ id: box.id, ...placements[box.id] }));
+}
+
 describe('arrange', () => {
   it('grid lays boxes out in reading order, not input order', () => {
-    const pos = arrange(boxes, 'grid', 2);
-    expect(pos['a']).toEqual({ x: 0, y: 0 });
-    expect(pos['b']).toEqual({ x: 300 + ARRANGE_GAP, y: 0 });
-    expect(pos['c']).toEqual({ x: 0, y: 200 + ARRANGE_GAP });
+    // Boxes are centred in their cells, so compare rows and columns, not exact px.
+    const [b, a, c] = placed(boxes, area, 'grid', 2);
+    expect(a.x).toBeLessThan(b.x); // a is first in reading order → column 0
+    expect(b.y).toBeLessThan(a.y + a.height); // b shares a's row
+    expect(c.y).toBeGreaterThan(a.y + a.height); // c is on the next row
   });
 
-  it('grid uses the tallest box in a row for the next row offset', () => {
-    // Row 0 holds a (200 tall) and b (100 tall), so row 1 starts below 200.
-    expect(arrange(boxes, 'grid', 2)['c'].y).toBe(232);
+  it('grid fills the area: the block spans it and nothing spills out', () => {
+    const out = placed(boxes, area, 'grid', 2);
+    const right = Math.max(...out.map((p) => p.x + p.width));
+    const bottom = Math.max(...out.map((p) => p.y + p.height));
+    expect(right).toBeLessThanOrEqual(area.width);
+    expect(bottom).toBeLessThanOrEqual(area.height);
+    // At least one axis is used up to the padding the fit leaves.
+    expect(Math.max(right / area.width, bottom / area.height)).toBeGreaterThan(0.9);
+  });
+
+  it('grid grows small boxes but keeps each aspect ratio', () => {
+    for (const p of placed(boxes, area, 'grid', 2)) {
+      const box = boxes.find((b) => b.id === p.id)!;
+      expect(p.width).toBeGreaterThan(box.width);
+      expect(p.width / p.height).toBeCloseTo(box.width / box.height, 1);
+    }
+  });
+
+  it('a tall, narrow area is filled with one column', () => {
+    expect(autoColumns(boxes, { width: 500, height: 1600 })).toBe(1);
+  });
+
+  it('a wide, short area is filled with one row', () => {
+    expect(autoColumns(boxes, { width: 2400, height: 400 })).toBe(3);
   });
 
   it('one column stacks every box vertically', () => {
-    const pos = arrange(boxes, 'grid', 1);
-    expect(new Set(Object.values(pos).map((p) => p.x)).size).toBe(1);
-    expect(pos['a'].y).toBe(0);
-    expect(pos['b'].y).toBe(200 + ARRANGE_GAP);
+    const out = placed(boxes, area, 'grid', 1);
+    const ys = out.map((p) => p.y).sort((m, n) => m - n);
+    expect(ys[0]).toBeLessThan(ys[1]);
+    expect(ys[1]).toBeLessThan(ys[2]);
   });
 
   it('a column count at or above the box count puts them all in one row', () => {
-    const pos = arrange(boxes, 'grid', 5);
-    expect(new Set(Object.values(pos).map((p) => p.y)).size).toBe(1);
-    expect(new Set(Object.values(pos).map((p) => p.x)).size).toBe(3);
+    const out = placed(boxes, area, 'grid', 5);
+    expect(new Set(out.map((p) => p.y + p.height / 2)).size).toBe(1);
   });
 
-  it('picks a roughly square column count when none is given', () => {
-    // 3 boxes → ceil(sqrt(3)) = 2 columns.
-    const pos = arrange(boxes, 'grid');
-    expect(new Set(Object.values(pos).map((p) => p.y)).size).toBe(2);
-  });
-
-  it('sizes each column by its own widest box, not the widest overall', () => {
-    // Column 0 holds a (300) and c (300); b's 200 width sits in column 1, so the
-    // 300-wide column decides the second column's x — not some global maximum.
-    const wide: Box[] = [
-      { id: 'a', x: 0, y: 0, width: 300, height: 200 },
-      { id: 'b', x: 400, y: 0, width: 900, height: 200 },
-      { id: 'c', x: 0, y: 300, width: 300, height: 200 },
-    ];
-    const pos = arrange(wide, 'grid', 2);
-    expect(pos['b'].x).toBe(300 + ARRANGE_GAP);
-    expect(pos['c'].x).toBe(0);
-  });
-
-  it('cascade staggers boxes diagonally', () => {
-    const pos = arrange(boxes, 'cascade');
-    expect(pos['a']).toEqual({ x: 0, y: 0 });
-    expect(pos['b'].x).toBeGreaterThan(0);
-    expect(pos['b'].x).toBe(pos['b'].y);
+  it('cascade staggers boxes diagonally and leaves their sizes alone', () => {
+    const out = placed(boxes, area, 'cascade');
+    const a = out.find((p) => p.id === 'a')!;
+    const b = out.find((p) => p.id === 'b')!;
+    expect(a.x).toBe(0);
+    expect(b.x).toBe(b.y);
+    expect(b.width).toBe(200);
   });
 
   it('returns an empty map for no boxes', () => {
-    expect(arrange([])).toEqual({});
+    expect(arrange([], area)).toEqual({});
   });
 });
 

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Layers, LayoutGrid } from 'lucide-react';
+import { autoColumns } from '../canvas/layout';
 import { useSpaceStore } from '../stores/spaceStore';
+import { canvasArea } from '../stores/uiStore';
 
 const COLUMN_CHOICES = [1, 2, 3, 4, 5];
 
@@ -17,9 +19,11 @@ const GridPreview: React.FC<{ columns: number }> = ({ columns }) => (
 export const ArrangeMenu: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const arrangeWidgets = useSpaceStore((s) => s.arrangeWidgets);
-  const widgetCount = useSpaceStore(
-    (s) => Object.keys(s.spaces[s.activeSpaceId]?.widgets ?? {}).length
-  );
+  // What "Auto" will pick, so the label is honest about the result.
+  const columnsForAuto = useSpaceStore((s) => {
+    const widgets = Object.values(s.spaces[s.activeSpaceId]?.widgets ?? {});
+    return widgets.length ? autoColumns(widgets, canvasArea()) : 1;
+  });
   const runGrid = (columns?: number) => {
     arrangeWidgets('grid', columns);
     setIsOpen(false);
@@ -29,9 +33,6 @@ export const ArrangeMenu: React.FC = () => {
     arrangeWidgets('cascade');
     setIsOpen(false);
   };
-
-  // What "Auto" will pick, so the label is honest about the result.
-  const autoColumns = Math.max(1, Math.ceil(Math.sqrt(Math.max(1, widgetCount))));
 
   return (
     <div className="relative">
@@ -63,9 +64,9 @@ export const ArrangeMenu: React.FC = () => {
                 onClick={() => runGrid()}
                 className="row w-full flex items-center gap-3 px-2 py-2 rounded-xl"
               >
-                <GridPreview columns={autoColumns} />
+                <GridPreview columns={columnsForAuto} />
                 <span className="flex-1 text-left text-xs font-medium">Auto</span>
-                <span className="t-faint text-[10px]">{autoColumns} wide</span>
+                <span className="t-faint text-[10px]">{columnsForAuto} wide</span>
               </button>
 
               <div className="grid grid-cols-5 gap-1 px-1 pt-1">

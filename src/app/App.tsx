@@ -11,6 +11,8 @@ import { useAppTimeStore } from '../stores/appTimeStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { SceneLayer } from '../themes/SceneLayer';
 import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
+import { QuickAdd } from './QuickAdd';
+import { ShortcutSheet } from './ShortcutSheet';
 import { ThemePicker } from './ThemePicker';
 import { Sidebar } from './Sidebar';
 import { UndoToast } from './UndoToast';
@@ -57,6 +59,8 @@ export const App: React.FC = () => {
       <FocusSessionBar />
       <AmbienceDock />
       <ThemePicker />
+      <QuickAdd />
+      <ShortcutSheet />
       <UndoToast />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
     </div>

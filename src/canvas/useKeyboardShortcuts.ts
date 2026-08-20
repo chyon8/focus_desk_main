@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { openQuickAddAtCentre } from '../app/QuickAdd';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 
@@ -26,24 +27,27 @@ export function useKeyboardShortcuts() {
       // alone (which can be undone) — Esc did it once by accident and that was
       // enough (D-061).
       if (e.key === 'Escape') {
-        const { maximizedWidgetId, clearMaximized, selectedIds, clearSelection } =
-          useUiStore.getState();
-        if (maximizedWidgetId) {
-          e.preventDefault();
-          clearMaximized();
-        } else if (selectedIds.length) {
-          e.preventDefault();
-          clearSelection();
-        }
+        const ui = useUiStore.getState();
+        e.preventDefault();
+        // Newest layer first, so Esc peels one thing off at a time.
+        if (ui.quickAdd) ui.closeQuickAdd();
+        else if (ui.isShortcutsOpen) ui.toggleShortcuts();
+        else if (ui.maximizedWidgetId) ui.clearMaximized();
+        else if (ui.selectedIds.length) ui.clearSelection();
         return;
       }
       const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
 
-      // ⌥G/⌥F do the same as G/F. They exist because a focused web page eats the
-      // plain letters, and only a chord can be told apart from typing well enough
-      // for the main process to forward it out of the guest. `code`, not `key`:
-      // macOS turns ⌥G into '©'.
+      // ⌥N/⌥G/⌥F do the same as N/G/F. They exist because a focused web page eats
+      // the plain letters, and only a chord can be told apart from typing well
+      // enough for the main process to forward it out of the guest. `code`, not
+      // `key`: macOS turns ⌥G into '©'.
       if (e.altKey && !e.metaKey && !e.ctrlKey && !isTyping(e.target)) {
+        if (e.code === 'KeyN') {
+          e.preventDefault();
+          openQuickAddAtCentre();
+          return;
+        }
         if (e.code === 'KeyG') {
           e.preventDefault();
           arrangeWidgets();
@@ -58,12 +62,18 @@ export function useKeyboardShortcuts() {
 
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
 
-      if (e.key === 'g' || e.key === 'G') {
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        openQuickAddAtCentre();
+      } else if (e.key === 'g' || e.key === 'G') {
         e.preventDefault();
         arrangeWidgets();
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
         fitToWidgets();
+      } else if (e.key === '?') {
+        e.preventDefault();
+        useUiStore.getState().toggleShortcuts();
       }
     };
 
@@ -72,6 +82,7 @@ export function useKeyboardShortcuts() {
       const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
       if (key === 'escape') useUiStore.getState().clearMaximized();
       else if (key === 'fullscreen') void window.windowMode?.toggleFullscreen();
+      else if (key === 'add') openQuickAddAtCentre();
       else if (key === 'arrange') arrangeWidgets();
       else if (key === 'fit') fitToWidgets();
     });

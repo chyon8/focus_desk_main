@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { BarChart2, BookOpen, ChevronLeft, Coffee, Home, Layout, Monitor, PanelLeft, Plus, Scan, Trash2 } from 'lucide-react';
+import { BarChart2, BookOpen, ChevronLeft, Coffee, Home, Keyboard, Layout, Monitor, PanelLeft, Plus, Scan, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
@@ -190,6 +190,13 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
                 className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
               >
                 <Scan size={18} />
+              </button>
+              <button
+                onClick={useUiStore.getState().toggleShortcuts}
+                title="Keyboard shortcuts (?)"
+                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
+              >
+                <Keyboard size={18} />
               </button>
               <span className="t-faint ml-auto px-2 text-xs tabular-nums" title="Canvas zoom">
                 {Math.round(zoom * 100)}%

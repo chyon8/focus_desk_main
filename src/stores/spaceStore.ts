@@ -215,7 +215,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   setAmbience: (ambience) => updateActive(set, (space) => ({ ...space, ambience })),
 
-  // Tidy the widgets in play, then frame the result so the user sees it.
+  // Fill the canvas with the widgets in play, then frame the result.
   arrangeWidgets: (mode = 'grid', columns) =>
     updateActive(set, (space) => {
       const boxes = inPlay(space);
@@ -227,12 +227,18 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         ? { x: Math.min(...boxes.map((b) => b.x)), y: Math.min(...boxes.map((b) => b.y)) }
         : { x: 0, y: 0 };
 
-      const positions = arrange(boxes, mode, columns);
-      const widgets = { ...space.widgets };
-      for (const [id, pos] of Object.entries(positions)) {
-        widgets[id] = { ...widgets[id], x: pos.x + anchor.x, y: pos.y + anchor.y };
-      }
       const area = canvasArea();
+      const placements = arrange(boxes, area, mode, columns);
+      const widgets = { ...space.widgets };
+      for (const [id, place] of Object.entries(placements)) {
+        widgets[id] = {
+          ...widgets[id],
+          x: place.x + anchor.x,
+          y: place.y + anchor.y,
+          width: place.width,
+          height: place.height,
+        };
+      }
       const camera = fitCamera(inPlay({ ...space, widgets }), area);
       return { ...space, widgets, camera: camera ?? space.camera };
     }),

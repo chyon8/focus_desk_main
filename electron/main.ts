@@ -87,9 +87,16 @@ app.on('web-contents-created', (_event, contents) => {
       e.preventDefault();
       win.webContents.send('guest-key', ZOOM_KEYS[input.key], contents.id);
     } else if (input.alt && !input.meta && !input.control) {
-      // Arrange and fit. The page keeps plain G/F (it may well be typing), so the
-      // app's copies are ⌥G/⌥F — `code`, because ⌥G arrives as '©'.
-      const action = input.code === 'KeyG' ? 'arrange' : input.code === 'KeyF' ? 'fit' : null;
+      // Add, arrange and fit. The page keeps plain N/G/F (it may well be typing),
+      // so the app's copies are ⌥N/⌥G/⌥F — `code`, because ⌥G arrives as '©'.
+      const action =
+        input.code === 'KeyN'
+          ? 'add'
+          : input.code === 'KeyG'
+            ? 'arrange'
+            : input.code === 'KeyF'
+              ? 'fit'
+              : null;
       if (!action) return;
       e.preventDefault();
       win.webContents.send('guest-key', action);
