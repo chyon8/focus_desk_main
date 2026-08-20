@@ -1,6 +1,7 @@
 import type { Camera } from '../canvas/camera';
 
 import type { AmbienceLevels } from '../ambience/engine';
+import type { ParticleKind } from '../themes/types';
 
 export const SCHEMA_VERSION = 4;
 
@@ -28,6 +29,14 @@ export interface WidgetDoc<D = Record<string, unknown>> {
   data: D;
 }
 
+/** Weather the user picked for a space, overriding whatever the theme brings. */
+export interface ParticlesChoice {
+  /** 'none' clears the theme's own weather without changing the theme. */
+  kind: ParticleKind | 'none';
+  /** 0–1, as the theme's own density is. */
+  density: number;
+}
+
 export interface SpaceDoc {
   id: string;
   schemaVersion: number;
@@ -35,6 +44,12 @@ export interface SpaceDoc {
   themeId: string;
   /** A wallpaper or colour the user picked themselves; null means the theme's own scene. */
   background: { type: 'COLOR' | 'IMAGE'; value: string } | null;
+  /**
+   * Weather the user picked for this space; absent means the theme's own. Kept
+   * apart from `themeId` for the same reason `background` is — a room's look and
+   * its weather are two choices, not one (D-066).
+   */
+  particles?: ParticlesChoice | null;
   camera: Camera;
   ambience: AmbienceLevels;
   widgets: Record<string, WidgetDoc>;

@@ -7,7 +7,7 @@ import { useAppTimeStore } from './appTimeStore';
 import { useSpaceTimeStore } from './spaceTimeStore';
 import { canvasArea, useUiStore } from './uiStore';
 import { migrateLegacySpaces, migrateSpace } from '../spaces/migrate';
-import { SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from '../spaces/types';
+import { ParticlesChoice, SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from '../spaces/types';
 import { DEFAULT_THEME_ID } from '../themes/themes';
 import { WIDGET_DEFS } from '../widgets/defs';
 
@@ -30,6 +30,8 @@ interface SpaceState {
   setTheme: (themeId: string) => void;
   setBackground: (background: SpaceDoc['background']) => void;
   setAmbience: (ambience: AmbienceLevels) => void;
+  /** Null hands the weather back to the theme. */
+  setParticles: (particles: ParticlesChoice | null) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
   fitToWidgets: () => void;
   /** `at` is a world point the widget is centred on — where the palette icon was dropped. */
@@ -207,13 +209,17 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   setCamera: (camera) => updateActive(set, (space) => ({ ...space, camera })),
 
-  // Choosing a theme drops any wallpaper the user had layered on top of the old one,
-  // otherwise the new theme's scene would stay hidden behind it.
-  setTheme: (themeId) => updateActive(set, (space) => ({ ...space, themeId, background: null })),
+  // Choosing a theme drops what the user had layered on top of the old one — the
+  // wallpaper would keep the new scene hidden, and the weather would keep raining
+  // in a room that no longer has that sky.
+  setTheme: (themeId) =>
+    updateActive(set, (space) => ({ ...space, themeId, background: null, particles: null })),
 
   setBackground: (background) => updateActive(set, (space) => ({ ...space, background })),
 
   setAmbience: (ambience) => updateActive(set, (space) => ({ ...space, ambience })),
+
+  setParticles: (particles) => updateActive(set, (space) => ({ ...space, particles })),
 
   // Fill the canvas with the widgets in play, then frame the result.
   arrangeWidgets: (mode = 'grid', columns) =>

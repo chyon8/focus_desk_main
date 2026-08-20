@@ -83,6 +83,7 @@ docs/
 
 ## 배경 (themes/)
 - `Theme = { scene, atmosphere, particles?, tokens }`. `SceneLayer`가 아래에서 위로 씬 → 스크림 → 글로우 → 파티클 → 비네트 → 그레인을 쌓는다
+- **공간이 테마 위에 덮어쓰는 것 두 가지**: `background`(씬) / `particles`(날씨, `'none'` 포함 — D-066). 둘 다 없으면 테마 것, 테마를 바꾸면 둘 다 초기화
 - `tokens`는 `useThemeVariables`가 `:root`에 CSS 변수로 주입(`--ink`, `--panel`, `--surface`, `--accent`, `--font-ui` …). UI 전체가 여기서 색을 읽는다
 - **배경은 카메라를 따라가지 않는다** (D-035). 배경에 움직임을 넣으려면 카메라와 무관하게 스스로 움직이는 것(파티클·글로우)으로 할 것
 - 코드로 씬을 그리는 시도(SVG·three.js)는 폐기됨 (D-034). 다시 하려면 아트 디렉션부터

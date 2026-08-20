@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Palette, Upload } from 'lucide-react';
+import { Ban, CloudRain, Flame, Palette, Snowflake, Sparkles, Upload, type LucideIcon } from 'lucide-react';
 import { assetUrl, SOLID_COLORS } from '../spaces/backgrounds';
+import type { ParticlesChoice } from '../spaces/types';
 import { useSpaceStore } from '../stores/spaceStore';
-import { THEMES } from '../themes/themes';
+import { getTheme, THEMES } from '../themes/themes';
 import type { SceneSpec } from '../themes/types';
 
 function thumbStyle(scene: SceneSpec): React.CSSProperties {
@@ -21,6 +22,18 @@ function thumbStyle(scene: SceneSpec): React.CSSProperties {
   }
 }
 
+/** The weather a space can be given, independent of its theme (D-066). */
+const WEATHER: { kind: ParticlesChoice['kind']; label: string; icon: LucideIcon }[] = [
+  { kind: 'none', label: 'Clear', icon: Ban },
+  { kind: 'rain', label: 'Rain', icon: CloudRain },
+  { kind: 'snow', label: 'Snow', icon: Snowflake },
+  { kind: 'embers', label: 'Embers', icon: Flame },
+  { kind: 'dust', label: 'Dust', icon: Sparkles },
+];
+
+// What a kind starts at when the space has no density of its own to carry over.
+const DEFAULT_DENSITY = 0.4;
+
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="t-soft text-[10px] font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
 );
@@ -29,8 +42,10 @@ export const ThemePicker: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const setTheme = useSpaceStore((s) => s.setTheme);
   const setBackground = useSpaceStore((s) => s.setBackground);
+  const setParticles = useSpaceStore((s) => s.setParticles);
   const themeId = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.themeId);
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
+  const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
   const fileInput = useRef<HTMLInputElement>(null);
   const [wallpapers, setWallpapers] = useState<string[]>([]);
 
@@ -45,6 +60,10 @@ export const ThemePicker: React.FC = () => {
     const url = await window.images?.save(await file.arrayBuffer(), file.name);
     if (url) setBackground({ type: 'IMAGE', value: url });
   };
+
+  // What is actually falling right now: the space's own choice, or the theme's.
+  const weather: ParticlesChoice = particlesChoice ??
+    getTheme(themeId).particles ?? { kind: 'none', density: DEFAULT_DENSITY };
 
   // A selected card gets a ring in the theme's own accent colour.
   const ring = (selected: boolean) =>
@@ -86,6 +105,45 @@ export const ThemePicker: React.FC = () => {
                   </div>
                 </button>
               ))}
+            </div>
+
+            <Label>Weather</Label>
+            <div className="flex items-center gap-1 mb-2">
+              {WEATHER.map(({ kind, label, icon: Icon }) => (
+                <button
+                  key={kind}
+                  onClick={() =>
+                    setParticles({
+                      kind,
+                      // Keep the strength you already had when only swapping kind.
+                      density: weather.kind === 'none' ? DEFAULT_DENSITY : weather.density,
+                    })
+                  }
+                  title={label}
+                  className={`chrome-button flex-1 h-9 flex items-center justify-center rounded-lg ${
+                    weather.kind === kind ? 'chrome-button-on' : ''
+                  }`}
+                >
+                  <Icon size={15} />
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mb-5 px-0.5">
+              <input
+                type="range"
+                min={5}
+                max={100}
+                value={Math.round(weather.density * 100)}
+                disabled={weather.kind === 'none'}
+                onChange={(e) =>
+                  setParticles({ kind: weather.kind, density: Number(e.target.value) / 100 })
+                }
+                title="How much of it"
+                className="ambience-slider flex-1 h-1 rounded-lg appearance-none cursor-pointer disabled:opacity-30 disabled:cursor-default"
+              />
+              <span className="t-faint w-7 text-right text-[10px] tabular-nums">
+                {weather.kind === 'none' ? '—' : Math.round(weather.density * 100)}
+              </span>
             </div>
 
             <Label>My wallpaper</Label>

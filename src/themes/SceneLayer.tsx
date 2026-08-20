@@ -53,7 +53,12 @@ function glowStyle(glow: Glow): React.CSSProperties {
  */
 export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
+  const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
   const { atmosphere } = theme;
+
+  // The space's own weather wins over the theme's; 'none' is a real choice, so
+  // it has to be told apart from "never picked" (D-066).
+  const particles = particlesChoice ?? theme.particles;
 
   const scene: SceneSpec = override
     ? override.type === 'IMAGE'
@@ -89,8 +94,8 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
         />
       )}
 
-      {theme.particles && (
-        <ParticleLayer kind={theme.particles.kind} density={theme.particles.density} />
+      {particles && particles.kind !== 'none' && (
+        <ParticleLayer kind={particles.kind} density={particles.density} />
       )}
 
       <div
