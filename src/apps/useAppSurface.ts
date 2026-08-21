@@ -38,10 +38,20 @@ const SETTLE_MS = 140;
 /** How often the window follows a widget sliding across the canvas. */
 const MOVE_MS = 60;
 /**
- * Slack on the canvas edges, once a window is already here. Without it a widget
- * sitting exactly on the boundary opens and closes on alternate frames.
+ * Slack on the canvas edges. A maximised widget is exactly the size of the canvas,
+ * so a fraction of a pixel decides whether it counts as inside; once a window is
+ * here the margin is wider still, or a widget on the boundary would open and close
+ * on alternate frames.
  */
-const EDGE_SLACK = 6;
+const ATTACH_SLACK = 2;
+const HERE_SLACK = 8;
+/**
+ * How long the widget has to be off the canvas before the window is sent back.
+ * The sidebar takes 300ms to slide, and the widget is laid out at its final size
+ * from the first frame — for that moment it looks as if it hangs over the edge,
+ * which must not cost the user their window.
+ */
+const LEAVE_MS = 400;
 /** How long to stop pushing after the widget has been moved to match its window. */
 const RESYNC_MS = 250;
 
@@ -105,11 +115,12 @@ export function useAppSurface(
     let movedAt = 0;
 
     let resyncUntil = 0;
+    let outSince = 0;
 
     /** Completely inside the canvas — the whole rule this rests on. */
     const fits = (box: Box) => {
       const area = canvasArea();
-      const slack = here ? EDGE_SLACK : 0;
+      const slack = here ? HERE_SLACK : ATTACH_SLACK;
       return (
         box.x >= area.x - slack &&
         box.y >= area.y - slack &&
@@ -185,9 +196,14 @@ export function useAppSurface(
       if (!box) return;
 
       if (!fits(box)) {
-        leave();
+        // Held rather than acted on at once: a transient — the sidebar sliding,
+        // a window resize in progress — must not restore a window the user is
+        // still working in.
+        if (!outSince) outSince = performance.now();
+        else if (performance.now() - outSince >= LEAVE_MS) leave();
         return;
       }
+      outSince = 0;
       if (!here) {
         here = true;
         setIsHere(true);
