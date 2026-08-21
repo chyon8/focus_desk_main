@@ -37,7 +37,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     title: 'Window',
     items: [
       ['⌃⌘F', 'Fullscreen'],
-      ['⌥Space', 'Come back from an app running live'],
+      ['⌥Space', 'Swap between the desk and the app windows open on it'],
     ],
   },
 ];
