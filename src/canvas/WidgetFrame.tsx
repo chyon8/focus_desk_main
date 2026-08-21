@@ -4,7 +4,7 @@ import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 
-const HEADER_HEIGHT = 40;
+export const HEADER_HEIGHT = 40;
 // How far a widget's content may be magnified by dragging the frame. Below 1 it
 // shrinks with the frame, so a widget pulled small stays whole instead of clipping.
 const MIN_CONTENT_SCALE = 0.5;
@@ -58,7 +58,9 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   const box = fullRect ?? widget;
   const bodyHeight = box.height - HEADER_HEIGHT;
   const contentScale =
-    widget.type === 'browser'
+    // A browser shows a real page and an app widget is only a label for a real
+    // window: both lay themselves out, so magnifying them just blurs them.
+    widget.type === 'browser' || widget.type === 'app'
       ? 1
       : Math.min(
           MAX_CONTENT_SCALE,

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
-import { useActiveSpace } from '../stores/spaceStore';
+import { useActiveSpace, useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
 import { spaceAppKeys } from './spaceApps';
 
 /**
@@ -12,6 +13,7 @@ import { spaceAppKeys } from './spaceApps';
  */
 export function useSpaceApps() {
   const space = useActiveSpace();
+  const spaceId = useSpaceStore((s) => s.activeSpaceId);
   // The keys are sorted, so this string only changes when the set really does —
   // renaming a space or dragging a widget must not resend.
   const keys = useMemo(() => spaceAppKeys(space).join('\n'), [space]);
@@ -19,4 +21,9 @@ export function useSpaceApps() {
   useEffect(() => {
     void window.apps?.setSpaceApps(keys ? keys.split('\n') : []);
   }, [keys]);
+
+  // Open apps belong to the space they were opened in: leaving closes them, which
+  // gives their windows their own size back rather than stranding them over
+  // another space's widgets.
+  useEffect(() => useUiStore.getState().closeAllApps, [spaceId]);
 }

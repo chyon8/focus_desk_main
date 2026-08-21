@@ -149,6 +149,11 @@ private func launch(_ appKey: String, activate: Bool = true) {
 /// the user their window back rather than leaving it widget-shaped.
 private var savedFrames: [String: CGRect] = [:]
 
+/// The frame each placed window was last put at, so a change the user made — an
+/// edge dragged, a window-manager shortcut — can be told apart from our own.
+private var expectedFrames: [String: CGRect] = [:]
+private var frameWatch: Timer?
+
 /// The title of the window each app was last placed by, so `raise` and `restore`
 /// stay on that window rather than following the app's focus elsewhere.
 private var placedTitles: [String: String] = [:]
@@ -409,12 +414,15 @@ private func setFrame(_ window: AXUIElement, _ rect: CGRect) {
 /// How long to keep waiting for a window while an app that was not running starts up.
 private let placeAttempts = 12
 private let placeRetryDelay = 0.5
+/// Long enough for an app to finish the layout pass that ate the first resize.
+private let settleRetryDelay = 0.09
 
 private func place(
     _ appKey: String,
     _ rect: CGRect,
     wanted: String? = nil,
     avoid: Set<String> = [],
+    raise: Bool = true,
     attempt: Int = 0
 ) {
     guard hasAccessibility(prompt: true) else {
@@ -425,7 +433,7 @@ private func place(
     let again = {
         if attempt + 1 >= placeAttempts { return false }
         DispatchQueue.main.asyncAfter(deadline: .now() + placeRetryDelay) {
-            place(appKey, rect, wanted: wanted, avoid: avoid, attempt: attempt + 1)
+            place(appKey, rect, wanted: wanted, avoid: avoid, raise: raise, attempt: attempt + 1)
         }
         return true
     }
@@ -515,22 +523,85 @@ private func place(
     }
 
     // What it actually took, which an app with a minimum size may not match.
-    let actual = frame(of: window) ?? target
-    app.activate()
-    AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+    let finish = { (actual: CGRect) in
+        expectedFrames[appKey] = actual
+        startFrameWatch()
+        // Not on every placement: a window already sitting on its widget must not
+        // jump in front of the desk every time the canvas is zoomed.
+        if raise {
+            app.activate()
+            AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+        }
+        emit([
+            "ev": "placed",
+            "appKey": appKey,
+            "resizable": resizable,
+            // The widget stores this and asks for the same window next time.
+            "title": placedTitles[appKey] ?? NSNull(),
+            "rect": ["x": actual.origin.x, "y": actual.origin.y,
+                     "width": actual.size.width, "height": actual.size.height],
+        ])
+    }
 
-    emit([
-        "ev": "placed",
-        "appKey": appKey,
-        "resizable": resizable,
-        // The widget stores this and asks for the same window next time.
-        "title": placedTitles[appKey] ?? NSNull(),
-        "rect": ["x": actual.origin.x, "y": actual.origin.y,
-                 "width": actual.size.width, "height": actual.size.height],
-    ])
+    let landed = frame(of: window) ?? target
+    // Apps that lay themselves out asynchronously — anything Electron-based, and
+    // this editor is one — swallow a resize that arrives while they are still
+    // working through the last one. The window then keeps its old size at the new
+    // position, which is the "only the app shrank" look. One more pass once it has
+    // caught up, then report whatever it settled on.
+    if resizable,
+       abs(landed.width - target.width) > 2 || abs(landed.height - target.height) > 2 {
+        DispatchQueue.main.asyncAfter(deadline: .now() + settleRetryDelay) {
+            setFrame(window, target)
+            finish(frame(of: window) ?? target)
+        }
+        return
+    }
+    finish(landed)
+}
+
+/// Position only, for a window following its widget across the canvas. Resizing
+/// is what makes an app lay its interface out again, so panning must not do it.
+private func move(_ appKey: String, _ origin: CGPoint) {
+    guard savedFrames[appKey] != nil,
+          let app = runningApp(appKey),
+          let window = documentWindow(of: app, wanted: placedTitles[appKey]),
+          let current = frame(of: window)
+    else { return }
+    let wanted = CGRect(origin: origin, size: current.size)
+    let target = clamp(wanted, into: visibleBounds(containing: wanted))
+    setPosition(window, target.origin)
+    expectedFrames[appKey] = CGRect(origin: target.origin, size: current.size)
+}
+
+/// Reports a placed window that has ended up somewhere we did not put it. Polled
+/// rather than observed: one accessibility read per open window, a few times a
+/// second, against an `AXObserver` per window that has to be torn down by hand.
+private func startFrameWatch() {
+    guard frameWatch == nil else { return }
+    frameWatch = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
+        for (appKey, expected) in expectedFrames {
+            guard let app = runningApp(appKey),
+                  let window = documentWindow(of: app, wanted: placedTitles[appKey]),
+                  let current = frame(of: window)
+            else { continue }
+            if abs(current.minX - expected.minX) < 2, abs(current.minY - expected.minY) < 2,
+               abs(current.width - expected.width) < 2, abs(current.height - expected.height) < 2 {
+                continue
+            }
+            expectedFrames[appKey] = current
+            emit([
+                "ev": "window",
+                "appKey": appKey,
+                "rect": ["x": current.origin.x, "y": current.origin.y,
+                         "width": current.size.width, "height": current.size.height],
+            ])
+        }
+    }
 }
 
 private func restore(_ appKey: String) {
+    expectedFrames.removeValue(forKey: appKey)
     let placed = placedTitles.removeValue(forKey: appKey)
     guard let saved = savedFrames.removeValue(forKey: appKey),
           let app = runningApp(appKey),
@@ -607,8 +678,18 @@ private func handle(_ line: String) {
             appKey,
             CGRect(x: x, y: y, width: width, height: height),
             wanted: object["title"] as? String,
-            avoid: Set(object["avoid"] as? [String] ?? [])
+            avoid: Set(object["avoid"] as? [String] ?? []),
+            raise: object["raise"] as? Bool ?? true
         )
+    case "move":
+        guard let appKey = object["appKey"] as? String,
+              let rect = object["rect"] as? [String: Double],
+              let x = rect["x"], let y = rect["y"]
+        else {
+            emitError("move", "bad arguments")
+            return
+        }
+        move(appKey, CGPoint(x: x, y: y))
     case "raise":
         guard let appKey = object["appKey"] as? String else {
             emitError("raise", "missing appKey")

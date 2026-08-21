@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, Layers, RotateCcw, Search, X } from 'lucide-react';
-import { claimedWindowTitles } from '../apps/spaceApps';
+import { appWidgets, claimedWindowTitles } from '../apps/spaceApps';
 import { useAppSurface, type PlaceFailure } from '../apps/useAppSurface';
 import { secondsOnApp } from '../focus/appTime';
 import { formatDuration } from '../focus/stats';
@@ -64,60 +64,42 @@ const AppFace: React.FC<{
     () => ({ title: data.windowTitle, avoid: claimedWindowTitles(space, id, data.appKey) }),
     [space, id, data.appKey, data.windowTitle]
   );
-  const { isLive, placement } = useAppSurface(id, data.appKey, surfaceRef, choice, (windowTitle) =>
-    update({ windowTitle })
+  const { isOpen, isHere, isAway, placement, callBack } = useAppSurface(
+    id,
+    data.appKey,
+    surfaceRef,
+    choice,
+    (windowTitle) => update({ windowTitle })
   );
   const [permissions, setPermissions] = useState({ accessibility: true });
   const [picking, setPicking] = useState(false);
 
-  // Re-read on going live: this is when the user is asked, and when the answer
+  // Re-read on opening: this is when the user is asked, and when the answer
   // decides whether anything happens at all.
   useEffect(() => {
     void window.apps?.permissions().then(setPermissions);
-  }, [isLive]);
+  }, [isOpen]);
 
-  if (isLive) {
-    const resting = permissions.accessibility && placement?.ok;
+  const close = () => useUiStore.getState().closeApp(id);
+
+  if (isOpen) {
+    const resting = permissions.accessibility && isHere && placement?.ok;
     return (
       <div
         ref={surfaceRef}
+        // Two real windows share no z-order, so any click on Focus Desk buries
+        // the app behind it with no way back on its own — clicking this surface
+        // (the whole card) is that way back. Seen whenever Focus Desk comes
+        // forward, which is often, so it must read as a resting state.
         onClick={resting ? () => void window.apps?.raise(data.appKey) : undefined}
         className={`t-ink h-full w-full flex flex-col items-center justify-center gap-2 p-6 text-center ${resting ? 'cursor-pointer' : ''}`}
       >
-        {permissions.accessibility ? (
-          placement && !placement.ok ? (
-            <>
-              <span className="t-ink text-sm">Can’t bring {data.name} here</span>
-              <span className="t-faint text-xs max-w-[40ch]">
-                {PLACE_PROBLEMS[placement.reason]}
-              </span>
-              {/* Failing to seat it in the space is no reason to also block the
-                  user from the app they asked for. */}
-              <button
-                onClick={() => void window.apps?.launch(data.appKey)}
-                className="chrome-button mt-1 px-3 h-7 rounded-md text-[11px]"
-              >
-                Open it anyway
-              </button>
-            </>
-          ) : placement?.ok ? (
-            // Two real windows share no z-order, so any click on Focus Desk
-            // buries the app behind it with no way back on its own — clicking
-            // this surface (the whole card, via the container's onClick) is that
-            // way back. Seen whenever Focus Desk comes forward, which is often,
-            // so it must read as a resting state, not as something wrong.
-            <span className="t-faint text-xs">
-              {data.name} is here · click to return, or ⌥Space
-            </span>
-          ) : (
-            <span className="t-faint text-xs">Bringing {data.name} here…</span>
-          )
-        ) : (
+        {!permissions.accessibility ? (
           <>
             <span className="t-ink text-sm">Accessibility access needed</span>
             <span className="t-faint text-xs max-w-[38ch]">
-              Bringing {data.name} here means moving its real window, which macOS guards. Allow
-              Focus Desk once, then click this widget again.
+              Opening {data.name} here means moving its real window, which macOS guards. Allow
+              Focus Desk once, then open it again.
             </span>
             <button
               onClick={() => void window.apps?.showAccessibilitySettings()}
@@ -129,7 +111,65 @@ const AppFace: React.FC<{
               If nothing is listed, drag in the file that Finder just revealed.
             </span>
           </>
+        ) : isAway ? (
+          // Its window is somewhere the widget cannot follow — a window manager
+          // filled the screen with it, or it was dragged off the canvas. Arguing
+          // with that would be worse than letting go of it.
+          <>
+            <span className="t-ink text-sm">{data.name} is out of its slot</span>
+            <span className="t-faint text-xs max-w-[36ch]">
+              Its window was moved somewhere this widget cannot follow.
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                callBack();
+              }}
+              className="chrome-button mt-1 px-3 h-7 rounded-md text-[11px]"
+            >
+              Bring it back here
+            </button>
+          </>
+        ) : !isHere ? (
+          // The window is back at its own size until the widget is fully on the
+          // canvas again: a real window cannot be cut off at the edge, and one
+          // hanging over the sidebar would cover it.
+          <>
+            <span className="t-ink text-sm">{data.name} is waiting</span>
+            <span className="t-faint text-xs max-w-[36ch]">
+              Bring this widget fully onto the canvas and its window comes back.
+            </span>
+          </>
+        ) : placement && !placement.ok ? (
+          <>
+            <span className="t-ink text-sm">Can’t bring {data.name} here</span>
+            <span className="t-faint text-xs max-w-[40ch]">{PLACE_PROBLEMS[placement.reason]}</span>
+            {/* Failing to seat it in the space is no reason to also block the
+                user from the app they asked for. */}
+            <button
+              onClick={() => void window.apps?.launch(data.appKey)}
+              className="chrome-button mt-1 px-3 h-7 rounded-md text-[11px]"
+            >
+              Open it anyway
+            </button>
+          </>
+        ) : placement?.ok ? (
+          <span className="t-faint text-xs">{data.name} is here · click to return, or ⌥Space</span>
+        ) : (
+          <span className="t-faint text-xs">Bringing {data.name} here…</span>
         )}
+
+        {/* Sends the window back to its own size and place. Only reachable while
+            Focus Desk is in front, which is exactly when it is wanted. */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            close();
+          }}
+          className="chrome-button mt-2 px-3 h-7 rounded-md text-[11px]"
+        >
+          Send {data.name} back
+        </button>
       </div>
     );
   }
@@ -154,8 +194,17 @@ const AppFace: React.FC<{
       {/* Clicking brings the app into the space rather than switching away to it,
           which is the whole point of the widget. Leaving is the ↗ button. */}
       <button
-        onClick={() => useUiStore.getState().toggleMaximized(id)}
-        title={`Bring ${data.name} here`}
+        onClick={() => {
+          const ui = useUiStore.getState();
+          // The helper remembers one window per app, so two widgets on the same
+          // app cannot both be open — the second would take over the size the
+          // first has to give back.
+          for (const other of appWidgets(space)) {
+            if (other.id !== id && other.data.appKey === data.appKey) ui.closeApp(other.id);
+          }
+          ui.toggleAppOpen(id);
+        }}
+        title={`Open ${data.name} here, at this size`}
         className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2.5"
       >
         {data.icon ? (

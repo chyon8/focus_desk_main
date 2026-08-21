@@ -34,9 +34,27 @@ contextBridge.exposeInMainWorld('apps', {
   place: (
     appKey: string,
     rect: { x: number; y: number; width: number; height: number },
-    window?: { title?: string; avoid?: string[] }
-  ) => ipcRenderer.invoke('apps:place', appKey, rect, window),
+    window?: { title?: string; avoid?: string[] },
+    raise = true
+  ) => ipcRenderer.invoke('apps:place', appKey, rect, window, raise),
+  /** Position only, for a window following its widget across the canvas. */
+  move: (appKey: string, rect: { x: number; y: number; width: number; height: number }) =>
+    ipcRenderer.invoke('apps:move', appKey, rect),
   release: (appKey: string) => ipcRenderer.invoke('apps:release', appKey),
+  /** Lets go of a window the user has moved somewhere themselves, untouched. */
+  detach: (appKey: string) => ipcRenderer.invoke('apps:detach', appKey),
+  /** A placed window that moved or resized on its own, in window coordinates. */
+  onWindowFrame: (
+    handler: (appKey: string, rect: { x: number; y: number; width: number; height: number }) => void
+  ) => {
+    const listener = (
+      _event: unknown,
+      appKey: string,
+      rect: { x: number; y: number; width: number; height: number }
+    ) => handler(appKey, rect);
+    ipcRenderer.on('apps:window-frame', listener);
+    return () => ipcRenderer.removeListener('apps:window-frame', listener);
+  },
   /** Brings the app's window back in front of Focus Desk. */
   raise: (appKey: string) => ipcRenderer.invoke('apps:raise', appKey),
   /** Which apps count as "still at the desk" while this space is open (D-039). */

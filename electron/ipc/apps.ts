@@ -27,6 +27,12 @@ const FOLLOW_MS = 60;
 const RETURN_SHORTCUT = 'Alt+Space';
 /** Enough for the helper to read one line and write the window back before it dies. */
 const RESTORE_GRACE_MS = 250;
+/**
+ * How long after the last window lands before the stack is put in order. Windows
+ * arriving one after another each raise their own app, so the order can only be
+ * sorted out once they are all down.
+ */
+const RAISE_BATCH_MS = 120;
 
 /** Sends a command and waits for the one reply that answers it. */
 function ask<T>(
@@ -121,124 +127,202 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   // screen coordinates needs the window's own origin, which only the main
   // process knows. Both are top-left points, so this is the whole conversion.
 
-  let live: { appKey: string; rect: Rect; title?: string; avoid?: string[] } | null = null;
+  interface Live {
+    appKey: string;
+    rect: Rect;
+    title?: string;
+    avoid?: string[];
+  }
+  /**
+   * Every app whose real window is currently sitting on a widget. Keyed by app
+   * because the helper is — one window per app is what buys us no window ids at
+   * all (D-040). Insertion order is the order they were asked for, which is
+   * widget stacking order.
+   */
+  const live = new Map<string, Live>();
+  // Whether the desk is currently parked under every ordinary window.
+  let behind = false;
+  // Apps that have been asked to come to the front and have not landed yet.
+  const arriving = new Set<string>();
   let followTimer: ReturnType<typeof setTimeout> | null = null;
+  let raiseTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const placeCmd = (): HelperCmd | null => {
+  /**
+   * Parks the desk below every ordinary window, or brings it back to its own
+   * level. While apps are open this is what makes them stay visible: two windows
+   * of different apps share no z-order, so with the desk at the normal level any
+   * click on it buries every app behind it and the only way back is a shortcut.
+   * One level down and the app windows simply float over their widgets — the desk
+   * is the surface they sit on, which is the whole idea.
+   */
+  const setBehind = (next: boolean) => {
+    behind = next;
     const win = getWindow();
-    if (!live || !win || win.isDestroyed()) return null;
+    if (!win || win.isDestroyed()) return;
+    if (next) win.setAlwaysOnTop(true, 'normal', -1);
+    // Fullscreen wants the opposite: over the menu bar, which is what it is for
+    // (D-051). Anything else goes back to an ordinary window.
+    else if (win.isSimpleFullScreen()) win.setAlwaysOnTop(true, 'main-menu', 1);
+    else win.setAlwaysOnTop(false);
+  };
+
+  /** Window coordinates to screen coordinates: both are top-left points. */
+  const toScreen = (rect: Rect): Rect | null => {
+    const win = getWindow();
+    if (!win || win.isDestroyed()) return null;
     const bounds = win.getContentBounds();
     return {
-      cmd: 'place',
-      appKey: live.appKey,
-      title: live.title,
-      avoid: live.avoid,
-      rect: {
-        x: Math.round(bounds.x + live.rect.x),
-        y: Math.round(bounds.y + live.rect.y),
-        width: Math.round(live.rect.width),
-        height: Math.round(live.rect.height),
-      },
+      x: Math.round(bounds.x + rect.x),
+      y: Math.round(bounds.y + rect.y),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
     };
   };
 
-  const sendPlace = () => {
-    const cmd = placeCmd();
-    if (cmd) helper.send(cmd);
-  };
-
-  // Moving or resizing this window moves the widget with it, so the app window
-  // has to come along.
+  // Moving this window moves every widget with it, so the windows sitting on them
+  // have to come along. Position only, and never raised: this is the desk being
+  // dragged, not the user asking for an app.
   const follow = () => {
-    if (!live || followTimer) return;
+    if (live.size === 0 || followTimer) return;
     followTimer = setTimeout(() => {
       followTimer = null;
-      sendPlace();
+      for (const entry of live.values()) {
+        const rect = toScreen(entry.rect);
+        if (rect) helper.send({ cmd: 'move', appKey: entry.appKey, rect });
+      }
     }, FOLLOW_MS);
   };
 
   // Round-tripping through the desk and back is otherwise a dead end: two real
   // windows have no shared z-order, so Focus Desk coming forward (any click on
-  // it) buries the app with no way back short of Mission Control — which is
-  // exactly what going looking for the app the hard way was.
+  // it) buries the apps with no way back short of Mission Control.
   const registerReturnShortcut = () => {
     if (globalShortcut.isRegistered(RETURN_SHORTCUT)) return;
     globalShortcut.register(RETURN_SHORTCUT, () => {
       const win = getWindow();
-      if (win && !win.isDestroyed()) win.focus();
+      if (!win || win.isDestroyed()) return;
+      // A toggle between the two layers: the desk over everything to work on the
+      // canvas itself, or back under the apps to work in them.
+      if (behind) {
+        setBehind(false);
+        win.focus();
+      } else {
+        setBehind(true);
+        for (const appKey of live.keys()) helper.send({ cmd: 'raise', appKey });
+      }
     });
   };
 
-  ipcMain.handle('apps:place', (_event, appKey: string, rect: Rect, window?: WindowChoice) => {
-    live = { appKey, rect, title: window?.title, avoid: window?.avoid };
-    const cmd = placeCmd();
-    if (!cmd) return null;
+  ipcMain.handle(
+    'apps:place',
+    (_event, appKey: string, rect: Rect, window?: WindowChoice, raise = true) => {
+      const entry: Live = { appKey, rect, title: window?.title, avoid: window?.avoid };
+      live.set(appKey, entry);
+      const screen = toScreen(rect);
+      if (!screen) {
+        live.delete(appKey);
+        return null;
+      }
 
-    // Follow the app rather than expecting it to come to us. Its window may live
-    // on another Space — a fullscreen app is given one of its own — and macOS has
-    // no way to carry a window across. This window can be on all of them, so
-    // whichever desktop the app is reached on, the desk is already there (D-041).
-    const win = getWindow();
-    if (win && !win.isDestroyed()) {
-      win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-      // Fullscreen parks this window above the menu bar — Electron raises its
-      // window level to get there — and nothing another app can do puts its
-      // window above that level. Raising the app looks like it does nothing, in
-      // fullscreen only. Back to the ordinary level for as long as an app is
-      // live; the window still covers the screen. (D-051)
-      if (win.isSimpleFullScreen()) win.setAlwaysOnTop(false);
+      const win = getWindow();
+      if (win && !win.isDestroyed()) {
+        // Follow the app rather than expecting it to come to us. Its window may
+        // live on another Space — a fullscreen app is given one of its own — and
+        // macOS has no way to carry a window across. This window can be on all of
+        // them, so whichever desktop the app is reached on, the desk is already
+        // there (D-041).
+        win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+        // That call also raises this window's level on macOS, and nothing another
+        // app can do puts its window above that — raising the app looks like it
+        // does nothing at all. Fullscreen made this obvious (D-051); the same
+        // thing happens in a windowed desk. Going a level *below* normal fixes it
+        // and keeps the apps visible for good.
+        setBehind(true);
+      }
+      registerReturnShortcut();
+      if (raise) arriving.add(appKey);
+
+      return ask<PlaceResult>(
+        helper,
+        { cmd: 'place', appKey, title: entry.title, avoid: entry.avoid, rect: screen, raise },
+        (event) => {
+          if (event.ev === 'placed' && event.appKey === appKey) {
+            return { ok: true, resizable: event.resizable, title: event.title, rect: event.rect };
+          }
+          if (event.ev === 'error' && event.cmd === 'place') {
+            return { ok: false, reason: event.reason as PlaceFailure };
+          }
+          return undefined;
+        },
+        PLACE_TIMEOUT_MS,
+        { ok: false, reason: 'unknown' }
+      );
     }
-    registerReturnShortcut();
-    return ask<PlaceResult>(
-      helper,
-      cmd,
-      (event) => {
-        if (event.ev === 'placed' && event.appKey === appKey) {
-          return { ok: true, resizable: event.resizable, title: event.title, rect: event.rect };
-        }
-        if (event.ev === 'error' && event.cmd === 'place') {
-          return { ok: false, reason: event.reason as PlaceFailure };
-        }
-        return undefined;
-      },
-      PLACE_TIMEOUT_MS,
-      { ok: false, reason: 'unknown' }
-    );
+  );
+
+  // The widget slid across the canvas. Only the origin changes, because resizing
+  // is what makes an app lay itself out again.
+  ipcMain.handle('apps:move', (_event, appKey: string, rect: Rect) => {
+    const entry = live.get(appKey);
+    if (!entry) return;
+    entry.rect = rect;
+    const screen = toScreen(rect);
+    if (screen) helper.send({ cmd: 'move', appKey, rect: screen });
+  });
+
+  /**
+   * Lets go of a window without touching it: the user has taken it somewhere of
+   * their own, and putting it back would be arguing with them. The helper keeps
+   * the size it had before, so sending it back later still works.
+   */
+  ipcMain.handle('apps:detach', (_event, appKey: string) => {
+    if (!live.delete(appKey)) return;
+    arriving.delete(appKey);
+    if (live.size > 0) return;
+    globalShortcut.unregister(RETURN_SHORTCUT);
+    const win = getWindow();
+    if (!win || win.isDestroyed()) return;
+    win.setVisibleOnAllWorkspaces(false);
+    setBehind(false);
   });
 
   ipcMain.handle('apps:release', (_event, appKey: string) => {
-    live = null;
-    globalShortcut.unregister(RETURN_SHORTCUT);
+    const wasLive = live.delete(appKey);
+    arriving.delete(appKey);
     helper.send({ cmd: 'restore', appKey });
+    // Only the last one out puts the desk back: letting go of one window must not
+    // pull Focus Desk in front of the ones still open.
+    if (!wasLive || live.size > 0) return;
+    globalShortcut.unregister(RETURN_SHORTCUT);
     const win = getWindow();
-    if (win && !win.isDestroyed()) {
-      win.setVisibleOnAllWorkspaces(false);
-      // Back over the menu bar, which is what fullscreen was for (D-051).
-      if (win.isSimpleFullScreen()) win.setAlwaysOnTop(true, 'main-menu', 1);
-      // Focus Desk comes back in front; the app drops behind it rather than being
-      // hidden, so nothing about it changes on the way out.
-      win.focus();
-    }
+    if (!win || win.isDestroyed()) return;
+    win.setVisibleOnAllWorkspaces(false);
+    setBehind(false);
+    // Focus Desk comes back in front; the app drops behind it rather than being
+    // hidden, so nothing about it changes on the way out.
+    win.focus();
   });
 
-  // The mouse-driven half of the same round trip: once Focus Desk has come
-  // forward (any click on it, not just the shortcut), clicking the widget again
-  // — now visible, since it is what the app was sitting on — brings the app back.
+  // The mouse-driven half of the round trip: once Focus Desk has come forward
+  // (any click on it), clicking the widget again — now visible, since it is what
+  // the app was sitting on — brings that app back.
   ipcMain.handle('apps:raise', (_event, appKey: string) => {
-    if (!live || live.appKey !== appKey) return;
+    if (!live.has(appKey)) return;
     const win = getWindow();
     if (win && !win.isDestroyed()) win.showInactive();
     helper.send({ cmd: 'raise', appKey });
   });
 
   // Giving a window its size back is the renderer's cleanup, and that never runs
-  // when the desk itself goes away — closing the window or quitting while an app
-  // is live leaves it at the widget's size for good, since the frame it had
-  // before is only remembered inside the helper, which dies with us.
+  // when the desk itself goes away — closing the window or quitting while apps
+  // are open leaves them at widget size for good, since the frames they had
+  // before are only remembered inside the helper, which dies with us.
   const restoreLive = () => {
-    if (!live) return false;
-    helper.send({ cmd: 'restore', appKey: live.appKey });
-    live = null;
+    if (live.size === 0) return false;
+    setBehind(false);
+    for (const appKey of live.keys()) helper.send({ cmd: 'restore', appKey });
+    live.clear();
+    arriving.clear();
     globalShortcut.unregister(RETURN_SHORTCUT);
     return true;
   };
@@ -270,16 +354,42 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
 
   app.on('will-quit', () => globalShortcut.unregister(RETURN_SHORTCUT));
 
-  // Once a window has landed, the desk has to be the thing directly behind it.
-  // Chasing the app can leave Focus Desk buried on that desktop, which is what
-  // makes an app look like it just opened on its own (D-041). Raising the desk
-  // first and the app second puts them in the right order.
+  // Once the windows that were asked for have landed, the desk has to be the
+  // thing directly behind them. Chasing an app can leave Focus Desk buried on
+  // that desktop, which is what makes an app look like it just opened on its own
+  // (D-041). In one go rather than per landing: raising the desk between two
+  // arrivals buries the one that got there first.
+  const raiseArrived = () => {
+    raiseTimer = null;
+    arriving.clear();
+    const win = getWindow();
+    if (!win || win.isDestroyed() || live.size === 0) return;
+    win.showInactive();
+    for (const appKey of live.keys()) helper.send({ cmd: 'raise', appKey });
+  };
+
   helper.on((event) => {
-    if (event.ev !== 'placed' || !live || event.appKey !== live.appKey) return;
+    if (event.ev !== 'placed' || !arriving.has(event.appKey)) return;
+    // Every arrival pushes the sort-out back, so an app that took a few retries
+    // to start is not left underneath.
+    if (raiseTimer) clearTimeout(raiseTimer);
+    raiseTimer = setTimeout(raiseArrived, RAISE_BATCH_MS);
+  });
+
+  // A window that has moved or resized on its own — dragged by its edge, or sent
+  // somewhere by a window manager. Handed over in window coordinates, which is
+  // what the widget is measured in.
+  helper.on((event) => {
+    if (event.ev !== 'window' || !live.has(event.appKey)) return;
     const win = getWindow();
     if (!win || win.isDestroyed()) return;
-    win.showInactive();
-    helper.send({ cmd: 'raise', appKey: event.appKey });
+    const bounds = win.getContentBounds();
+    win.webContents.send('apps:window-frame', event.appKey, {
+      x: event.rect.x - bounds.x,
+      y: event.rect.y - bounds.y,
+      width: event.rect.width,
+      height: event.rect.height,
+    });
   });
 
   // The renderer needs the frontmost app by name, not just the "am I here" flag,

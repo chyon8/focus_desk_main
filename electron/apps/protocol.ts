@@ -47,7 +47,17 @@ export type HelperCmd =
    * this widget used last time and `avoid` the ones other widgets have claimed —
    * both only steer the choice when the app has several windows (D-045).
    */
-  | { cmd: 'place'; appKey: string; rect: Rect; title?: string; avoid?: string[] }
+  | {
+      cmd: 'place';
+      appKey: string;
+      rect: Rect;
+      title?: string;
+      avoid?: string[];
+      /** False while it is only following its widget, so it stays where it is in the stack. */
+      raise?: boolean;
+    }
+  /** Position only — a window following its widget across the canvas. */
+  | { cmd: 'move'; appKey: string; rect: Rect }
   /** Bring the app's window back to the front, on top of Focus Desk. */
   | { cmd: 'raise'; appKey: string }
   /** Put the window back where it was before the first `place`. */
@@ -77,6 +87,8 @@ export type HelperEvent =
   | { ev: 'apps'; apps: AppInfo[] }
   | ({ ev: 'windows'; appKey: string } & AppWindows)
   | { ev: 'frontmost'; appKey: string | null }
+  /** A placed window has ended up somewhere Focus Desk did not put it. */
+  | { ev: 'window'; appKey: string; rect: Rect }
   | { ev: 'permissions'; accessibility: boolean }
   /** Where the window actually landed, and whether it accepted a size at all. */
   | { ev: 'placed'; appKey: string; resizable: boolean; title: string | null; rect: Rect }

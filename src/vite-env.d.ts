@@ -38,10 +38,26 @@ declare global {
       place: (
         appKey: string,
         rect: { x: number; y: number; width: number; height: number },
-        window?: { title?: string; avoid?: string[] }
+        window?: { title?: string; avoid?: string[] },
+        /** False while it is only following its widget, so it keeps its place in the stack. */
+        raise?: boolean
       ) => Promise<import('./apps/useAppSurface').PlaceResult>;
+      /** Position only, for a window following its widget across the canvas. */
+      move: (
+        appKey: string,
+        rect: { x: number; y: number; width: number; height: number }
+      ) => Promise<void>;
       /** Puts the window back where it was and brings Focus Desk forward. */
       release: (appKey: string) => Promise<void>;
+      /** Lets go of a window the user has moved somewhere themselves, untouched. */
+      detach: (appKey: string) => Promise<void>;
+      /** A placed window that moved or resized on its own, in window coordinates. */
+      onWindowFrame: (
+        handler: (
+          appKey: string,
+          rect: { x: number; y: number; width: number; height: number }
+        ) => void
+      ) => () => void;
       /** Brings the app's window back in front of Focus Desk. */
       raise: (appKey: string) => Promise<void>;
       /** Which apps count as "still at the desk" while this space is open. */

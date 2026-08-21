@@ -32,6 +32,12 @@ interface UiState {
   quickAdd: { screen: Point; world: Point } | null;
   /** The keyboard cheatsheet. */
   isShortcutsOpen: boolean;
+  /**
+   * App widgets the user has opened: their real windows sit on them whenever the
+   * widget is fully on the canvas. Not persisted — real windows do not survive a
+   * restart either.
+   */
+  openAppIds: string[];
 
   setSidebarOpen: (open: boolean) => void;
   setSelection: (ids: string[]) => void;
@@ -43,6 +49,9 @@ interface UiState {
   openQuickAdd: (screen: Point, world: Point) => void;
   closeQuickAdd: () => void;
   toggleShortcuts: () => void;
+  toggleAppOpen: (widgetId: string) => void;
+  closeApp: (widgetId: string) => void;
+  closeAllApps: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -52,6 +61,7 @@ export const useUiStore = create<UiState>((set) => ({
   isAltHeld: false,
   quickAdd: null,
   isShortcutsOpen: false,
+  openAppIds: [],
 
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
 
@@ -78,6 +88,18 @@ export const useUiStore = create<UiState>((set) => ({
   closeQuickAdd: () => set({ quickAdd: null }),
 
   toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
+
+  toggleAppOpen: (widgetId) =>
+    set((s) => ({
+      openAppIds: s.openAppIds.includes(widgetId)
+        ? s.openAppIds.filter((id) => id !== widgetId)
+        : [...s.openAppIds, widgetId],
+    })),
+
+  closeApp: (widgetId) =>
+    set((s) => ({ openAppIds: s.openAppIds.filter((id) => id !== widgetId) })),
+
+  closeAllApps: () => set({ openAppIds: [] }),
 }));
 
 /**
