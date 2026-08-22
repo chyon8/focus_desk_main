@@ -26,4 +26,12 @@ export function useSpaceApps() {
   // gives their windows their own size back rather than stranding them over
   // another space's widgets.
   useEffect(() => useUiStore.getState().closeAllApps, [spaceId]);
+
+  // Which of the two states the desk is in (D-071). Held in one place and read
+  // by every app widget: it is a property of the desk, not of any one window.
+  useEffect(() => {
+    const { setStaged } = useUiStore.getState();
+    void window.apps?.staged().then(setStaged);
+    return window.apps?.onStaged(setStaged);
+  }, []);
 }

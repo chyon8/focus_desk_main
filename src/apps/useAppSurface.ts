@@ -4,6 +4,13 @@ import { HEADER_HEIGHT } from '../canvas/WidgetFrame';
 import { getCamera, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
 
+interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export type PlaceFailure =
   | 'accessibility'
   | 'fullscreen'
@@ -16,9 +23,11 @@ export type PlaceFailure =
 export type PlaceResult =
   /**
    * `resizable` is false when the app owns its size and only its position moved;
-   * `title` is the window that was chosen, which the widget remembers.
+   * `title` is the window that was chosen, which the widget remembers; `rect` is
+   * where it actually ended up, in window coordinates, which is not always what
+   * was asked for.
    */
-  | { ok: true; resizable: boolean; title: string | null }
+  | { ok: true; resizable: boolean; title: string | null; rect: Box }
   | { ok: false; reason: PlaceFailure };
 
 /** Which window this widget means, for an app that keeps several open (D-045). */
@@ -55,13 +64,6 @@ const LEAVE_MS = 400;
 /** How long to stop pushing after the widget has been moved to match its window. */
 const RESYNC_MS = 250;
 
-interface Box {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 /**
  * Puts the real application window on the widget, at the widget's own size, and
  * keeps it there (D-038).
@@ -84,6 +86,20 @@ export function useAppSurface(
   onWindowTitle: (title: string | undefined) => void
 ) {
   const isOpen = useUiStore((s) => s.openAppIds.includes(widgetId)) && !!appKey;
+  const closeApp = useUiStore((s) => s.closeApp);
+  /**
+   * Whether the real windows are on their slots at all (D-071). While the desk
+   * is in front nothing here runs: the windows are behind it, so following them
+   * around the canvas would be work nobody can see, and putting them back would
+   * be the desk arguing with the state the user just asked for.
+   */
+  const isStaged = useUiStore((s) => s.isStaged);
+  /**
+   * A window is sitting on this slot right now. Kept in a ref because it has to
+   * outlive the placement effect, which is torn down and rebuilt on every ⌥Space
+   * — leaving the stage must not look like the widget letting go of its window.
+   */
+  const placed = useRef(false);
   /** Open and completely on the canvas, so the real window is actually here. */
   const [isHere, setIsHere] = useState(false);
   /** The user has taken the window out of the slot; it stays where they put it. */
@@ -102,8 +118,35 @@ export function useAppSurface(
     if (!isOpen) setIsAway(false);
   }, [isOpen]);
 
+  /**
+   * Opening the widget is asking for the window, so it brings the stage with it.
+   * Only the moment it opens: reacting to the state itself would undo ⌥Space on
+   * the next frame, every time.
+   */
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    const opening = isOpen && !wasOpen.current;
+    wasOpen.current = isOpen;
+    if (opening) void window.apps?.setStaged(true);
+  }, [isOpen]);
+
+  /**
+   * Letting go for good: the widget was closed, its app changed, or the space
+   * did. Separate from the placement effect below so that ⌥Space — which tears
+   * that one down several times a session — never reaches this.
+   */
   useEffect(() => {
     if (!isOpen || isAway) return;
+    return () => {
+      if (!placed.current) return;
+      placed.current = false;
+      setIsHere(false);
+      void window.apps?.release(appKey);
+    };
+  }, [isOpen, isAway, appKey]);
+
+  useEffect(() => {
+    if (!isOpen || isAway || !isStaged) return;
 
     let frame = 0;
     let alive = true;
@@ -129,17 +172,48 @@ export function useAppSurface(
       );
     };
 
+    /**
+     * The widget takes the window's shape. An app is free to refuse a size — a
+     * minimum width, a layout it lays out itself, a frame it restores on its own
+     * as it starts — and no amount of asking again wins that argument. So the
+     * plan follows reality instead: what the canvas shows is what is actually on
+     * screen, which is the only version of this that can always be true.
+     */
+    const adopt = (box: Box) => {
+      const camera = getCamera();
+      const world = screenToWorld(camera, { x: box.x - canvasArea().x, y: box.y });
+      const { moveWidget, resizeWidget } = useSpaceStore.getState();
+      moveWidget(widgetId, world.x, world.y - HEADER_HEIGHT);
+      resizeWidget(widgetId, box.width / camera.zoom, box.height / camera.zoom + HEADER_HEIGHT);
+      sent = { ...box };
+      resyncUntil = performance.now() + RESYNC_MS;
+    };
+
+    /** Far enough from what was asked for to be worth matching. */
+    const differs = (box: Box) =>
+      Math.abs(box.x - sent.x) >= 3 ||
+      Math.abs(box.y - sent.y) >= 3 ||
+      Math.abs(box.width - sent.width) >= 3 ||
+      Math.abs(box.height - sent.height) >= 3;
+
     const place = (box: Box, raise: boolean) => {
       sent = { x: box.x, y: box.y, width: box.width, height: box.height };
       const { choice, onWindowTitle } = latest.current;
       void window.apps?.place(appKey, sent, choice, raise).then((result) => {
         if (!alive || !result) return;
         setPlacement(result);
+        if (!result.ok) return;
         // Rewritten rather than kept from the first time, so a window whose title
         // changes — a different project in the same editor — stays the one this
         // widget means. Only on a change: this runs on every resize.
-        const title = (result.ok && result.title) || undefined;
-        if (result.ok && title !== choice.title) onWindowTitle(title);
+        const title = result.title || undefined;
+        if (title !== choice.title) onWindowTitle(title);
+        // It landed somewhere else than it was sent. Inside the canvas the widget
+        // simply becomes that; outside it there is nothing to sit on and the slot
+        // is given up.
+        if (!differs(result.rect)) return;
+        if (fits(result.rect)) adopt(result.rect);
+        else dropSlot();
       });
     };
 
@@ -147,6 +221,7 @@ export function useAppSurface(
     const leave = () => {
       if (!here) return;
       here = false;
+      placed.current = false;
       setIsHere(false);
       void window.apps?.release(appKey);
     };
@@ -158,10 +233,22 @@ export function useAppSurface(
      */
     const dropSlot = () => {
       here = false;
+      placed.current = false;
       setIsHere(false);
       setIsAway(true);
       void window.apps?.detach(appKey);
     };
+
+    // The app quit. Its widget has nothing left to stand in for, so it goes back
+    // to being the launcher it was before it was opened — the main process has
+    // already let go of everything on its side.
+    const offGone = window.apps?.onGone((key) => {
+      if (!alive || key !== appKey) return;
+      here = false;
+      placed.current = false;
+      setIsHere(false);
+      closeApp(widgetId);
+    });
 
     // The window moved or resized on its own. Inside the canvas the widget
     // follows it, so dragging a window's edge is a way to lay the space out.
@@ -179,15 +266,7 @@ export function useAppSurface(
         dropSlot();
         return;
       }
-      // Window coordinates back to the widget's own: the surface sits under the
-      // widget's header, and the canvas starts to the right of the sidebar.
-      const camera = getCamera();
-      const world = screenToWorld(camera, { x: box.x - canvasArea().x, y: box.y });
-      const { moveWidget, resizeWidget } = useSpaceStore.getState();
-      moveWidget(widgetId, world.x, world.y - HEADER_HEIGHT);
-      resizeWidget(widgetId, box.width / camera.zoom, box.height / camera.zoom + HEADER_HEIGHT);
-      sent = { ...box };
-      resyncUntil = performance.now() + RESYNC_MS;
+      adopt(box);
     });
 
     const watch = () => {
@@ -206,6 +285,7 @@ export function useAppSurface(
       outSince = 0;
       if (!here) {
         here = true;
+        placed.current = true;
         setIsHere(true);
         place(box, true);
         return;
@@ -242,17 +322,19 @@ export function useAppSurface(
     };
     watch();
 
+    // The window is left exactly as it is. Coming off stage is the desk moving
+    // in front of it, not the widget giving it up — so coming back costs one
+    // placement instead of a resize the user has to watch.
     return () => {
       alive = false;
       cancelAnimationFrame(frame);
       offWindowFrame?.();
-      if (here) void window.apps?.release(appKey);
-      setIsHere(false);
+      offGone?.();
     };
-  }, [isOpen, isAway, appKey, ref, widgetId]);
+  }, [isOpen, isAway, isStaged, appKey, ref, widgetId, closeApp]);
 
   // A different app in the same widget has told us nothing yet.
   useEffect(() => setPlacement(null), [appKey]);
 
-  return { isOpen, isHere, isAway, placement, callBack: () => setIsAway(false) };
+  return { isOpen, isHere, isAway, isStaged, placement, callBack: () => setIsAway(false) };
 }

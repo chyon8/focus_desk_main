@@ -38,6 +38,13 @@ interface UiState {
    * restart either.
    */
   openAppIds: string[];
+  /**
+   * Whether the real windows are on their slots (D-071). Two states, and only
+   * ⌥Space moves between them: the desk cannot be above the app windows and
+   * below them at once, so the one thing that must never happen is the choice
+   * being made by an ordinary click.
+   */
+  isStaged: boolean;
 
   setSidebarOpen: (open: boolean) => void;
   setSelection: (ids: string[]) => void;
@@ -49,6 +56,7 @@ interface UiState {
   openQuickAdd: (screen: Point, world: Point) => void;
   closeQuickAdd: () => void;
   toggleShortcuts: () => void;
+  setStaged: (staged: boolean) => void;
   toggleAppOpen: (widgetId: string) => void;
   closeApp: (widgetId: string) => void;
   closeAllApps: () => void;
@@ -62,6 +70,8 @@ export const useUiStore = create<UiState>((set) => ({
   quickAdd: null,
   isShortcutsOpen: false,
   openAppIds: [],
+  // Nothing is placed yet, so the desk is simply a window like any other.
+  isStaged: false,
 
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
 
@@ -88,6 +98,8 @@ export const useUiStore = create<UiState>((set) => ({
   closeQuickAdd: () => set({ quickAdd: null }),
 
   toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
+
+  setStaged: (isStaged) => set({ isStaged }),
 
   toggleAppOpen: (widgetId) =>
     set((s) => ({

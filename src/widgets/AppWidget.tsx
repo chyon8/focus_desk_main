@@ -44,7 +44,17 @@ export const AppWidget: React.FC<{ id: string }> = ({ id }) => {
       onClear={() => update({ appKey: '', name: '', icon: null, windowTitle: undefined })}
     />
   ) : (
-    <AppPicker onPick={update} />
+    <AppPicker
+      onPick={(app) => {
+        update(app);
+        // Picking is the asking. The widget was empty a moment ago and the user
+        // just said what should stand here, so it opens in the slot rather than
+        // waiting to be opened a second time. Not the space-entry auto-launch
+        // that D-054 threw out — that one nobody asked for.
+        const ui = useUiStore.getState();
+        if (!ui.openAppIds.includes(id)) ui.toggleAppOpen(id);
+      }}
+    />
   );
 };
 
@@ -64,7 +74,7 @@ const AppFace: React.FC<{
     () => ({ title: data.windowTitle, avoid: claimedWindowTitles(space, id, data.appKey) }),
     [space, id, data.appKey, data.windowTitle]
   );
-  const { isOpen, isHere, isAway, placement, callBack } = useAppSurface(
+  const { isOpen, isHere, isAway, isStaged, placement, callBack } = useAppSurface(
     id,
     data.appKey,
     surfaceRef,
@@ -83,16 +93,17 @@ const AppFace: React.FC<{
   const close = () => useUiStore.getState().closeApp(id);
 
   if (isOpen) {
-    const resting = permissions.accessibility && isHere && placement?.ok;
+    // Off stage the window is behind the desk, so this is what the user is
+    // looking at — and clicking it is one of the two ways back (D-071).
+    const offStage = permissions.accessibility && !isStaged;
+    const resting = permissions.accessibility && isStaged && isHere && placement?.ok;
     return (
       <div
         ref={surfaceRef}
-        // Two real windows share no z-order, so any click on Focus Desk buries
-        // the app behind it with no way back on its own — clicking this surface
-        // (the whole card) is that way back. Seen whenever Focus Desk comes
-        // forward, which is often, so it must read as a resting state.
-        onClick={resting ? () => void window.apps?.raise(data.appKey) : undefined}
-        className={`t-ink h-full w-full flex flex-col items-center justify-center gap-2 p-6 text-center ${resting ? 'cursor-pointer' : ''}`}
+        onClick={
+          offStage || resting ? () => void window.apps?.raise(data.appKey) : undefined
+        }
+        className={`t-ink h-full w-full flex flex-col items-center justify-center gap-2 p-6 text-center ${offStage || resting ? 'cursor-pointer' : ''}`}
       >
         {!permissions.accessibility ? (
           <>
@@ -110,6 +121,17 @@ const AppFace: React.FC<{
             <span className="t-faint text-[10px] max-w-[38ch]">
               If nothing is listed, drag in the file that Finder just revealed.
             </span>
+          </>
+        ) : offStage ? (
+          <>
+            {data.icon ? (
+              <img src={data.icon} alt="" className="w-10 h-10 rounded-[10px]" />
+            ) : null}
+            <span className="t-ink text-sm">{data.name}</span>
+            <span className="t-faint text-xs">
+              {seconds > 0 ? `${formatDuration(seconds)} today` : 'Waiting behind the desk'}
+            </span>
+            <span className="t-faint text-[10px]">click, or ⌥Space, to bring it back</span>
           </>
         ) : isAway ? (
           // Its window is somewhere the widget cannot follow — a window manager
@@ -344,18 +366,18 @@ const WindowPicker: React.FC<{
 };
 
 const AppPicker: React.FC<{ onPick: (app: AppData) => void }> = ({ onPick }) => {
-  const [apps, setApps] = useState<AppData[] | null>(null);
+  const [catalog, setCatalog] = useState<{ apps: AppData[]; spotlight: boolean } | null>(null);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
     let alive = true;
     // No bridge means a plain browser, where there is nothing to list.
     if (!window.apps) {
-      setApps([]);
+      setCatalog({ apps: [], spotlight: true });
       return;
     }
-    void window.apps.list().then((list) => {
-      if (alive) setApps(list);
+    void window.apps.list().then((next) => {
+      if (alive) setCatalog(next);
     });
     return () => {
       alive = false;
@@ -363,10 +385,12 @@ const AppPicker: React.FC<{ onPick: (app: AppData) => void }> = ({ onPick }) => 
   }, []);
 
   const matches = useMemo(() => {
-    if (!apps) return [];
+    if (!catalog) return [];
     const needle = query.trim().toLowerCase();
-    return needle ? apps.filter((app) => app.name.toLowerCase().includes(needle)) : apps;
-  }, [apps, query]);
+    return needle
+      ? catalog.apps.filter((app) => app.name.toLowerCase().includes(needle))
+      : catalog.apps;
+  }, [catalog, query]);
 
   return (
     <div className="t-ink h-full w-full flex flex-col p-5">
@@ -383,11 +407,27 @@ const AppPicker: React.FC<{ onPick: (app: AppData) => void }> = ({ onPick }) => 
         />
       </div>
 
-      {apps === null ? (
+      {catalog === null ? (
         <div className="t-faint text-xs">Looking for apps…</div>
       ) : matches.length === 0 ? (
-        <div className="t-faint text-xs">
-          {apps.length === 0 ? 'No apps found on this machine.' : 'Nothing matches.'}
+        // Coming up empty is the one moment the search is worth explaining: an
+        // app macOS has not indexed is invisible here however hard the user
+        // looks for it, and only they can do anything about that (D-068).
+        <div className="flex flex-col items-start gap-1.5">
+          <span className="t-faint text-xs">
+            {catalog.apps.length === 0 ? 'No apps found on this machine.' : 'Nothing matches.'}
+          </span>
+          <span className="t-faint text-[11px] max-w-[40ch]">
+            {catalog.spotlight
+              ? 'Apps are found through Spotlight. One in a folder Spotlight skips will not show up here.'
+              : 'Spotlight indexing is off, so only apps in Applications are listed.'}
+          </span>
+          <button
+            onClick={() => void window.apps?.showSpotlightSettings()}
+            className="chrome-button mt-0.5 px-3 h-7 rounded-md text-[11px]"
+          >
+            Open Spotlight settings
+          </button>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto space-y-0.5 -mx-2 px-2">

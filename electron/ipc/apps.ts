@@ -1,7 +1,7 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron';
 import { helperPath, type HelperClient } from '../apps/helperClient';
 import type {
-  AppInfo,
+  AppCatalog,
   AppWindows,
   HelperCmd,
   HelperEvent,
@@ -15,6 +15,12 @@ import type {
 /** Long enough for a cold scan of /Applications, short enough to not hang a click. */
 const LIST_TIMEOUT_MS = 15_000;
 const ASK_TIMEOUT_MS = 3_000;
+/**
+ * How long a scan stands before the next picker asks for a fresh one. Apps get
+ * installed while Focus Desk is open, and having to restart to see one is not an
+ * answer; a scan only ever runs when the picker is opened, so this is cheap.
+ */
+const CATALOG_TTL_MS = 60_000;
 /** The helper keeps waiting for a window while an app starts up; outlast that. */
 const PLACE_TIMEOUT_MS = 8_000;
 /** Window drags fire continuously; the placed window follows in steps this big. */
@@ -59,24 +65,30 @@ function ask<T>(
 }
 
 export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWindow | null) {
-  // The installed set does not change while the app runs and the reply carries an
-  // icon per app, so it is fetched once and kept.
-  let cached: AppInfo[] | null = null;
-  let listing: Promise<AppInfo[]> | null = null;
+  // The reply carries an icon per app, so a scan is worth holding on to — but
+  // only for a while, since the installed set does change under us.
+  let cached: AppCatalog | null = null;
+  let cachedAt = 0;
+  let listing: Promise<AppCatalog> | null = null;
 
   ipcMain.handle('apps:list', async () => {
-    if (cached) return cached;
+    if (cached && Date.now() - cachedAt < CATALOG_TTL_MS) return cached;
     if (!listing) {
-      listing = ask<AppInfo[]>(
+      listing = ask<AppCatalog>(
         helper,
         { cmd: 'list' },
-        (event) => (event.ev === 'apps' ? event.apps : undefined),
+        (event) => (event.ev === 'apps' ? { apps: event.apps, spotlight: event.spotlight } : undefined),
         LIST_TIMEOUT_MS,
-        []
-      ).then((apps) => {
+        { apps: [], spotlight: false }
+      ).then((catalog) => {
         listing = null;
-        if (apps.length > 0) cached = apps;
-        return apps;
+        // A scan that timed out is not an answer; leave the last good one in
+        // place and let the next picker try again.
+        if (catalog.apps.length > 0) {
+          cached = catalog;
+          cachedAt = Date.now();
+        }
+        return catalog;
       });
     }
     return listing;
@@ -121,6 +133,12 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     return helperPath();
   });
 
+  // Where indexing is switched on and off, and which folders it leaves out — the
+  // two reasons an app the user owns can be missing from the list (D-068).
+  ipcMain.handle('apps:show-spotlight-settings', () =>
+    shell.openExternal('x-apple.systempreferences:com.apple.Spotlight-Settings.extension')
+  );
+
   // --- Live placement (D-038) ---
   //
   // The renderer measures the widget in window coordinates; turning that into
@@ -146,6 +164,15 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   const arriving = new Set<string>();
   let followTimer: ReturnType<typeof setTimeout> | null = null;
   let raiseTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Whether the real windows are on their slots. The desk cannot be above them
+   * and below them at once, so this is a state rather than a reaction: it moves
+   * on ⌥Space and on a widget being clicked, and on nothing else. Every version
+   * of this that changed with an ordinary click flipped every app in the space
+   * on every stray click (D-071).
+   */
+  let staged = false;
 
   /**
    * Parks the desk below every ordinary window, or brings it back to its own
@@ -196,21 +223,41 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   // Round-tripping through the desk and back is otherwise a dead end: two real
   // windows have no shared z-order, so Focus Desk coming forward (any click on
   // it) buries the apps with no way back short of Mission Control.
+  /**
+   * Moves between the two states and tells the renderer, which is what actually
+   * puts the windows back on their slots — it is the only side that knows where
+   * the widgets are now. Going the other way leaves every window exactly where
+   * it is: they are simply behind the desk, so coming back costs nothing.
+   */
+  const setStaged = (next: boolean) => {
+    staged = next;
+    setBehind(next);
+    const win = getWindow();
+    if (!win || win.isDestroyed()) return;
+    if (!next) win.focus();
+    win.webContents.send('apps:staged-changed', next);
+  };
+
   const registerReturnShortcut = () => {
     if (globalShortcut.isRegistered(RETURN_SHORTCUT)) return;
-    globalShortcut.register(RETURN_SHORTCUT, () => {
-      const win = getWindow();
-      if (!win || win.isDestroyed()) return;
-      // A toggle between the two layers: the desk over everything to work on the
-      // canvas itself, or back under the apps to work in them.
-      if (behind) {
-        setBehind(false);
-        win.focus();
-      } else {
-        setBehind(true);
-        for (const appKey of live.keys()) helper.send({ cmd: 'raise', appKey });
-      }
-    });
+    globalShortcut.register(RETURN_SHORTCUT, () => setStaged(!staged));
+  };
+
+  /**
+   * Drops an app from the live set, and puts the desk back at its own level once
+   * the last one is gone. Every consequence of a window being here hangs off this
+   * map — the desk sitting one level down, and every `raise` that follows it — so
+   * an entry that outlives its window parks the desk under everything for good.
+   */
+  const forget = (appKey: string) => {
+    if (!live.delete(appKey)) return false;
+    arriving.delete(appKey);
+    if (live.size > 0) return true;
+    globalShortcut.unregister(RETURN_SHORTCUT);
+    const win = getWindow();
+    if (win && !win.isDestroyed()) win.setVisibleOnAllWorkspaces(false);
+    setStaged(false);
+    return true;
   };
 
   ipcMain.handle(
@@ -237,9 +284,11 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
         // does nothing at all. Fullscreen made this obvious (D-051); the same
         // thing happens in a windowed desk. Going a level *below* normal fixes it
         // and keeps the apps visible for good.
-        setBehind(true);
       }
       registerReturnShortcut();
+      // A window arriving on a slot is what being on stage means; the desk goes
+      // under it and stays there until ⌥Space says otherwise.
+      if (!staged) setStaged(true);
       if (raise) arriving.add(appKey);
 
       return ask<PlaceResult>(
@@ -247,7 +296,18 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
         { cmd: 'place', appKey, title: entry.title, avoid: entry.avoid, rect: screen, raise },
         (event) => {
           if (event.ev === 'placed' && event.appKey === appKey) {
-            return { ok: true, resizable: event.resizable, title: event.title, rect: event.rect };
+            // Back into window coordinates: where it actually landed is only
+            // useful to the widget that has to match it.
+            const bounds = win?.getContentBounds();
+            const landed = bounds
+              ? {
+                  x: event.rect.x - bounds.x,
+                  y: event.rect.y - bounds.y,
+                  width: event.rect.width,
+                  height: event.rect.height,
+                }
+              : rect;
+            return { ok: true, resizable: event.resizable, title: event.title, rect: landed };
           }
           if (event.ev === 'error' && event.cmd === 'place') {
             return { ok: false, reason: event.reason as PlaceFailure };
@@ -256,7 +316,14 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
         },
         PLACE_TIMEOUT_MS,
         { ok: false, reason: 'unknown' }
-      );
+      ).then((result) => {
+        // The app was written down before the helper answered, because following
+        // and raising have to work from the first frame. When no window ever
+        // landed that entry is a lie, and an expensive one: the desk stays parked
+        // below every window with nothing to show for it.
+        if (!result.ok) forget(appKey);
+        return result;
+      });
     }
   );
 
@@ -276,38 +343,37 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
    * the size it had before, so sending it back later still works.
    */
   ipcMain.handle('apps:detach', (_event, appKey: string) => {
-    if (!live.delete(appKey)) return;
-    arriving.delete(appKey);
-    if (live.size > 0) return;
-    globalShortcut.unregister(RETURN_SHORTCUT);
-    const win = getWindow();
-    if (!win || win.isDestroyed()) return;
-    win.setVisibleOnAllWorkspaces(false);
-    setBehind(false);
+    forget(appKey);
   });
 
   ipcMain.handle('apps:release', (_event, appKey: string) => {
-    const wasLive = live.delete(appKey);
-    arriving.delete(appKey);
+    const wasLive = forget(appKey);
     helper.send({ cmd: 'restore', appKey });
-    // Only the last one out puts the desk back: letting go of one window must not
-    // pull Focus Desk in front of the ones still open.
+    // Only the last one out brings the desk forward: letting go of one window
+    // must not pull Focus Desk in front of the ones still open. The app drops
+    // behind it rather than being hidden, so nothing about it changes on the way
+    // out.
     if (!wasLive || live.size > 0) return;
-    globalShortcut.unregister(RETURN_SHORTCUT);
     const win = getWindow();
-    if (!win || win.isDestroyed()) return;
-    win.setVisibleOnAllWorkspaces(false);
-    setBehind(false);
-    // Focus Desk comes back in front; the app drops behind it rather than being
-    // hidden, so nothing about it changes on the way out.
-    win.focus();
+    if (win && !win.isDestroyed()) win.focus();
   });
 
-  // The mouse-driven half of the round trip: once Focus Desk has come forward
-  // (any click on it), clicking the widget again — now visible, since it is what
-  // the app was sitting on — brings that app back.
+  // Which state the desk is in, for a renderer that has just started or reloaded.
+  ipcMain.handle('apps:staged', () => staged);
+
+  // Opening an app widget is asking for its window, and a window on a slot means
+  // the stage. The renderer asks because it is the side that knows an app was
+  // opened; the state itself stays here, where the window level is.
+  ipcMain.handle('apps:set-staged', (_event, next: boolean) => {
+    if (staged !== next) setStaged(next);
+  });
+
+  // The mouse half of the round trip. Clicking a widget while the desk is in
+  // front is the second way back on stage — the first being ⌥Space — and it says
+  // which app the user meant, so that one comes forward with them.
   ipcMain.handle('apps:raise', (_event, appKey: string) => {
     if (!live.has(appKey)) return;
+    if (!staged) setStaged(true);
     const win = getWindow();
     if (win && !win.isDestroyed()) win.showInactive();
     helper.send({ cmd: 'raise', appKey });
@@ -319,7 +385,7 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   // before are only remembered inside the helper, which dies with us.
   const restoreLive = () => {
     if (live.size === 0) return false;
-    setBehind(false);
+    setStaged(false);
     for (const appKey of live.keys()) helper.send({ cmd: 'restore', appKey });
     live.clear();
     arriving.clear();
@@ -390,6 +456,15 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
       width: event.rect.width,
       height: event.rect.height,
     });
+  });
+
+  // The app quit while its window was on a widget. Everything that hangs off the
+  // live set has to be undone, or the desk stays parked below every window with
+  // nothing left to sit under.
+  helper.on((event) => {
+    if (event.ev !== 'gone' || !forget(event.appKey)) return;
+    const win = getWindow();
+    if (win && !win.isDestroyed()) win.webContents.send('apps:gone', event.appKey);
   });
 
   // The renderer needs the frontmost app by name, not just the "am I here" flag,

@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('apps', {
   permissions: () => ipcRenderer.invoke('apps:permissions'),
   /** Opens the Accessibility pane and reveals the binary to add; returns its path. */
   showAccessibilitySettings: () => ipcRenderer.invoke('apps:show-accessibility-settings'),
+  /** Opens the Spotlight pane, where indexing and its exclusions are set. */
+  showSpotlightSettings: () => ipcRenderer.invoke('apps:show-spotlight-settings'),
   /** Rect is in window coordinates; the main process adds the window's origin. */
   place: (
     appKey: string,
@@ -57,6 +59,22 @@ contextBridge.exposeInMainWorld('apps', {
   },
   /** Brings the app's window back in front of Focus Desk. */
   raise: (appKey: string) => ipcRenderer.invoke('apps:raise', appKey),
+  /** Whether the real windows are on their slots right now. */
+  staged: () => ipcRenderer.invoke('apps:staged'),
+  /** Asks for the two states; opening an app widget is one of the two ways in. */
+  setStaged: (staged: boolean) => ipcRenderer.invoke('apps:set-staged', staged),
+  /** The desk moved between its two states (⌥Space, or a widget click). */
+  onStaged: (handler: (staged: boolean) => void) => {
+    const listener = (_event: unknown, staged: boolean) => handler(staged);
+    ipcRenderer.on('apps:staged-changed', listener);
+    return () => ipcRenderer.removeListener('apps:staged-changed', listener);
+  },
+  /** A placed app quit; its widget goes back to being a launcher. */
+  onGone: (handler: (appKey: string) => void) => {
+    const listener = (_event: unknown, appKey: string) => handler(appKey);
+    ipcRenderer.on('apps:gone', listener);
+    return () => ipcRenderer.removeListener('apps:gone', listener);
+  },
   /** Which apps count as "still at the desk" while this space is open (D-039). */
   setSpaceApps: (appKeys: string[]) => ipcRenderer.invoke('activity:set-space-apps', appKeys),
   onFrontmost: (handler: (appKey: string | null) => void) => {

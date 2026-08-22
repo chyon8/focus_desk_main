@@ -8,6 +8,7 @@
 
 import AppKit
 import ApplicationServices
+import CoreServices
 import Foundation
 
 // MARK: - Output
@@ -37,7 +38,8 @@ private let searchRoots = [
 ]
 
 /// App bundles in the usual places, one folder deep so /Applications/Utilities is
-/// picked up without walking the whole disk.
+/// picked up without walking the whole disk. Kept alongside the Spotlight query
+/// because this half always works, index or no index (D-068).
 private func appBundleURLs() -> [URL] {
     let fm = FileManager.default
     var found: [URL] = []
@@ -63,6 +65,60 @@ private func appBundleURLs() -> [URL] {
         }
     }
     return found
+}
+
+/// Every application macOS has indexed, wherever it sits — the only way to find
+/// one kept outside the usual folders, which is where they end up more often than
+/// not (an app run straight out of ~/Downloads). Synchronous because the helper
+/// answers one command at a time. An empty result means the index is off or does
+/// not cover this machine's apps; the renderer says so rather than silently
+/// showing a short list.
+private func spotlightAppURLs() -> [URL] {
+    guard let query = MDQueryCreate(
+        kCFAllocatorDefault,
+        "kMDItemContentType == 'com.apple.application-bundle'" as CFString,
+        nil,
+        nil
+    ), MDQueryExecute(query, CFOptionFlags(kMDQuerySynchronous.rawValue)) else { return [] }
+
+    var found: [URL] = []
+    for index in 0..<MDQueryGetResultCount(query) {
+        guard let raw = MDQueryGetResultAtIndex(query, index) else { continue }
+        let item = unsafeBitCast(raw, to: MDItem.self)
+        guard let path = MDItemCopyAttribute(item, kMDItemPath) as? String else { continue }
+        found.append(URL(fileURLWithPath: path))
+    }
+    return found
+}
+
+/// Bundles that are not an app anyone opens: the copies bundled inside another
+/// app, and everything under a Library folder — updater caches, printer drivers,
+/// build products. The folder crawl never reaches these; the index is full of
+/// them.
+private func isOfferable(_ url: URL) -> Bool {
+    let path = url.path
+    return !path.contains(".app/") && !path.contains("/Library/")
+}
+
+/// Info.plist booleans are written both ways — `<true/>` and `<string>1</string>`.
+private func infoFlag(_ info: [String: Any]?, _ key: String) -> Bool {
+    if let number = info?[key] as? NSNumber { return number.boolValue }
+    if let text = info?[key] as? String { return text == "1" || text.lowercased() == "true" }
+    return false
+}
+
+/// An app that never opens a window: menu bar items, agents, updaters. There is
+/// nothing for a widget to stand in for, so it is not offered at all (D-068).
+private func isBackgroundOnly(_ bundle: Bundle) -> Bool {
+    let info = bundle.infoDictionary
+    return infoFlag(info, "LSUIElement") || infoFlag(info, "LSBackgroundOnly")
+}
+
+/// When the app was last opened, for ordering the picker. Comes from the same
+/// index as the search above, so it is nil for everything when Spotlight is off.
+private func lastUsed(_ url: URL) -> Date? {
+    guard let item = MDItemCreate(kCFAllocatorDefault, url.path as CFString) else { return nil }
+    return MDItemCopyAttribute(item, kMDItemLastUsedDate) as? Date
 }
 
 /// A square PNG data URI, small enough that a few hundred of them cross the pipe
@@ -93,14 +149,18 @@ private func iconDataURI(for path: String, side: CGFloat = 64) -> String? {
 }
 
 private func listApps() {
+    let indexed = spotlightAppURLs()
     var byKey: [String: [String: Any]] = [:]
+    var order: [(key: String, name: String, used: Date?)] = []
 
-    for url in appBundleURLs() {
+    // Crawl first, so the copy in /Applications is the one that wins over any
+    // duplicate the index turns up elsewhere.
+    for url in appBundleURLs() + indexed where isOfferable(url) {
         guard let bundle = Bundle(url: url),
-              let appKey = bundle.bundleIdentifier
+              let appKey = bundle.bundleIdentifier,
+              byKey[appKey] == nil,
+              !isBackgroundOnly(bundle)
         else { continue }
-        // The same app can sit in more than one root; first one found wins.
-        if byKey[appKey] != nil { continue }
 
         let name = FileManager.default.displayName(atPath: url.path)
         byKey[appKey] = [
@@ -108,13 +168,27 @@ private func listApps() {
             "name": name,
             "icon": iconDataURI(for: url.path) ?? NSNull(),
         ]
+        order.append((appKey, name, lastUsed(url)))
     }
 
-    let apps = byKey.values.sorted {
-        ($0["name"] as? String ?? "").localizedCaseInsensitiveCompare($1["name"] as? String ?? "")
-            == .orderedAscending
+    // Recently opened first: a list of a hundred apps is only useful if the few
+    // the user actually works in are at the top. The rest fall back to
+    // alphabetical, which is all of them when there are no dates to sort by.
+    order.sort {
+        switch ($0.used, $1.used) {
+        case let (mine?, theirs?): return mine > theirs
+        case (_?, nil): return true
+        case (nil, _?): return false
+        default:
+            return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
     }
-    emit(["ev": "apps", "apps": apps])
+
+    emit([
+        "ev": "apps",
+        "apps": order.compactMap { byKey[$0.key] },
+        "spotlight": !indexed.isEmpty,
+    ])
 }
 
 // MARK: - Launch
@@ -545,14 +619,22 @@ private func place(
 
     let landed = frame(of: window) ?? target
     // Apps that lay themselves out asynchronously — anything Electron-based, and
-    // this editor is one — swallow a resize that arrives while they are still
-    // working through the last one. The window then keeps its old size at the new
-    // position, which is the "only the app shrank" look. One more pass once it has
-    // caught up, then report whatever it settled on.
-    if resizable,
-       abs(landed.width - target.width) > 2 || abs(landed.height - target.height) > 2 {
+    // this editor is one — swallow a frame that arrives while they are still
+    // working through the last one. An app just starting up is worse: it puts its
+    // window back where it left it, after we have already moved it, so the window
+    // ends up the widget's size at its own old position. Either way one more pass
+    // once it has caught up, then report whatever it settled on.
+    let missed =
+        abs(landed.minX - target.minX) > 2 || abs(landed.minY - target.minY) > 2
+        || (resizable
+            && (abs(landed.width - target.width) > 2 || abs(landed.height - target.height) > 2))
+    if missed {
         DispatchQueue.main.asyncAfter(deadline: .now() + settleRetryDelay) {
-            setFrame(window, target)
+            if resizable {
+                setFrame(window, target)
+            } else {
+                setPosition(window, target.origin)
+            }
             finish(frame(of: window) ?? target)
         }
         return
@@ -581,6 +663,16 @@ private func startFrameWatch() {
     guard frameWatch == nil else { return }
     frameWatch = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
         for (appKey, expected) in expectedFrames {
+            // Quitting the app itself is how a placed window most often ends, and
+            // nothing else notices: no window means no frame to report, so the
+            // desk would go on treating it as live for the rest of the session.
+            guard runningApp(appKey) != nil else {
+                expectedFrames.removeValue(forKey: appKey)
+                placedTitles.removeValue(forKey: appKey)
+                savedFrames.removeValue(forKey: appKey)
+                emit(["ev": "gone", "appKey": appKey])
+                continue
+            }
             guard let app = runningApp(appKey),
                   let window = documentWindow(of: app, wanted: placedTitles[appKey]),
                   let current = frame(of: window)
@@ -695,11 +787,14 @@ private func handle(_ line: String) {
             emitError("raise", "missing appKey")
             return
         }
+        // Only for an app that is already running: `raise` means "come forward",
+        // and one of these is sent for every live app at once, so starting
+        // anything here opens apps the user never asked for.
+        guard let app = runningApp(appKey) else { return }
         // Through LaunchServices for the same reason `place` does: a background
         // process cannot activate anything by asking directly.
         launch(appKey)
-        if let app = runningApp(appKey),
-           let window = documentWindow(of: app, wanted: placedTitles[appKey]) {
+        if let window = documentWindow(of: app, wanted: placedTitles[appKey]) {
             AXUIElementPerformAction(window, kAXRaiseAction as CFString)
         }
     case "restore":
@@ -739,8 +834,19 @@ private func readStdin() {
 
 private func handle_line(_ text: String) { handle(text) }
 
+// Normally the pipe closing is what ends this process, but a parent that is
+// killed outright can leave its write end held elsewhere and the read never
+// ends — one stray helper per crash, each still holding Accessibility and still
+// sitting on windows it will now never put back.
+private func watchParent() {
+    Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+        if getppid() == 1 { exit(0) }
+    }
+}
+
 // An AppKit run loop, but never in the Dock or the app switcher.
 let nsApp = NSApplication.shared
 nsApp.setActivationPolicy(.prohibited)
 readStdin()
+watchParent()
 nsApp.run()

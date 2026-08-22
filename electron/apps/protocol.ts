@@ -13,6 +13,17 @@ export interface AppInfo {
   icon: string | null;
 }
 
+/**
+ * The picker's whole world: every app worth offering, plus whether the Spotlight
+ * index was part of finding them. When it was not, the list is only what sits in
+ * the standard folders — an app kept anywhere else is missing and the user is the
+ * only one who can fix that (D-068).
+ */
+export interface AppCatalog {
+  apps: AppInfo[];
+  spotlight: boolean;
+}
+
 /** Screen coordinates, top-left origin, in points — the units Electron reports. */
 export interface Rect {
   x: number;
@@ -84,11 +95,13 @@ export interface AppWindows {
 }
 
 export type HelperEvent =
-  | { ev: 'apps'; apps: AppInfo[] }
+  | ({ ev: 'apps' } & AppCatalog)
   | ({ ev: 'windows'; appKey: string } & AppWindows)
   | { ev: 'frontmost'; appKey: string | null }
   /** A placed window has ended up somewhere Focus Desk did not put it. */
   | { ev: 'window'; appKey: string; rect: Rect }
+  /** A placed app has quit; there is no window left to keep track of. */
+  | { ev: 'gone'; appKey: string }
   | { ev: 'permissions'; accessibility: boolean }
   /** Where the window actually landed, and whether it accepted a size at all. */
   | { ev: 'placed'; appKey: string; resizable: boolean; title: string | null; rect: Rect }

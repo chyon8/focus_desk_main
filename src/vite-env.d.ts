@@ -20,8 +20,8 @@ declare global {
     };
     /** Real applications: the native helper's side of app widgets (D-038). */
     apps?: {
-      /** Everything installed, fetched once and cached in the main process. */
-      list: () => Promise<AppData[]>;
+      /** Every app worth offering, cached briefly in the main process. */
+      list: () => Promise<{ apps: AppData[]; spotlight: boolean }>;
       /** `activate: false` starts it in the background, for a space being entered. */
       launch: (appKey: string, activate?: boolean) => Promise<void>;
       /** The app's open windows on this desktop, plus a count of the ones elsewhere. */
@@ -34,6 +34,8 @@ declare global {
       permissions: () => Promise<{ accessibility: boolean }>;
       /** Opens the Accessibility pane and reveals the binary to add; returns its path. */
       showAccessibilitySettings: () => Promise<string>;
+      /** Opens the Spotlight pane, where indexing and its exclusions are set. */
+      showSpotlightSettings: () => Promise<void>;
       /** Rect in window coordinates; the main process adds the window's origin. */
       place: (
         appKey: string,
@@ -60,6 +62,14 @@ declare global {
       ) => () => void;
       /** Brings the app's window back in front of Focus Desk. */
       raise: (appKey: string) => Promise<void>;
+      /** Whether the real windows are on their slots right now. */
+      staged: () => Promise<boolean>;
+      /** Asks for the two states; opening an app widget is one of the two ways in. */
+      setStaged: (staged: boolean) => Promise<void>;
+      /** The desk moved between its two states (⌥Space, or a widget click). */
+      onStaged: (handler: (staged: boolean) => void) => () => void;
+      /** A placed app quit; its widget goes back to being a launcher. */
+      onGone: (handler: (appKey: string) => void) => () => void;
       /** Which apps count as "still at the desk" while this space is open. */
       setSpaceApps: (appKeys: string[]) => Promise<void>;
       onFrontmost: (handler: (appKey: string | null) => void) => () => void;
