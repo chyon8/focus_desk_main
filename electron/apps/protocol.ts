@@ -69,8 +69,23 @@ export type HelperCmd =
     }
   /** Position only — a window following its widget across the canvas. */
   | { cmd: 'move'; appKey: string; rect: Rect }
-  /** Bring the app's window back to the front, on top of Focus Desk. */
-  | { cmd: 'raise'; appKey: string }
+  /**
+   * Bring the app's window back to the front, on top of Focus Desk.
+   * `activate: false` only reorders it — the app does not take the keyboard, so
+   * this can be done every time the desk comes forward without throwing the user
+   * into another application.
+   */
+  | { cmd: 'raise'; appKey: string; activate?: boolean }
+  /**
+   * Hide every application except Focus Desk and the ones in `keep`. Focus Desk
+   * sits below its own app windows, which also puts it below unrelated ones.
+   */
+  | { cmd: 'hideOthers'; keep: string[] }
+  /**
+   * Move the window off the screen keeping its size — the widget is off the
+   * canvas and the window is expected back. `place` brings it out again.
+   */
+  | { cmd: 'aside'; appKey: string }
   /** Put the window back where it was before the first `place`. */
   | { cmd: 'restore'; appKey: string };
 
@@ -103,6 +118,8 @@ export type HelperEvent =
   /** A placed app has quit; there is no window left to keep track of. */
   | { ev: 'gone'; appKey: string }
   | { ev: 'permissions'; accessibility: boolean }
+  /** Applications outside this space were hidden, and how many. */
+  | { ev: 'hidden'; count: number }
   /** Where the window actually landed, and whether it accepted a size at all. */
   | { ev: 'placed'; appKey: string; resizable: boolean; title: string | null; rect: Rect }
   | { ev: 'error'; cmd: string; reason: string };

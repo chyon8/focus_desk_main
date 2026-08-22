@@ -49,8 +49,11 @@ declare global {
         appKey: string,
         rect: { x: number; y: number; width: number; height: number }
       ) => Promise<void>;
-      /** Puts the window back where it was and brings Focus Desk forward. */
-      release: (appKey: string) => Promise<void>;
+      /**
+       * Puts the window back where it was. `park` keeps the slot claimed, for a
+       * widget that has only slid off the canvas and is expected back (D-072).
+       */
+      release: (appKey: string, park?: boolean) => Promise<void>;
       /** Lets go of a window the user has moved somewhere themselves, untouched. */
       detach: (appKey: string) => Promise<void>;
       /** A placed window that moved or resized on its own, in window coordinates. */
@@ -66,8 +69,10 @@ declare global {
       staged: () => Promise<boolean>;
       /** Asks for the two states; opening an app widget is one of the two ways in. */
       setStaged: (staged: boolean) => Promise<void>;
-      /** The desk moved between its two states (⌥Space, or a widget click). */
+      /** The desk moved between its two states (⌃⌥D, or a widget click). */
       onStaged: (handler: (staged: boolean) => void) => () => void;
+      /** Applications outside this space were hidden to keep the desk visible. */
+      onHidden: (handler: (count: number) => void) => () => void;
       /** A placed app quit; its widget goes back to being a launcher. */
       onGone: (handler: (appKey: string) => void) => () => void;
       /** Which apps count as "still at the desk" while this space is open. */

@@ -15,6 +15,7 @@ import { QuickAdd } from './QuickAdd';
 import { ShortcutSheet } from './ShortcutSheet';
 import { ThemePicker } from './ThemePicker';
 import { Sidebar } from './Sidebar';
+import { HiddenAppsToast } from './HiddenAppsToast';
 import { UndoToast } from './UndoToast';
 
 export const App: React.FC = () => {
@@ -62,6 +63,7 @@ export const App: React.FC = () => {
       <QuickAdd />
       <ShortcutSheet />
       <UndoToast />
+      <HiddenAppsToast />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
     </div>
   );

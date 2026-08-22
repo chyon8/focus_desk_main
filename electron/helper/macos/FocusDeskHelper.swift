@@ -232,6 +232,16 @@ private var frameWatch: Timer?
 /// stay on that window rather than following the app's focus elsewhere.
 private var placedTitles: [String: String] = [:]
 
+/// Bumped whenever a placement stops being wanted. `place` keeps trying for six
+/// seconds while an app starts up, and in that time the widget can slide off the
+/// canvas or be closed — a retry that lands after that drops a window on a slot
+/// nobody is holding, and nobody is left to put it back.
+private var placeGeneration: [String: Int] = [:]
+
+private func cancelPlacement(_ appKey: String) {
+    placeGeneration[appKey, default: 0] += 1
+}
+
 private func hasAccessibility(prompt: Bool) -> Bool {
     let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
     return AXIsProcessTrustedWithOptions([key: prompt] as CFDictionary)
@@ -485,8 +495,13 @@ private func setFrame(_ window: AXUIElement, _ rect: CGRect) {
     setSize(window, rect.size)
 }
 
-/// How long to keep waiting for a window while an app that was not running starts up.
-private let placeAttempts = 12
+/// How long to keep waiting for a window while an app that was not running starts
+/// up. The first few looks come quickly — an app that is already running usually
+/// has its window a moment later, and half a second of nothing is the whole
+/// difference between a click that answers and one that hangs.
+private let placeAttempts = 14
+private let placeQuickAttempts = 5
+private let placeQuickDelay = 0.12
 private let placeRetryDelay = 0.5
 /// Long enough for an app to finish the layout pass that ate the first resize.
 private let settleRetryDelay = 0.09
@@ -497,17 +512,26 @@ private func place(
     wanted: String? = nil,
     avoid: Set<String> = [],
     raise: Bool = true,
-    attempt: Int = 0
+    attempt: Int = 0,
+    retryOf: Int? = nil
 ) {
     guard hasAccessibility(prompt: true) else {
         emitError("place", "accessibility")
         return
     }
+    // A fresh request cancels whatever was still being retried for this app.
+    if retryOf == nil { cancelPlacement(appKey) }
+    let generation = retryOf ?? placeGeneration[appKey] ?? 0
+    guard placeGeneration[appKey] == generation else { return }
 
     let again = {
         if attempt + 1 >= placeAttempts { return false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + placeRetryDelay) {
-            place(appKey, rect, wanted: wanted, avoid: avoid, raise: raise, attempt: attempt + 1)
+        let delay = attempt < placeQuickAttempts ? placeQuickDelay : placeRetryDelay
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            place(
+                appKey, rect, wanted: wanted, avoid: avoid, raise: raise,
+                attempt: attempt + 1, retryOf: generation
+            )
         }
         return true
     }
@@ -518,36 +542,41 @@ private func place(
         if !again() { emitError("place", "notRunning") }
         return
     }
-    // An assigned window that is not here has to be waited for, not replaced: the
-    // widget was pointed at that window on purpose, and moving whichever other
-    // window happens to be focused is worse than saying where it went. Only when
-    // the app has none hidden away is a missing title treated as gone for good.
-    if let wanted,
-       !axWindows(of: app).contains(where: { title(of: $0) == wanted }),
-       windowCount(pid: app.processIdentifier) > axWindows(of: app).count {
-        if attempt == 0 { launch(appKey) }
-        if !again() { emitError("place", "otherSpace") }
+    // Set aside earlier, or hidden by the user with ⌘H. Its windows keep their
+    // frames while hidden, so this costs nothing but making them visible again.
+    if app.isHidden { app.unhide() }
+
+    // A window on another Space is one macOS will not show us and will not let us
+    // move. Activating the app would drag the user's screen over to it — which is
+    // how "I clicked a widget and the app took over the display" happens — so
+    // this says where the window went and stops. The desk stays where the user is.
+    //
+    // Given a moment first: an app coming back from hidden, or still opening its
+    // window, looks exactly the same from here for a fraction of a second.
+    // An app that is starting up looks exactly like one whose windows are on
+    // another desktop: the window is in the window server's list before
+    // accessibility will describe it. So this waits out the whole retry budget
+    // before saying a window is somewhere else.
+    let visible = axWindows(of: app)
+    let elsewhere = windowCount(pid: app.processIdentifier) > visible.count
+    if visible.isEmpty, hasWindowsSomewhere(pid: app.processIdentifier) {
+        if again() { return }
+        emitError("place", "otherSpace")
+        return
+    }
+    // An assigned window that is not here is not replaced by another: the widget
+    // was pointed at that window on purpose.
+    if let wanted, !visible.contains(where: { title(of: $0) == wanted }), elsewhere {
+        if again() { return }
+        emitError("place", "otherSpace")
         return
     }
 
     guard let window = documentWindow(of: app, wanted: wanted, avoid: avoid),
           let current = frame(of: window)
     else {
-        // Accessibility cannot see a window that lives on another Space, so an
-        // empty list means either "no window yet" or "over there".
-        //
-        // Over there is recoverable: activating the app brings its Space forward,
-        // and from there the window is an ordinary window again — which is
-        // exactly what reaching for Mission Control was doing by hand. Once it is
-        // visible the fullscreen check below sends it back to a shared desktop.
-        if hasWindowsSomewhere(pid: app.processIdentifier) {
-            // Through LaunchServices, not `activate()`: this helper is a
-            // background process and never active itself, and macOS ignores an
-            // activation request from one of those.
-            if attempt == 0 { launch(appKey) }
-            if !again() { emitError("place", "otherSpace") }
-            return
-        }
+        // No window anywhere: the app is still starting up, or the user closed
+        // its last one. Worth waiting for — this is the cold-launch path.
         if !again() { emitError("place", "noWindow") }
         return
     }
@@ -630,6 +659,7 @@ private func place(
             && (abs(landed.width - target.width) > 2 || abs(landed.height - target.height) > 2))
     if missed {
         DispatchQueue.main.asyncAfter(deadline: .now() + settleRetryDelay) {
+            guard placeGeneration[appKey] == generation else { return }
             if resizable {
                 setFrame(window, target)
             } else {
@@ -692,13 +722,68 @@ private func startFrameWatch() {
     }
 }
 
+/// Takes the window off the screen while keeping its size: the widget cannot hold
+/// it right now (it slid off the canvas, or the canvas zoomed out past the size
+/// the window will go to), and it is expected back.
+///
+/// Moved below the screen rather than hidden with ⌘H. Hiding is animated, takes
+/// the front application away and hands back a window that has not drawn itself
+/// yet — a black rectangle for a moment, on every zoom. A position write is one
+/// instant call that changes nothing about the app, and coming back is the same
+/// call again.
+/// Hides every application except Focus Desk and the ones named in `keep`.
+///
+/// Focus Desk sits below its own app windows so they stay visible on their
+/// widgets, which also puts it below unrelated windows — a browser opened over it
+/// hides the whole space. Hiding those is the only way to have both.
+private func hideOthers(keep: Set<String>) {
+    let desk = getppid()
+    var hidden = 0
+    for app in NSWorkspace.shared.runningApplications {
+        guard app.activationPolicy == .regular,
+              app.processIdentifier != desk,
+              !app.isHidden,
+              let appKey = app.bundleIdentifier,
+              !keep.contains(appKey)
+        else { continue }
+        if app.hide() { hidden += 1 }
+    }
+    // Only worth telling the user about when something actually went away.
+    if hidden > 0 { emit(["ev": "hidden", "count": hidden]) }
+}
+
+private func setAside(_ appKey: String) {
+    cancelPlacement(appKey)
+    guard let app = runningApp(appKey),
+          let window = documentWindow(of: app, wanted: placedTitles[appKey]),
+          let current = frame(of: window)
+    else { return }
+    let bounds = visibleBounds(containing: current)
+    let parked = CGPoint(x: current.minX, y: bounds.maxY)
+    setPosition(window, parked)
+    // Whatever it settled on, so the frame watch does not report this as the user
+    // moving their own window.
+    expectedFrames[appKey] = frame(of: window) ?? CGRect(origin: parked, size: current.size)
+}
+
+/// Every window this helper has moved, back where it came from. The desk asks for
+/// this on the way out, but a crash or a kill never gets to — and a window parked
+/// below the screen with nobody left to bring it back is a window the user has
+/// lost. The pipe closing is the last thing that always happens.
+private func restoreAll() {
+    for appKey in Array(savedFrames.keys) { restore(appKey) }
+}
+
 private func restore(_ appKey: String) {
+    cancelPlacement(appKey)
     expectedFrames.removeValue(forKey: appKey)
     let placed = placedTitles.removeValue(forKey: appKey)
     guard let saved = savedFrames.removeValue(forKey: appKey),
-          let app = runningApp(appKey),
-          let window = documentWindow(of: app, wanted: placed)
+          let app = runningApp(appKey)
     else { return }
+    // Hidden by the user with ⌘H at some point: they asked for it back.
+    if app.isHidden { app.unhide() }
+    guard let window = documentWindow(of: app, wanted: placed) else { return }
     // Clamped too: the window may have been saved from a display that is gone.
     setFrame(window, clamp(saved, into: visibleBounds(containing: saved)))
 }
@@ -791,12 +876,25 @@ private func handle(_ line: String) {
         // and one of these is sent for every live app at once, so starting
         // anything here opens apps the user never asked for.
         guard let app = runningApp(appKey) else { return }
-        // Through LaunchServices for the same reason `place` does: a background
-        // process cannot activate anything by asking directly.
-        launch(appKey)
+        // Ordering the window is one thing and handing the app the keyboard is
+        // another. Keeping placed windows on top of the desk is the first; the
+        // user clicking a widget to work in that app is the second.
+        if object["activate"] as? Bool ?? true {
+            // Through LaunchServices for the same reason `place` does: a
+            // background process cannot activate anything by asking directly.
+            launch(appKey)
+        }
         if let window = documentWindow(of: app, wanted: placedTitles[appKey]) {
             AXUIElementPerformAction(window, kAXRaiseAction as CFString)
         }
+    case "hideOthers":
+        hideOthers(keep: Set(object["keep"] as? [String] ?? []))
+    case "aside":
+        guard let appKey = object["appKey"] as? String else {
+            emitError("aside", "missing appKey")
+            return
+        }
+        setAside(appKey)
     case "restore":
         guard let appKey = object["appKey"] as? String else {
             emitError("restore", "missing appKey")
@@ -816,7 +914,10 @@ private func readStdin() {
         // Empty read means the parent went away; there is nothing left to serve.
         // Quitting from the main queue lets commands already queued there finish.
         if chunk.isEmpty {
-            DispatchQueue.main.async { exit(0) }
+            DispatchQueue.main.async {
+                restoreAll()
+                exit(0)
+            }
             return
         }
 
@@ -840,7 +941,10 @@ private func handle_line(_ text: String) { handle(text) }
 // sitting on windows it will now never put back.
 private func watchParent() {
     Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-        if getppid() == 1 { exit(0) }
+        if getppid() == 1 {
+            restoreAll()
+            exit(0)
+        }
     }
 }
 

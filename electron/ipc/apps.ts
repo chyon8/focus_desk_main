@@ -26,11 +26,11 @@ const PLACE_TIMEOUT_MS = 8_000;
 /** Window drags fire continuously; the placed window follows in steps this big. */
 const FOLLOW_MS = 60;
 /**
- * Brings Focus Desk forward from inside a live app (D-041 follow-up). A global
- * shortcut rather than a widget click because the app owns keyboard and mouse
- * input while it is in front — there is nothing in Focus Desk left to click.
+ * Swaps between Focus Desk and the app windows open on it. A global shortcut
+ * because the app has the keyboard while it is in front. Not ⌃⌥D: that is
+ * taken by launchers (Raycast, Alfred) and types a non-breaking space.
  */
-const RETURN_SHORTCUT = 'Alt+Space';
+const RETURN_SHORTCUT = 'Control+Alt+D';
 /** Enough for the helper to read one line and write the window back before it dies. */
 const RESTORE_GRACE_MS = 250;
 /**
@@ -150,6 +150,12 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     rect: Rect;
     title?: string;
     avoid?: string[];
+    /**
+     * The window has stepped aside: it is hidden where it stands because the
+     * widget cannot cover it just now, and it is expected back. The slot is still
+     * this widget's, so everything that follows a window around skips these.
+     */
+    parked?: boolean;
   }
   /**
    * Every app whose real window is currently sitting on a widget. Keyed by app
@@ -158,41 +164,52 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
    * widget stacking order.
    */
   const live = new Map<string, Live>();
-  // Whether the desk is currently parked under every ordinary window.
-  let behind = false;
   // Apps that have been asked to come to the front and have not landed yet.
   const arriving = new Set<string>();
+  /** Apps whose window has actually arrived on a slot. */
+  const landed = new Set<string>();
   let followTimer: ReturnType<typeof setTimeout> | null = null;
   let raiseTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Whether the real windows are on their slots. The desk cannot be above them
    * and below them at once, so this is a state rather than a reaction: it moves
-   * on ⌥Space and on a widget being clicked, and on nothing else. Every version
+   * on ⌃⌥D and on a widget being clicked, and on nothing else. Every version
    * of this that changed with an ordinary click flipped every app in the space
    * on every stray click (D-071).
    */
   let staged = false;
 
   /**
-   * Parks the desk below every ordinary window, or brings it back to its own
-   * level. While apps are open this is what makes them stay visible: two windows
-   * of different apps share no z-order, so with the desk at the normal level any
-   * click on it buries every app behind it and the only way back is a shortcut.
-   * One level down and the app windows simply float over their widgets — the desk
-   * is the surface they sit on, which is the whole idea.
+   * While app windows are on their slots the desk sits one level below them, so
+   * they stay visible whatever the user clicks on the canvas. That also puts it
+   * below unrelated windows, which is what `hideOthers` deals with.
    */
-  const setBehind = (next: boolean) => {
-    behind = next;
+  const applyLevel = () => {
     const win = getWindow();
     if (!win || win.isDestroyed()) return;
-    if (next) win.setAlwaysOnTop(true, 'normal', -1);
-    // Fullscreen wants the opposite: over the menu bar, which is what it is for
-    // (D-051). Anything else goes back to an ordinary window.
+    if (staged && landed.size > 0) win.setAlwaysOnTop(true, 'normal', -1);
+    // Fullscreen sits above the menu bar (D-051).
     else if (win.isSimpleFullScreen()) win.setAlwaysOnTop(true, 'main-menu', 1);
     else win.setAlwaysOnTop(false);
   };
 
+  /**
+   * Hides the applications that have nothing to do with this space, so that the
+   * desk — which is below its own app windows — is not also buried under a
+   * browser. Only while windows are actually on slots: with nothing placed there
+   * is nothing to be under, and hiding other apps would be for no reason.
+   */
+  const hideOthers = () => {
+    if (landed.size === 0) return;
+    helper.send({ cmd: 'hideOthers', keep: [...live.keys()] });
+  };
+
+  /**
+   * The desk goes to the bottom only once a window is actually down. Before that
+   * there is nothing to sit under, and a desk buried on the desktop the app just
+   * pulled forward is one the user cannot click their way back to.
+   */
   /** Window coordinates to screen coordinates: both are top-left points. */
   const toScreen = (rect: Rect): Rect | null => {
     const win = getWindow();
@@ -214,6 +231,7 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     followTimer = setTimeout(() => {
       followTimer = null;
       for (const entry of live.values()) {
+        if (entry.parked) continue;
         const rect = toScreen(entry.rect);
         if (rect) helper.send({ cmd: 'move', appKey: entry.appKey, rect });
       }
@@ -231,7 +249,8 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
    */
   const setStaged = (next: boolean) => {
     staged = next;
-    setBehind(next);
+    applyLevel();
+    if (next) hideOthers();
     const win = getWindow();
     if (!win || win.isDestroyed()) return;
     if (!next) win.focus();
@@ -252,10 +271,14 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   const forget = (appKey: string) => {
     if (!live.delete(appKey)) return false;
     arriving.delete(appKey);
+    landed.delete(appKey);
+    applyLevel();
     if (live.size > 0) return true;
     globalShortcut.unregister(RETURN_SHORTCUT);
     const win = getWindow();
-    if (win && !win.isDestroyed()) win.setVisibleOnAllWorkspaces(false);
+    if (win && !win.isDestroyed()) {
+      win.setVisibleOnAllWorkspaces(false, { skipTransformProcessType: true });
+    }
     setStaged(false);
     return true;
   };
@@ -273,21 +296,25 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
 
       const win = getWindow();
       if (win && !win.isDestroyed()) {
-        // Follow the app rather than expecting it to come to us. Its window may
-        // live on another Space — a fullscreen app is given one of its own — and
-        // macOS has no way to carry a window across. This window can be on all of
-        // them, so whichever desktop the app is reached on, the desk is already
-        // there (D-041).
-        win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-        // That call also raises this window's level on macOS, and nothing another
-        // app can do puts its window above that — raising the app looks like it
-        // does nothing at all. Fullscreen made this obvious (D-051); the same
-        // thing happens in a windowed desk. Going a level *below* normal fixes it
-        // and keeps the apps visible for good.
+        // The desk stays put when the user changes desktop, so a space that has
+        // apps in it is still there when they come back.
+        //
+        // `skipTransformProcessType` is the whole reason this line is worth a
+        // comment: without it Electron turns the process into a UIElement
+        // application to make the window join every space, and a UIElement
+        // application **has no Dock icon** — the icon disappeared the moment an
+        // app widget was opened, which also took away the one way back to the
+        // desk with a mouse. The transform is what buys floating over a
+        // fullscreen app, and we no longer chase those (D-072), so it is pure
+        // cost here.
+        win.setVisibleOnAllWorkspaces(true, {
+          visibleOnFullScreen: true,
+          skipTransformProcessType: true,
+        });
       }
       registerReturnShortcut();
       // A window arriving on a slot is what being on stage means; the desk goes
-      // under it and stays there until ⌥Space says otherwise.
+      // under it and stays there until ⌃⌥D says otherwise.
       if (!staged) setStaged(true);
       if (raise) arriving.add(appKey);
 
@@ -321,7 +348,18 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
         // and raising have to work from the first frame. When no window ever
         // landed that entry is a lie, and an expensive one: the desk stays parked
         // below every window with nothing to show for it.
-        if (!result.ok) forget(appKey);
+        if (!result.ok) {
+          forget(appKey);
+          return result;
+        }
+        // Released while the helper was working: the window has just landed on a
+        // slot nobody holds any more, so it goes straight back.
+        if (!live.has(appKey)) {
+          helper.send({ cmd: 'restore', appKey });
+          return result;
+        }
+        landed.add(appKey);
+        applyLevel();
         return result;
       });
     }
@@ -331,7 +369,7 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   // is what makes an app lay itself out again.
   ipcMain.handle('apps:move', (_event, appKey: string, rect: Rect) => {
     const entry = live.get(appKey);
-    if (!entry) return;
+    if (!entry || entry.parked) return;
     entry.rect = rect;
     const screen = toScreen(rect);
     if (screen) helper.send({ cmd: 'move', appKey, rect: screen });
@@ -346,7 +384,26 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     forget(appKey);
   });
 
-  ipcMain.handle('apps:release', (_event, appKey: string) => {
+  /**
+   * `park` is the window stepping aside rather than leaving: the widget cannot
+   * hold it just now — it slid off the canvas, or the canvas zoomed out past the
+   * size this window will take — and it is expected back. The window is hidden
+   * with its frame untouched and the slot stays this widget's, so coming back is
+   * one placement and nothing about the widget's own geometry is disturbed.
+   *
+   * Keeping the entry matters as much as hiding the window: the last entry
+   * leaving `live` ends the stage, which stops the loop that would notice the
+   * widget coming back and unregisters ⌃⌥D — all at once, with no way out.
+   */
+  ipcMain.handle('apps:release', (_event, appKey: string, park = false) => {
+    const entry = park ? live.get(appKey) : undefined;
+    if (entry) {
+      entry.parked = true;
+      landed.delete(appKey);
+      applyLevel();
+      helper.send({ cmd: 'aside', appKey });
+      return;
+    }
     const wasLive = forget(appKey);
     helper.send({ cmd: 'restore', appKey });
     // Only the last one out brings the desk forward: letting go of one window
@@ -369,13 +426,19 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   });
 
   // The mouse half of the round trip. Clicking a widget while the desk is in
-  // front is the second way back on stage — the first being ⌥Space — and it says
+  // front is the second way back on stage — the first being ⌃⌥D — and it says
   // which app the user meant, so that one comes forward with them.
   ipcMain.handle('apps:raise', (_event, appKey: string) => {
-    if (!live.has(appKey)) return;
+    // No check that this app is on a slot: a widget whose window went missing is
+    // exactly the one a click has to answer. Coming back on stage restarts its
+    // loop, which places the window again from where the widget is now.
     if (!staged) setStaged(true);
     const win = getWindow();
     if (win && !win.isDestroyed()) win.showInactive();
+    // A window that has stepped aside is hidden on purpose. Bringing it out is
+    // its widget's job, and only once the widget can hold it again — unhiding it
+    // here would drop it on the canvas at a size that no longer fits anything.
+    if (live.get(appKey)?.parked) return;
     helper.send({ cmd: 'raise', appKey });
   });
 
@@ -401,6 +464,9 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     const isDesk = () => created === getWindow();
     created.on('move', () => isDesk() && follow());
     created.on('resize', () => isDesk() && follow());
+    // The user came back to the desk. It is below its own app windows, so the
+    // only way for it to be visible is for nothing else to be in front of it.
+    created.on('focus', () => isDesk() && hideOthers());
     // On macOS this is not a quit: the app stays running with no renderer left to
     // ask for the restore.
     created.on('close', () => {
@@ -420,6 +486,14 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
 
   app.on('will-quit', () => globalShortcut.unregister(RETURN_SHORTCUT));
 
+  // The dock icon is the one way back to the desk with the mouse (D-072): on
+  // stage the desk is under every window, so there is nothing left to click. This
+  // is `applicationShouldHandleReopen`, which an ordinary click on the desk does
+  // not raise — so "clicking the floor does nothing" (D-071) still holds.
+  app.on('activate', () => {
+    if (staged) setStaged(false);
+  });
+
   // Once the windows that were asked for have landed, the desk has to be the
   // thing directly behind them. Chasing an app can leave Focus Desk buried on
   // that desktop, which is what makes an app look like it just opened on its own
@@ -431,7 +505,9 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     const win = getWindow();
     if (!win || win.isDestroyed() || live.size === 0) return;
     win.showInactive();
-    for (const appKey of live.keys()) helper.send({ cmd: 'raise', appKey });
+    for (const [appKey, entry] of live) {
+      if (!entry.parked) helper.send({ cmd: 'raise', appKey });
+    }
   };
 
   helper.on((event) => {
@@ -465,6 +541,14 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     if (event.ev !== 'gone' || !forget(event.appKey)) return;
     const win = getWindow();
     if (win && !win.isDestroyed()) win.webContents.send('apps:gone', event.appKey);
+  });
+
+  // Apps outside this space were hidden to get them off the desk. The user has to
+  // be told, or their browser has simply vanished.
+  helper.on((event) => {
+    if (event.ev !== 'hidden') return;
+    const win = getWindow();
+    if (win && !win.isDestroyed()) win.webContents.send('apps:hidden', event.count);
   });
 
   // The renderer needs the frontmost app by name, not just the "am I here" flag,

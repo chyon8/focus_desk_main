@@ -42,7 +42,11 @@ contextBridge.exposeInMainWorld('apps', {
   /** Position only, for a window following its widget across the canvas. */
   move: (appKey: string, rect: { x: number; y: number; width: number; height: number }) =>
     ipcRenderer.invoke('apps:move', appKey, rect),
-  release: (appKey: string) => ipcRenderer.invoke('apps:release', appKey),
+  /**
+   * Gives the window its own size back. `park` keeps the slot claimed — the
+   * widget has only slid off the canvas and the window is expected back (D-072).
+   */
+  release: (appKey: string, park = false) => ipcRenderer.invoke('apps:release', appKey, park),
   /** Lets go of a window the user has moved somewhere themselves, untouched. */
   detach: (appKey: string) => ipcRenderer.invoke('apps:detach', appKey),
   /** A placed window that moved or resized on its own, in window coordinates. */
@@ -63,11 +67,17 @@ contextBridge.exposeInMainWorld('apps', {
   staged: () => ipcRenderer.invoke('apps:staged'),
   /** Asks for the two states; opening an app widget is one of the two ways in. */
   setStaged: (staged: boolean) => ipcRenderer.invoke('apps:set-staged', staged),
-  /** The desk moved between its two states (⌥Space, or a widget click). */
+  /** The desk moved between its two states (⌃⌥D, or a widget click). */
   onStaged: (handler: (staged: boolean) => void) => {
     const listener = (_event: unknown, staged: boolean) => handler(staged);
     ipcRenderer.on('apps:staged-changed', listener);
     return () => ipcRenderer.removeListener('apps:staged-changed', listener);
+  },
+  /** Applications outside this space were hidden to keep the desk visible. */
+  onHidden: (handler: (count: number) => void) => {
+    const listener = (_event: unknown, count: number) => handler(count);
+    ipcRenderer.on('apps:hidden', listener);
+    return () => ipcRenderer.removeListener('apps:hidden', listener);
   },
   /** A placed app quit; its widget goes back to being a launcher. */
   onGone: (handler: (appKey: string) => void) => {

@@ -26,6 +26,12 @@ function createWindow() {
     trafficLightPosition: { x: 10, y: 10 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      // App windows sit on top of this one on purpose, and macOS stops sending
+      // frames to a window it considers covered — which would stop the loop that
+      // keeps those windows on their widgets, exactly when it is needed. The loop
+      // runs on a timer for that reason, and this keeps timers at full speed
+      // while nothing of the desk is visible.
+      backgroundThrottling: false,
       // Browser widgets are <webview> elements: they live inside the canvas and
       // are laid out, scaled and stacked by the page itself (D-029).
       webviewTag: true,
@@ -40,8 +46,11 @@ function createWindow() {
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
+    // Not opened automatically: its front-end asks Electron for Chrome-only
+    // debugger domains it does not implement and prints an error per launch
+    // ("Autofill.enable failed"), which buries the log this app does write.
+    // ⌥⌘I opens it when it is actually wanted.
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
-    win.webContents.openDevTools();
   } else {
     win.loadFile(path.join(process.env.DIST!, 'index.html'));
   }

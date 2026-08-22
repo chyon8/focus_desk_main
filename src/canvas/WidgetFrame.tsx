@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Maximize2, Minimize2, X } from 'lucide-react';
+import { LogOut, Maximize2, Minimize2, X } from 'lucide-react';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
@@ -46,6 +46,9 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   fullRect,
 }) => {
   const widget = useWidget(id);
+  // An app widget with its real window on it needs a way to send that window back
+  // out: the window covers the widget, so nothing in the body can be clicked.
+  const isAppOpen = useUiStore((s) => s.openAppIds.includes(id)) && widget.type === 'app';
   const isSelected = useUiStore((s) => s.selectedIds.includes(id));
   const isAltHeld = useUiStore((s) => s.isAltHeld);
   const drag = useRef<{ pointerId: number; lastX: number; lastY: number; mode: 'move' | 'resize' } | null>(
@@ -170,6 +173,14 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
             >
               Esc to restore
             </button>
+          )}
+          {isAppOpen && (
+            <HeaderButton
+              onClick={() => useUiStore.getState().closeApp(id)}
+              label="Send the window back to its own size"
+            >
+              <LogOut size={14} />
+            </HeaderButton>
           )}
           <HeaderButton
             onClick={() => useUiStore.getState().toggleMaximized(id)}

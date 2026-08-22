@@ -74,7 +74,7 @@ const AppFace: React.FC<{
     () => ({ title: data.windowTitle, avoid: claimedWindowTitles(space, id, data.appKey) }),
     [space, id, data.appKey, data.windowTitle]
   );
-  const { isOpen, isHere, isAway, isStaged, placement, callBack } = useAppSurface(
+  const { isOpen, isHere, isAway, isStaged, placement, aside, bringBack } = useAppSurface(
     id,
     data.appKey,
     surfaceRef,
@@ -89,8 +89,6 @@ const AppFace: React.FC<{
   useEffect(() => {
     void window.apps?.permissions().then(setPermissions);
   }, [isOpen]);
-
-  const close = () => useUiStore.getState().closeApp(id);
 
   if (isOpen) {
     // Off stage the window is behind the desk, so this is what the user is
@@ -107,14 +105,14 @@ const AppFace: React.FC<{
       >
         {!permissions.accessibility ? (
           <>
-            <span className="t-ink text-sm">Accessibility access needed</span>
-            <span className="t-faint text-xs max-w-[38ch]">
+            <span className="t-ink text-base">Accessibility access needed</span>
+            <span className="t-faint text-sm max-w-[38ch]">
               Opening {data.name} here means moving its real window, which macOS guards. Allow
               Focus Desk once, then open it again.
             </span>
             <button
               onClick={() => void window.apps?.showAccessibilitySettings()}
-              className="chrome-button mt-1 px-3 h-7 rounded-md text-[11px]"
+              className="chrome-button mt-1 px-3 h-8 rounded-md text-sm"
             >
               Open Accessibility settings
             </button>
@@ -122,76 +120,70 @@ const AppFace: React.FC<{
               If nothing is listed, drag in the file that Finder just revealed.
             </span>
           </>
+        ) : placement && !placement.ok ? (
+          <>
+            <span className="t-ink text-base">Can’t bring {data.name} here</span>
+            <span className="t-faint text-sm max-w-[36ch]">{PLACE_PROBLEMS[placement.reason]}</span>
+            {/* Failing to seat it in the space is no reason to also block the
+                user from the app they asked for. */}
+            <button
+              onClick={() => void window.apps?.launch(data.appKey)}
+              className="chrome-button mt-1 px-3 h-8 rounded-md text-sm"
+            >
+              Open it anyway
+            </button>
+          </>
         ) : offStage ? (
           <>
             {data.icon ? (
               <img src={data.icon} alt="" className="w-10 h-10 rounded-[10px]" />
             ) : null}
-            <span className="t-ink text-sm">{data.name}</span>
-            <span className="t-faint text-xs">
+            <span className="t-ink text-base">{data.name}</span>
+            <span className="t-faint text-sm">
               {seconds > 0 ? `${formatDuration(seconds)} today` : 'Waiting behind the desk'}
             </span>
-            <span className="t-faint text-[10px]">click, or ⌥Space, to bring it back</span>
+            <span className="t-faint text-xs">click, or ⌃⌥D, to bring it back</span>
           </>
         ) : isAway ? (
-          // Its window is somewhere the widget cannot follow — a window manager
-          // filled the screen with it, or it was dragged off the canvas. Arguing
-          // with that would be worse than letting go of it.
+          // Its window would not stay on the slot: the app keeps putting it back
+          // where it wants it. Arguing with that forever is worse than handing it
+          // over — the widget is a launcher for it until the user asks again.
           <>
-            <span className="t-ink text-sm">{data.name} is out of its slot</span>
-            <span className="t-faint text-xs max-w-[36ch]">
-              Its window was moved somewhere this widget cannot follow.
+            <span className="t-ink text-base">{data.name} is out of its slot</span>
+            <span className="t-faint text-sm max-w-[34ch]">
+              Its window will not stay here — the app keeps moving it back.
             </span>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                callBack();
+                bringBack();
               }}
-              className="chrome-button mt-1 px-3 h-7 rounded-md text-[11px]"
+              className="chrome-button mt-1 px-3 h-8 rounded-md text-sm"
             >
               Bring it back here
             </button>
           </>
-        ) : !isHere ? (
-          // The window is back at its own size until the widget is fully on the
-          // canvas again: a real window cannot be cut off at the edge, and one
-          // hanging over the sidebar would cover it.
+        ) : aside ? (
           <>
-            <span className="t-ink text-sm">{data.name} is waiting</span>
-            <span className="t-faint text-xs max-w-[36ch]">
-              Bring this widget fully onto the canvas and its window comes back.
+            <span className="t-ink text-base">{data.name} is off screen</span>
+            <span className="t-faint text-sm max-w-[34ch]">
+              This widget is off the canvas, so its window is waiting.
             </span>
-          </>
-        ) : placement && !placement.ok ? (
-          <>
-            <span className="t-ink text-sm">Can’t bring {data.name} here</span>
-            <span className="t-faint text-xs max-w-[40ch]">{PLACE_PROBLEMS[placement.reason]}</span>
-            {/* Failing to seat it in the space is no reason to also block the
-                user from the app they asked for. */}
             <button
-              onClick={() => void window.apps?.launch(data.appKey)}
-              className="chrome-button mt-1 px-3 h-7 rounded-md text-[11px]"
+              onClick={(e) => {
+                e.stopPropagation();
+                bringBack();
+              }}
+              className="chrome-button mt-1 px-3 h-8 rounded-md text-sm"
             >
-              Open it anyway
+              Bring it back
             </button>
           </>
-        ) : placement?.ok ? (
-          <span className="t-faint text-xs">{data.name} is here · click to return, or ⌥Space</span>
+        ) : isHere && placement?.ok ? (
+          <span className="t-faint text-sm">{data.name} is here · click it, or ⌃⌥D</span>
         ) : (
-          <span className="t-faint text-xs">Bringing {data.name} here…</span>
+          <span className="t-faint text-sm">Bringing {data.name} here…</span>
         )}
-
-        {/* Sends the window back to its own size and place. Only reachable while
-            Focus Desk is in front, which is exactly when it is wanted. */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            close();
-          }}
-          className="chrome-button mt-2 px-3 h-7 rounded-md text-[11px]"
-        >
-          Send {data.name} back
-        </button>
       </div>
     );
   }

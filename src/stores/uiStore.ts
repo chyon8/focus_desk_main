@@ -40,7 +40,7 @@ interface UiState {
   openAppIds: string[];
   /**
    * Whether the real windows are on their slots (D-071). Two states, and only
-   * ⌥Space moves between them: the desk cannot be above the app windows and
+   * ⌃⌥D moves between them: the desk cannot be above the app windows and
    * below them at once, so the one thing that must never happen is the choice
    * being made by an ordinary click.
    */
