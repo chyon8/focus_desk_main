@@ -71,13 +71,23 @@ declare global {
       setStaged: (staged: boolean) => Promise<void>;
       /** The desk moved between its two states (⌃⌥D, or a widget click). */
       onStaged: (handler: (staged: boolean) => void) => () => void;
-      /** Applications outside this space were hidden to keep the desk visible. */
-      onHidden: (handler: (count: number) => void) => () => void;
+      /** What is held hidden right now, for a renderer that has just reloaded. */
+      hiddenApps: () => Promise<{ appKey: string; name: string }[]>;
+      /** Brings one hidden application back. */
+      unhide: (appKey: string) => Promise<void>;
+      /** The applications hidden to keep the desk visible, as a whole set each time. */
+      onHidden: (handler: (apps: { appKey: string; name: string }[]) => void) => () => void;
       /** A placed app quit; its widget goes back to being a launcher. */
       onGone: (handler: (appKey: string) => void) => () => void;
       /** Which apps count as "still at the desk" while this space is open. */
       setSpaceApps: (appKeys: string[]) => Promise<void>;
       onFrontmost: (handler: (appKey: string | null) => void) => () => void;
+    };
+    /** Per-space cookie jars: the same site, a different account in each space. */
+    session?: {
+      summary: (spaceId: string) => Promise<{ sites: string[]; total: number }>;
+      clearSite: (spaceId: string, site: string) => Promise<void>;
+      clear: (spaceId: string) => Promise<void>;
     };
     spaces?: {
       list: () => Promise<unknown[]>;
@@ -106,6 +116,11 @@ declare global {
           React.HTMLAttributes<Electron.WebviewTag> & {
             src?: string;
             partition?: string;
+            /**
+             * Typed `boolean` by `@types/react`, and that type is the trap: React
+             * drops a boolean attribute it does not know, so the attribute never
+             * reaches the DOM. Set it with `ALLOW_POPUPS` (browserLinks.ts).
+             */
             allowpopups?: boolean;
           },
           Electron.WebviewTag

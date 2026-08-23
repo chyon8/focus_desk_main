@@ -8,6 +8,7 @@ import {
   KanbanSquare,
   Image,
   Link2,
+  LayoutGrid,
   PenLine,
   StickyNote,
   Timer,
@@ -26,6 +27,7 @@ import { BookmarksWidget } from './BookmarksWidget';
 import { PhotoWidget } from './PhotoWidget';
 import { CanvasWidget } from './CanvasWidget';
 import { AppWidget } from './AppWidget';
+import { WebAppWidget } from './WebAppWidget';
 
 export interface WidgetEntry extends WidgetDef {
   icon: LucideIcon;
@@ -44,6 +46,7 @@ const PARTS: Record<WidgetType, { icon: LucideIcon; Component: React.FC<{ id: st
   photo: { icon: Image, Component: PhotoWidget },
   sketch: { icon: PenLine, Component: CanvasWidget },
   app: { icon: AppWindow, Component: AppWidget },
+  webapp: { icon: LayoutGrid, Component: WebAppWidget },
 };
 
 export const WIDGET_REGISTRY = Object.fromEntries(

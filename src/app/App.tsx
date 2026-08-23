@@ -8,7 +8,9 @@ import { FocusSessionBar } from '../focus/FocusSessionBar';
 import { useSpaceTimeTracker } from '../focus/useSpaceTimeTracker';
 import { useSpaceApps } from '../apps/useSpaceApps';
 import { useAppTimeStore } from '../stores/appTimeStore';
+import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
+import { useWebAppStore } from '../stores/webappStore';
 import { SceneLayer } from '../themes/SceneLayer';
 import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
 import { QuickAdd } from './QuickAdd';
@@ -32,6 +34,8 @@ export const App: React.FC = () => {
     void useFocusStore.getState().load();
     void useSpaceTimeStore.getState().load();
     void useAppTimeStore.getState().load();
+    void useWebAppStore.getState().load();
+    void useSiteVisitStore.getState().load();
   }, []);
 
   // Saves are debounced, so closing the window right after an edit would drop it.

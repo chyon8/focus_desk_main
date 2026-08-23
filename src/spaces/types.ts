@@ -16,7 +16,8 @@ export type WidgetType =
   | 'bookmarks'
   | 'photo'
   | 'sketch'
-  | 'app';
+  | 'app'
+  | 'webapp';
 
 export interface WidgetDoc<D = Record<string, unknown>> {
   id: string;
@@ -130,6 +131,39 @@ export interface SketchStroke {
 
 export interface SketchData {
   strokes: SketchStroke[];
+}
+
+/**
+ * How a web app is drawn on its tile. An emoji is what the user picks; an image
+ * is the site's own favicon, kept the first time the page reports one (D-073).
+ */
+export type WebAppIcon = { kind: 'emoji'; char: string } | { kind: 'image'; src: string };
+
+/**
+ * A saved web app standing in the space (D-073) — Figma, YouTube Music, a Notion
+ * workspace. It behaves like the app widget: a tile with an icon that opens what
+ * it stands for. What opens is a page rather than a real window, which is the
+ * point — no accessibility grant, no window to chase, nothing hidden to keep it
+ * visible.
+ */
+export interface WebAppData {
+  /** Which saved web app this widget stands for. Empty = unpicked. */
+  appId: string;
+  name: string;
+  /** Where the tile opens. Follows the user as they navigate, so it reopens where they left off. */
+  url: string;
+  /** What the saved web app points at — where the home button goes back to. */
+  homeUrl: string;
+  icon: WebAppIcon | null;
+  /** Page zoom, like a browser's ⌘+/⌘−. 1 is 100%. */
+  zoom?: number;
+  /**
+   * Whether the page is loaded rather than the tile showing. Persisted, unlike
+   * the app widget's open state — a page does come back exactly as it was, so a
+   * space reopens where the user left it. A tile that was never opened costs
+   * nothing to restore.
+   */
+  open?: boolean;
 }
 
 /**

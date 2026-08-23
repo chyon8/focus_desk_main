@@ -731,6 +731,53 @@ private func startFrameWatch() {
 /// yet — a black rectangle for a moment, on every zoom. A position write is one
 /// instant call that changes nothing about the app, and coming back is the same
 /// call again.
+/// The applications this helper put away, so they can all be given back. Only
+/// ever the ones it hid itself — an app the user had already hidden with ⌘H is
+/// not ours to bring out again.
+private var hiddenApps: Set<String> = []
+
+/// Reports the whole hidden set, every time, rather than "how many went away just
+/// now". A count of what changed could only ever be emitted once: nothing was
+/// ever un-hidden, so the second call had nothing left to hide and said nothing
+/// at all — which is why the notice never appeared. What the user needs on screen
+/// is the state, and the state is this set.
+///
+/// **Nothing here asks `isHidden`, and nothing reads what `hide()` returned.**
+/// `NSRunningApplication.hide()` is asynchronous: the flag is still false on this
+/// turn of the run loop, and the return value is false even when the app does
+/// hide. Both were treated as answers at some point, and both emptied this set —
+/// which is why the notice never appeared. An app leaving the set is an event
+/// (`didUnhide`, `didTerminate`), not something to poll for.
+///
+/// Sorted by name because a Set has no order and this is emitted every time the
+/// desk is focused; unsorted, the same apps would look like a different list.
+private func emitHidden() {
+    let apps = hiddenApps.compactMap { key -> [String: String]? in
+        guard let app = runningApp(key) else { return nil }
+        return ["appKey": key, "name": app.localizedName ?? key]
+    }.sorted { ($0["name"] ?? "") < ($1["name"] ?? "") }
+    emit(["ev": "hidden", "apps": apps])
+}
+
+/// The user brought one back themselves (⌘Tab, the Dock) or quit it. Either way
+/// it is no longer ours to account for, and the notice has to stop naming it.
+private func watchHiddenApps() {
+    let center = NSWorkspace.shared.notificationCenter
+    for name in [
+        NSWorkspace.didUnhideApplicationNotification,
+        NSWorkspace.didTerminateApplicationNotification,
+    ] {
+        center.addObserver(forName: name, object: nil, queue: .main) { note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey]
+                    as? NSRunningApplication,
+                  let appKey = app.bundleIdentifier,
+                  hiddenApps.remove(appKey) != nil
+            else { return }
+            emitHidden()
+        }
+    }
+}
+
 /// Hides every application except Focus Desk and the ones named in `keep`.
 ///
 /// Focus Desk sits below its own app windows so they stay visible on their
@@ -738,18 +785,48 @@ private func startFrameWatch() {
 /// hides the whole space. Hiding those is the only way to have both.
 private func hideOthers(keep: Set<String>) {
     let desk = getppid()
-    var hidden = 0
     for app in NSWorkspace.shared.runningApplications {
         guard app.activationPolicy == .regular,
               app.processIdentifier != desk,
-              !app.isHidden,
+              !alreadyAway(app),
               let appKey = app.bundleIdentifier,
               !keep.contains(appKey)
         else { continue }
-        if app.hide() { hidden += 1 }
+        // Already ours: hiding it again is a no-op, and re-asking is harmless.
+        if hiddenApps.contains(appKey) { continue }
+        // Written down because we asked, not because `hide()` said yes: it
+        // returns false and hides the app anyway — measured on every app on this
+        // machine. Reading it as success left this set empty, so the notice was
+        // sent an empty list and `unhideAll` had nothing to give back: apps went
+        // away with nothing on screen accounting for them and no way to return.
+        _ = app.hide()
+        hiddenApps.insert(appKey)
     }
-    // Only worth telling the user about when something actually went away.
-    if hidden > 0 { emit(["ev": "hidden", "count": hidden]) }
+    emitHidden()
+}
+
+/// Brings one application back — the notice lists them, so a single one can be
+/// fetched without giving up the whole arrangement.
+private func unhide(_ appKey: String) {
+    guard hiddenApps.remove(appKey) != nil else { return }
+    runningApp(appKey)?.unhide()
+    emitHidden()
+}
+
+/// Whether this app is one we should leave alone. An app the user had already put
+/// away with ⌘H is not ours to hide or to bring back — but `isHidden` is only
+/// trustworthy for apps we have not just touched, which is exactly the case here:
+/// this is asked before hiding, not after.
+private func alreadyAway(_ app: NSRunningApplication) -> Bool {
+    app.isHidden && !hiddenApps.contains(app.bundleIdentifier ?? "")
+}
+
+/// Everything back. Sent when the windows leave their slots: there is nothing
+/// left to be hidden for.
+private func unhideAll() {
+    for appKey in hiddenApps { runningApp(appKey)?.unhide() }
+    hiddenApps.removeAll()
+    emitHidden()
 }
 
 private func setAside(_ appKey: String) {
@@ -772,6 +849,10 @@ private func setAside(_ appKey: String) {
 /// lost. The pipe closing is the last thing that always happens.
 private func restoreAll() {
     for appKey in Array(savedFrames.keys) { restore(appKey) }
+    // These were hidden to keep the space visible; with the desk gone there is
+    // nobody left to bring them back.
+    for appKey in hiddenApps { runningApp(appKey)?.unhide() }
+    hiddenApps.removeAll()
 }
 
 private func restore(_ appKey: String) {
@@ -889,6 +970,14 @@ private func handle(_ line: String) {
         }
     case "hideOthers":
         hideOthers(keep: Set(object["keep"] as? [String] ?? []))
+    case "unhide":
+        guard let appKey = object["appKey"] as? String else {
+            emitError("unhide", "missing appKey")
+            return
+        }
+        unhide(appKey)
+    case "unhideAll":
+        unhideAll()
     case "aside":
         guard let appKey = object["appKey"] as? String else {
             emitError("aside", "missing appKey")
@@ -953,4 +1042,5 @@ let nsApp = NSApplication.shared
 nsApp.setActivationPolicy(.prohibited)
 readStdin()
 watchParent()
+watchHiddenApps()
 nsApp.run()

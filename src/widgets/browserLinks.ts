@@ -1,4 +1,30 @@
 /**
+ * The window name this shim opens with, so the main process can tell **our**
+ * stand-in for a new tab apart from a popup the page opened itself.
+ *
+ * Those two need opposite answers: a tab becomes a new browser widget, a popup
+ * has to be a real window or the sign-in that opened it sees `null` and reports
+ * that popups are blocked (D-075). Nothing else distinguishes them reliably —
+ * a popup may be opened with no features, or on `about:blank` with its address
+ * set afterwards, which is what Google's sign-in does.
+ */
+export const NEW_TAB_FRAME = 'focusdesk-newtab';
+
+/**
+ * Spread onto a `<webview>` to let pages open popups.
+ *
+ * Written as a string because React drops `allowpopups={true}`: it is not an
+ * attribute React knows to be boolean, so it never reaches the DOM — and a
+ * webview without the attribute answers `window.open` with `null`, which every
+ * sign-in reports as a blocked popup. `setWindowOpenHandler` is not even called,
+ * so nothing in the main process can make up for it (D-075).
+ *
+ * The cast is because `@types/react` types the attribute `boolean`, which is the
+ * shape that does not work.
+ */
+export const ALLOW_POPUPS = { allowpopups: '' } as unknown as { allowpopups?: boolean };
+
+/**
  * Turns a link that wants a new tab into a real `window.open`, which the main
  * process answers with a new browser widget (D-065).
  *
@@ -34,7 +60,7 @@ export const LINK_SHIM = `(() => {
       if (!link) return;
       e.preventDefault();
       e.stopPropagation();
-      open(link.href, '_blank');
+      open(link.href, '${NEW_TAB_FRAME}');
     },
     true
   );

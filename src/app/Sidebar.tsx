@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { BarChart2, BookOpen, ChevronLeft, Coffee, Home, Keyboard, Layout, Monitor, PanelLeft, Plus, Scan, Trash2 } from 'lucide-react';
+import { BarChart2, BookOpen, ChevronLeft, Coffee, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Plus, Scan, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
@@ -8,6 +8,7 @@ import { useSpaceStore } from '../stores/spaceStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { ArrangeMenu } from './ArrangeMenu';
+import { SpaceSessionPanel } from './SpaceSessionPanel';
 import { WidgetPalette } from './WidgetPalette';
 
 function spaceIcon(name: string) {
@@ -65,6 +66,8 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
   const setIsOpen = useUiStore((s) => s.setSidebarOpen);
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  /** What this space is signed in to (D-074). */
+  const [isSessionOpen, setIsSessionOpen] = useState(false);
 
   // Select ids only. A selector that builds new objects would fail useShallow's
   // Object.is comparison on every render and loop forever (React #185).
@@ -198,6 +201,13 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
               >
                 <Keyboard size={18} />
               </button>
+              <button
+                onClick={() => setIsSessionOpen((open) => !open)}
+                title="What this space is signed in to"
+                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
+              >
+                <KeyRound size={18} />
+              </button>
               <span className="t-faint ml-auto px-2 text-xs tabular-nums" title="Canvas zoom">
                 {Math.round(zoom * 100)}%
               </span>
@@ -206,6 +216,8 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
           </motion.div>
         )}
       </AnimatePresence>
+
+      {isSessionOpen && <SpaceSessionPanel onClose={() => setIsSessionOpen(false)} />}
     </>
   );
 };

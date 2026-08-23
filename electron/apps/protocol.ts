@@ -81,6 +81,10 @@ export type HelperCmd =
    * sits below its own app windows, which also puts it below unrelated ones.
    */
   | { cmd: 'hideOthers'; keep: string[] }
+  /** Bring one hidden application back, leaving the rest as they are. */
+  | { cmd: 'unhide'; appKey: string }
+  /** Everything back — the windows have left their slots. */
+  | { cmd: 'unhideAll' }
   /**
    * Move the window off the screen keeping its size — the widget is off the
    * canvas and the window is expected back. `place` brings it out again.
@@ -88,6 +92,12 @@ export type HelperCmd =
   | { cmd: 'aside'; appKey: string }
   /** Put the window back where it was before the first `place`. */
   | { cmd: 'restore'; appKey: string };
+
+/** An application hidden to keep the space visible, named so it can be asked for back. */
+export interface HiddenApp {
+  appKey: string;
+  name: string;
+}
 
 /** One open window, as far as accessibility can describe it without a title bar. */
 export interface AppWindow {
@@ -118,8 +128,12 @@ export type HelperEvent =
   /** A placed app has quit; there is no window left to keep track of. */
   | { ev: 'gone'; appKey: string }
   | { ev: 'permissions'; accessibility: boolean }
-  /** Applications outside this space were hidden, and how many. */
-  | { ev: 'hidden'; count: number }
+  /**
+   * Every application currently held hidden. The whole set each time, not what
+   * changed: a delta could only be reported once, since nothing was ever
+   * un-hidden and the next call had nothing left to hide.
+   */
+  | { ev: 'hidden'; apps: HiddenApp[] }
   /** Where the window actually landed, and whether it accepted a size at all. */
   | { ev: 'placed'; appKey: string; resizable: boolean; title: string | null; rect: Rect }
   | { ev: 'error'; cmd: string; reason: string };

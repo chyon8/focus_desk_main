@@ -61,9 +61,10 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   const box = fullRect ?? widget;
   const bodyHeight = box.height - HEADER_HEIGHT;
   const contentScale =
-    // A browser shows a real page and an app widget is only a label for a real
-    // window: both lay themselves out, so magnifying them just blurs them.
-    widget.type === 'browser' || widget.type === 'app'
+    // A browser and a web app show a real page; an app widget is only a label for
+    // a real window. All three lay themselves out, so magnifying them just blurs
+    // them.
+    widget.type === 'browser' || widget.type === 'app' || widget.type === 'webapp'
       ? 1
       : Math.min(
           MAX_CONTENT_SCALE,

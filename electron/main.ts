@@ -1,10 +1,12 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
+import { NEW_TAB_FRAME } from '../src/widgets/browserLinks';
 import { createHelper } from './apps/helperClient';
 import { registerActivityIpc } from './ipc/activity';
 import { registerAppsIpc } from './ipc/apps';
 import { registerStorageIpc } from './ipc/storage';
 import { registerImageProtocolScheme, registerImagesIpc } from './ipc/images';
+import { registerSessionIpc } from './ipc/session';
 import { registerSpacesIpc } from './ipc/spaces';
 import { registerWindowModeIpc } from './ipc/window-mode';
 
@@ -74,15 +76,42 @@ const ZOOM_KEYS: Record<string, string> = {
 app.on('web-contents-created', (_event, contents) => {
   if (contents.getType() !== 'webview') return;
 
-  // A popup a <webview> opens has no one to display it, so it is always denied.
-  // A link that asked for a new tab becomes a **new browser widget** beside the
-  // one it was clicked in (D-065) — that is what a tab is, in a space. The id
-  // says which guest asked, so the renderer knows where to put it.
-  contents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//.test(url) && win && !win.isDestroyed()) {
-      win.webContents.send('guest-open-url', url, contents.id);
+  // What a page asks for with `window.open` is two different things, and they
+  // need opposite answers (D-075).
+  //
+  // **A tab** — a `target="_blank"` link, which the link shim re-opens by hand
+  // under its own window name — becomes a **new browser widget** beside the one
+  // it was clicked in (D-065). That is what a tab is, in a space.
+  //
+  // **A popup** — anything else that reaches here — is how nearly every sign-in
+  // works: the site opens a window, waits for it to post back, and closes it.
+  // Denying that hands the page `null`, which is exactly what it reports as
+  // "popups are blocked". So it gets a real window, sharing this guest's session
+  // so it is signed in to the same space.
+  //
+  // The window name is the discriminator because nothing else is reliable: a
+  // popup may carry no features (so `disposition` is an ordinary tab) and may
+  // open on `about:blank` with its address set afterwards, which is what Google's
+  // sign-in does — a URL test would deny exactly the case this is here for.
+  contents.setWindowOpenHandler(({ url, frameName }) => {
+    if (frameName === NEW_TAB_FRAME) {
+      // The id says which guest asked, so the renderer knows where to put it.
+      if (/^https?:\/\//.test(url) && win && !win.isDestroyed()) {
+        win.webContents.send('guest-open-url', url, contents.id);
+      }
+      return { action: 'deny' };
     }
-    return { action: 'deny' };
+
+    return {
+      action: 'allow',
+      // No preload and no node: this is someone else's page, and it has no
+      // business reaching the app the way a widget's own guest does. Size is left
+      // to the features the site asked for.
+      overrideBrowserWindowOptions: {
+        autoHideMenuBar: true,
+        webPreferences: { nodeIntegration: false, contextIsolation: true },
+      },
+    };
   });
 
   contents.on('before-input-event', (e, input) => {
@@ -120,6 +149,7 @@ app.whenReady().then(() => {
   app.on('will-quit', helper.stop);
 
   registerStorageIpc();
+  registerSessionIpc();
   registerSpacesIpc();
   registerImagesIpc();
   registerWindowModeIpc(() => win);

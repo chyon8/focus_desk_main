@@ -5,6 +5,7 @@ import type {
   AppWindows,
   HelperCmd,
   HelperEvent,
+  HiddenApp,
   Permissions,
   PlaceFailure,
   PlaceResult,
@@ -205,6 +206,25 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     helper.send({ cmd: 'hideOthers', keep: [...live.keys()] });
   };
 
+  /** What is hidden right now, as the helper last reported it. */
+  let hidden: HiddenApp[] = [];
+
+  const send = (channel: string, ...args: unknown[]) => {
+    const win = getWindow();
+    if (win && !win.isDestroyed()) win.webContents.send(channel, ...args);
+  };
+
+  /**
+   * Everything back where it was. The windows leaving their slots is the end of
+   * any reason to hide: the desk is in front again. Nothing used to do this, so
+   * an app put away stayed away with nothing on screen accounting for it — and
+   * the notice, which only ever fired on a change, never fired again either.
+   */
+  const unhideAll = () => {
+    if (hidden.length === 0) return;
+    helper.send({ cmd: 'unhideAll' });
+  };
+
   /**
    * The desk goes to the bottom only once a window is actually down. Before that
    * there is nothing to sit under, and a desk buried on the desktop the app just
@@ -251,6 +271,7 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     staged = next;
     applyLevel();
     if (next) hideOthers();
+    else unhideAll();
     const win = getWindow();
     if (!win || win.isDestroyed()) return;
     if (!next) win.focus();
@@ -360,6 +381,11 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
         }
         landed.add(appKey);
         applyLevel();
+        // The first moment there is anything to be behind. The stage was set
+        // before the helper answered, when `landed` was still empty and
+        // `hideOthers` returned without doing anything — so without this line
+        // the only thing that ever hides is the desk happening to take focus.
+        hideOthers();
         return result;
       });
     }
@@ -417,6 +443,14 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
 
   // Which state the desk is in, for a renderer that has just started or reloaded.
   ipcMain.handle('apps:staged', () => staged);
+
+  /** What is hidden, for a renderer that has just started or reloaded. */
+  ipcMain.handle('apps:hidden-apps', () => hidden);
+
+  /** One application back, from the notice that says it went away. */
+  ipcMain.handle('apps:unhide', (_event, appKey: string) => {
+    helper.send({ cmd: 'unhide', appKey });
+  });
 
   // Opening an app widget is asking for its window, and a window on a slot means
   // the stage. The renderer asks because it is the side that knows an app was
@@ -544,11 +578,13 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
   });
 
   // Apps outside this space were hidden to get them off the desk. The user has to
-  // be told, or their browser has simply vanished.
+  // be told, or their browser has simply vanished. Kept here as well as sent, so
+  // a renderer that reloads while apps are away can ask rather than wait for a
+  // change that may not come.
   helper.on((event) => {
     if (event.ev !== 'hidden') return;
-    const win = getWindow();
-    if (win && !win.isDestroyed()) win.webContents.send('apps:hidden', event.count);
+    hidden = event.apps;
+    send('apps:hidden', hidden);
   });
 
   // The renderer needs the frontmost app by name, not just the "am I here" flag,

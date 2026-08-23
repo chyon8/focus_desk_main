@@ -37,7 +37,10 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   browser: {
     label: 'Browser',
     defaultSize: { width: 900, height: 620 },
-    createData: () => ({ url: 'https://example.com' }),
+    // No address: a new widget shows the start page — saved web apps and the
+    // sites actually visited — rather than loading a placeholder nobody wants
+    // to read (D-075).
+    createData: () => ({ url: '' }),
   },
   calendar: {
     label: 'Calendar',
@@ -63,5 +66,13 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     label: 'App',
     defaultSize: { width: 280, height: 320 },
     createData: () => ({ appKey: '', name: '', icon: null }),
+  },
+  webapp: {
+    label: 'Web app',
+    // A page, so it needs page room — but smaller than the browser widget, which
+    // is bigger than some windows are tall. A default taller than the canvas gets
+    // centred with its own header above the top of the screen, out of reach.
+    defaultSize: { width: 560, height: 440 },
+    createData: () => ({ appId: '', name: '', url: '', homeUrl: '', icon: null, open: false }),
   },
 };

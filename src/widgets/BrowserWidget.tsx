@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Home, RotateCw, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { BrowserData } from '../spaces/types';
+import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceStore } from '../stores/spaceStore';
+import { toAddress } from './browserAddress';
+import { BrowserStartPage } from './BrowserStartPage';
 import { WIDGET_DEFS } from './defs';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
-import { LINK_SHIM } from './browserLinks';
+import { ALLOW_POPUPS, LINK_SHIM } from './browserLinks';
 import { useWidgetData } from './useWidgetData';
 
 // Space left between a widget and the one a link opened out of it.
@@ -21,11 +24,8 @@ function stepZoom(zoom: number, direction: 1 | -1) {
   return ZOOM_STEPS[ZOOM_STEPS.indexOf(nearest) + direction] ?? nearest;
 }
 
-function normalizeUrl(input: string) {
-  const trimmed = input.trim();
-  if (!trimmed) return '';
-  return /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
-}
+/** A load the user cancelled, which is not a failure worth a page about. */
+const ERR_ABORTED = -3;
 
 const NavButton: React.FC<{
   label: string;
@@ -50,15 +50,22 @@ const NavButton: React.FC<{
  * The point of the element over a native WebContentsView: it is part of the page,
  * so the canvas transform scales it, the frame clips it and z-index stacks it —
  * no bounds syncing, no snapshots, no stepping aside for other widgets (D-029).
+ *
+ * A widget with no address shows a start page rather than loading a placeholder
+ * site, and the address bar takes what people type into address bars: a host, a
+ * full URL, or words to search for (D-075).
  */
 export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   const [data, update] = useWidgetData<BrowserData>(id);
   const spaceId = useSpaceStore((s) => s.activeSpaceId);
   const [address, setAddress] = useState(data.url);
   const [history, setHistory] = useState({ back: false, forward: false });
+  const [isLoading, setIsLoading] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const view = useRef<Electron.WebviewTag>(null);
   // src is set once: after that the page navigates itself, and re-rendering with
-  // a new src would yank it back.
+  // a new src would yank it back. Empty means the start page is showing, and the
+  // first address typed is what mounts the guest.
   const initialUrl = useRef(data.url);
   // Page zoom — the browser's own ⌘+/⌘−. It re-lays the page out at a new size,
   // which the canvas zoom cannot do: that only scales what is already drawn.
@@ -69,6 +76,18 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   // Set on the first dom-ready: which guest this is, and proof it can be zoomed
   // at all (setZoomFactor throws before the element is attached).
   const contentsId = useRef<number | null>(null);
+
+  const hasPage = !!data.url;
+
+  /** Goes somewhere, mounting the guest if this widget has not been anywhere yet. */
+  const go = (url: string) => {
+    if (!url) return;
+    setFailure(null);
+    setAddress(url);
+    if (view.current && initialUrl.current) view.current.loadURL(url);
+    else initialUrl.current = url;
+    update({ url });
+  };
 
   useEffect(() => {
     const el = view.current;
@@ -81,6 +100,10 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
     const onNavigate = (e: Electron.DidNavigateEvent) => {
       setAddress(e.url);
       update({ url: e.url });
+      // What the start page offers next time. Only full loads: a single-page
+      // site would otherwise count a dozen times for one visit.
+      useSiteVisitStore.getState().record(e.url);
+      setFailure(null);
       readHistory();
     };
     // Single-page sites (YouTube among them) change page with history.pushState,
@@ -103,15 +126,30 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       void el.executeJavaScript(LINK_SHIM);
     };
 
+    const onStart = () => setIsLoading(true);
+    const onStop = () => setIsLoading(false);
+    // A page that will not load leaves the guest blank, which reads as the widget
+    // being broken rather than the site being unreachable.
+    const onFail = (e: Electron.DidFailLoadEvent) => {
+      if (!e.isMainFrame || e.errorCode === ERR_ABORTED) return;
+      setFailure(e.errorDescription || 'The page could not be loaded.');
+    };
+
     el.addEventListener('dom-ready', onDomReady);
     el.addEventListener('did-navigate', onNavigate);
     el.addEventListener('did-navigate-in-page', onNavigateInPage);
+    el.addEventListener('did-start-loading', onStart);
+    el.addEventListener('did-stop-loading', onStop);
+    el.addEventListener('did-fail-load', onFail);
     return () => {
       el.removeEventListener('dom-ready', onDomReady);
       el.removeEventListener('did-navigate', onNavigate);
       el.removeEventListener('did-navigate-in-page', onNavigateInPage);
+      el.removeEventListener('did-start-loading', onStart);
+      el.removeEventListener('did-stop-loading', onStop);
+      el.removeEventListener('did-fail-load', onFail);
     };
-  }, [update]);
+  }, [update, hasPage]);
 
   useEffect(() => {
     if (contentsId.current !== null) view.current?.setZoomFactor(zoom);
@@ -120,8 +158,8 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   // ⌘+/⌘−/⌘0 pressed inside the page never reach the app, so the main process
   // forwards them with the id of the guest they happened in.
   useEffect(() => {
-    const off = window.windowMode?.onGuestKey((key, id) => {
-      if (id === undefined || id !== contentsId.current) return;
+    const off = window.windowMode?.onGuestKey((key, guestId) => {
+      if (guestId === undefined || guestId !== contentsId.current) return;
       if (key === 'zoom-in') update({ zoom: stepZoom(zoomRef.current, 1) });
       else if (key === 'zoom-out') update({ zoom: stepZoom(zoomRef.current, -1) });
       else if (key === 'zoom-reset') update({ zoom: 1 });
@@ -153,15 +191,10 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
         className="border-hair h-9 shrink-0 flex items-center px-2 gap-1 border-b"
         onSubmit={(e) => {
           e.preventDefault();
-          const url = normalizeUrl(address);
-          if (url) view.current?.loadURL(url);
+          go(toAddress(address));
         }}
       >
-        <NavButton
-          label="Back"
-          disabled={!history.back}
-          onClick={() => view.current?.goBack()}
-        >
+        <NavButton label="Back" disabled={!history.back} onClick={() => view.current?.goBack()}>
           <ArrowLeft size={13} />
         </NavButton>
         <NavButton
@@ -171,14 +204,47 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
         >
           <ArrowRight size={13} />
         </NavButton>
-        <NavButton label="Reload" onClick={() => view.current?.reload()}>
-          <RotateCw size={12} />
+        {isLoading ? (
+          <NavButton label="Stop" onClick={() => view.current?.stop()}>
+            <X size={13} />
+          </NavButton>
+        ) : (
+          <NavButton
+            label="Reload"
+            disabled={!hasPage}
+            onClick={() => view.current?.reload()}
+          >
+            <RotateCw size={12} />
+          </NavButton>
+        )}
+        {/* Turns the widget back into a fresh tab. The guest is unmounted, so the
+            page really does close — same as closing a tab, which is what the
+            tiles are for. */}
+        <NavButton
+          label="Close the page and show the start page"
+          disabled={!hasPage}
+          onClick={() => {
+            setAddress('');
+            setFailure(null);
+            update({ url: '' });
+          }}
+        >
+          <Home size={12} />
         </NavButton>
 
         <input
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          placeholder="Enter a URL"
+          // Clicking into a full address to change one word means selecting it
+          // first, every time; every other browser does this for you.
+          onFocus={(e) => e.currentTarget.select()}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setAddress(data.url);
+              e.currentTarget.blur();
+            }
+          }}
+          placeholder="Search, or enter an address"
           className="field flex-1 min-w-0 rounded-md px-2 py-1 text-xs outline-none"
         />
 
@@ -208,15 +274,37 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
         </NavButton>
       </form>
 
-      <webview
-        ref={view}
-        src={initialUrl.current}
-        // Cookies and logins are scoped to the space, so the same site can be
-        // signed in as different accounts in different spaces.
-        partition={`persist:space-${spaceId}`}
-        allowpopups
-        className="flex-1 w-full"
-      />
+      <div className="relative flex-1 min-h-0">
+        {hasPage ? (
+          <webview
+            ref={view}
+            src={initialUrl.current}
+            // Cookies and logins are scoped to the space, so the same site can be
+            // signed in as different accounts in different spaces (D-074).
+            partition={`persist:space-${spaceId}`}
+            {...ALLOW_POPUPS}
+            className="w-full h-full"
+          />
+        ) : (
+          <BrowserStartPage onOpen={go} />
+        )}
+
+        {failure && (
+          <div className="glass-panel absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
+            <span className="t-ink text-sm">This page didn’t load</span>
+            <span className="t-faint text-xs max-w-[40ch]">{failure}</span>
+            <button
+              onClick={() => {
+                setFailure(null);
+                view.current?.reload();
+              }}
+              className="chrome-button mt-1 px-3 h-8 rounded-md text-sm"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

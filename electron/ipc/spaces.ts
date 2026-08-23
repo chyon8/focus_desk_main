@@ -1,6 +1,7 @@
-import { app, ipcMain } from 'electron';
+import { app, ipcMain, session } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { partitionFor } from './session';
 
 // One JSON file per space, so saving a space never rewrites the others.
 function spacesDir() {
@@ -41,8 +42,11 @@ export function registerSpacesIpc() {
     event.returnValue = true;
   });
 
-  ipcMain.handle('spaces:delete', (_event, id: string) => {
+  ipcMain.handle('spaces:delete', async (_event, id: string) => {
     const file = fileFor(id);
     if (fs.existsSync(file)) fs.unlinkSync(file);
+    // The space's cookie jar goes with it (D-074). Left behind, it is a set of
+    // live logins for a project that no longer exists, kept on disk for good.
+    await session.fromPartition(partitionFor(id)).clearStorageData();
   });
 }

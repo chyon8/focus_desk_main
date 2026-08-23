@@ -73,9 +73,13 @@ contextBridge.exposeInMainWorld('apps', {
     ipcRenderer.on('apps:staged-changed', listener);
     return () => ipcRenderer.removeListener('apps:staged-changed', listener);
   },
-  /** Applications outside this space were hidden to keep the desk visible. */
-  onHidden: (handler: (count: number) => void) => {
-    const listener = (_event: unknown, count: number) => handler(count);
+  /** What is held hidden right now, for a renderer that has just reloaded. */
+  hiddenApps: () => ipcRenderer.invoke('apps:hidden-apps'),
+  /** Brings one hidden application back. */
+  unhide: (appKey: string) => ipcRenderer.invoke('apps:unhide', appKey),
+  /** The applications hidden to keep the desk visible, as a whole set each time. */
+  onHidden: (handler: (apps: { appKey: string; name: string }[]) => void) => {
+    const listener = (_event: unknown, apps: { appKey: string; name: string }[]) => handler(apps);
     ipcRenderer.on('apps:hidden', listener);
     return () => ipcRenderer.removeListener('apps:hidden', listener);
   },
@@ -92,6 +96,16 @@ contextBridge.exposeInMainWorld('apps', {
     ipcRenderer.on('apps:frontmost', listener);
     return () => ipcRenderer.removeListener('apps:frontmost', listener);
   },
+});
+
+contextBridge.exposeInMainWorld('session', {
+  /** Which sites this space is signed in on, read from its own cookie jar. */
+  summary: (spaceId: string) => ipcRenderer.invoke('session:summary', spaceId),
+  /** Signs this space out of one site. */
+  clearSite: (spaceId: string, site: string) =>
+    ipcRenderer.invoke('session:clear-site', spaceId, site),
+  /** Signs this space out of everything: cookies, storage, caches. */
+  clear: (spaceId: string) => ipcRenderer.invoke('session:clear', spaceId),
 });
 
 contextBridge.exposeInMainWorld('spaces', {
