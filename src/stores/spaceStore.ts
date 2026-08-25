@@ -23,6 +23,7 @@ interface SpaceState {
 
   load: () => Promise<void>;
   addSpace: (name: string) => void;
+  renameSpace: (id: string, name: string) => void;
   removeSpace: (id: string) => void;
   setActiveSpace: (id: string) => void;
 
@@ -51,6 +52,22 @@ interface SpaceState {
   lastRemoved: { spaceId: string; widget: WidgetDoc } | null;
   undoRemove: () => void;
   dismissRemoved: () => void;
+  /**
+   * The last space deleted. Nothing on disk is touched while this is set — the
+   * file, the logged time and the cookie jar are gone for good once it clears,
+   * so they wait for the undo window to close.
+   */
+  lastRemovedSpace: { doc: SpaceDoc; wasActive: boolean } | null;
+  undoRemoveSpace: () => void;
+  dismissRemovedSpace: () => void;
+}
+
+/** Throws a space away for good: its file and cookie jar (D-074), its logged time. */
+function destroySpace(id: string) {
+  void window.spaces?.delete(id);
+  // Its logged time goes with it, rather than lingering as a nameless row.
+  useSpaceTimeStore.getState().forget(id);
+  useAppTimeStore.getState().forget(id);
 }
 
 /** Whether the user has singled widgets out — arrange and fit then leave the rest alone. */
@@ -113,6 +130,11 @@ const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
  * down and an async write would never land (same reason as the time stores).
  */
 export function flushSaves() {
+  // A deletion still inside its undo window is committed here. `spaces:delete`
+  // is an async invoke and may lose the race with the teardown; if it does, the
+  // space comes back on the next launch, which is the side to fail on.
+  useSpaceStore.getState().dismissRemovedSpace();
+
   if (saveTimers.size === 0) return;
   const { spaces } = useSpaceStore.getState();
   for (const [id, timer] of saveTimers) {
@@ -186,20 +208,56 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }));
   },
 
-  removeSpace: (id) => {
-    const { spaces, activeSpaceId } = get();
-    const remaining = Object.keys(spaces).filter((sid) => sid !== id);
-    if (remaining.length === 0) return; // Never leave the app with no space.
+  renameSpace: (id, name) =>
+    set((state) => {
+      const current = state.spaces[id];
+      const trimmed = name.trim();
+      if (!current || !trimmed || trimmed === current.name) return {};
+      const next = { ...current, name: trimmed };
+      scheduleSave(next);
+      return { spaces: { ...state.spaces, [id]: next } };
+    }),
 
-    void window.spaces?.delete(id);
-    // Its logged time goes with it, rather than lingering as a nameless row.
-    useSpaceTimeStore.getState().forget(id);
-    useAppTimeStore.getState().forget(id);
+  removeSpace: (id) => {
+    const { spaces, activeSpaceId, lastRemovedSpace } = get();
+    const doc = spaces[id];
+    const remaining = Object.keys(spaces).filter((sid) => sid !== id);
+    if (!doc || remaining.length === 0) return; // Never leave the app with no space.
+
+    // Only one deletion can be waiting at a time; the one before it goes now.
+    if (lastRemovedSpace) destroySpace(lastRemovedSpace.doc.id);
+
     const nextSpaces = { ...spaces };
     delete nextSpaces[id];
-    const nextActive = activeSpaceId === id ? remaining[0] : activeSpaceId;
-    if (nextActive !== activeSpaceId) void window.store?.set(ACTIVE_SPACE_KEY, nextActive);
-    set({ spaces: nextSpaces, activeSpaceId: nextActive });
+    const wasActive = activeSpaceId === id;
+    const nextActive = wasActive ? remaining[0] : activeSpaceId;
+    if (wasActive) void window.store?.set(ACTIVE_SPACE_KEY, nextActive);
+    set({
+      spaces: nextSpaces,
+      activeSpaceId: nextActive,
+      lastRemovedSpace: { doc, wasActive },
+    });
+  },
+
+  undoRemoveSpace: () =>
+    set((state) => {
+      const removed = state.lastRemovedSpace;
+      if (!removed) return { lastRemovedSpace: null };
+      // Nothing was deleted yet, so putting the document back is the whole undo.
+      const activeSpaceId = removed.wasActive ? removed.doc.id : state.activeSpaceId;
+      if (removed.wasActive) void window.store?.set(ACTIVE_SPACE_KEY, activeSpaceId);
+      return {
+        spaces: { ...state.spaces, [removed.doc.id]: removed.doc },
+        activeSpaceId,
+        lastRemovedSpace: null,
+      };
+    }),
+
+  dismissRemovedSpace: () => {
+    const removed = get().lastRemovedSpace;
+    if (!removed) return;
+    destroySpace(removed.doc.id);
+    set({ lastRemovedSpace: null });
   },
 
   setActiveSpace: (id) => {
@@ -340,6 +398,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   },
 
   lastRemoved: null,
+  lastRemovedSpace: null,
 
   // Puts it back where it was, in the space it was closed in — which may not be
   // the one on screen now.

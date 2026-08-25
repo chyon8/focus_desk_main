@@ -69,10 +69,12 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   },
   webapp: {
     label: 'Web app',
-    // A page, so it needs page room — but smaller than the browser widget, which
-    // is bigger than some windows are tall. A default taller than the canvas gets
-    // centred with its own header above the top of the screen, out of reach.
-    defaultSize: { width: 560, height: 440 },
+    // A page, so it needs page room — narrower than the browser widget, but the
+    // same height: at 440 the picker showed three or four suggestions at a time,
+    // and a web app page had barely a screenful. Not taller than the browser
+    // widget, since a default taller than the canvas gets centred with its own
+    // header above the top of the screen, out of reach.
+    defaultSize: { width: 560, height: 620 },
     createData: () => ({ appId: '', name: '', url: '', homeUrl: '', icon: null, open: false }),
   },
 };

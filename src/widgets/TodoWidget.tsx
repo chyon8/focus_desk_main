@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check, Play, Plus, X } from 'lucide-react';
 import { TodoData } from '../spaces/types';
 import { useFocusStore } from '../stores/focusStore';
+import { isComposing } from '../app/ime';
 import { useWidgetData } from './useWidgetData';
 
 export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
@@ -85,7 +86,7 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && add()}
+          onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && add()}
           placeholder="Add a task"
           className="field flex-1 !bg-transparent outline-none text-sm"
         />

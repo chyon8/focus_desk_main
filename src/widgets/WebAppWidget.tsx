@@ -4,6 +4,7 @@ import { WebAppData, WebAppIcon } from '../spaces/types';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useWebAppStore, type WebApp } from '../stores/webappStore';
 import { WEB_APP_PRESETS, hostOf } from '../webapps/presets';
+import type { WebAppPreset } from '../webapps/presets';
 import { WebAppForm } from '../webapps/WebAppForm';
 import { WebAppMark } from '../webapps/WebAppMark';
 import { WIDGET_DEFS } from './defs';
@@ -287,12 +288,20 @@ const WebAppPicker: React.FC<{
     return needle ? all.filter((app) => app.name.toLowerCase().includes(needle)) : all;
   }, [apps, query]);
 
-  const presets = useMemo(() => {
+  // Kept in the order the preset list is written in, so each heading is just the
+  // point where the group changes.
+  const presetGroups = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const taken = new Set(Object.values(apps).map((app) => app.url));
-    return WEB_APP_PRESETS.filter(
-      (preset) => !taken.has(preset.url) && (!needle || preset.name.toLowerCase().includes(needle))
-    );
+    const groups: { group: string; items: WebAppPreset[] }[] = [];
+    for (const preset of WEB_APP_PRESETS) {
+      if (taken.has(preset.url)) continue;
+      if (needle && !preset.name.toLowerCase().includes(needle)) continue;
+      const last = groups[groups.length - 1];
+      if (last?.group === preset.group) last.items.push(preset);
+      else groups.push({ group: preset.group, items: [preset] });
+    }
+    return groups;
   }, [apps, query]);
 
   if (form) {
@@ -370,20 +379,30 @@ const WebAppPicker: React.FC<{
           </div>
         ))}
 
-        {presets.length > 0 && (
-          <div className="t-faint px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest">
-            Suggestions
+        {presetGroups.map(({ group, items }) => (
+          <div key={group}>
+            <div className="t-faint px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest">
+              {group}
+            </div>
+            {items.map((preset) => (
+              <button
+                key={preset.url}
+                onClick={() =>
+                  onPick(
+                    // Without the field picking, the preset's `group` would be
+                    // saved onto the user's web app.
+                    useWebAppStore
+                      .getState()
+                      .save({ name: preset.name, url: preset.url, icon: preset.icon })
+                  )
+                }
+                className="row !text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left"
+              >
+                <WebAppMark icon={preset.icon} name={preset.name} size={20} className="shrink-0" />
+                <span className="flex-1 min-w-0 text-sm truncate">{preset.name}</span>
+              </button>
+            ))}
           </div>
-        )}
-        {presets.map((preset) => (
-          <button
-            key={preset.url}
-            onClick={() => onPick(useWebAppStore.getState().save(preset))}
-            className="row !text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left"
-          >
-            <WebAppMark icon={preset.icon} name={preset.name} size={20} className="shrink-0" />
-            <span className="flex-1 min-w-0 text-sm truncate">{preset.name}</span>
-          </button>
         ))}
       </div>
 

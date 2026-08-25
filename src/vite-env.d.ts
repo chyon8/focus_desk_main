@@ -96,6 +96,10 @@ declare global {
       saveSync: (doc: unknown) => void;
       delete: (id: string) => Promise<void>;
     };
+    files?: {
+      /** The absolute path of a file dropped onto the window. */
+      pathFor: (file: File) => string;
+    };
     images?: {
       save: (buffer: ArrayBuffer, fileName: string) => Promise<string>;
       /** Everything currently sitting in the public/wallpapers folder. */

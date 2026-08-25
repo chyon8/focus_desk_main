@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { BarChart2, BookOpen, ChevronLeft, Coffee, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Plus, Scan, Trash2 } from 'lucide-react';
+import { BarChart2, BookOpen, ChevronLeft, Coffee, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Pencil, Plus, Scan, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
+import { isComposing } from './ime';
 import { ArrangeMenu } from './ArrangeMenu';
 import { SpaceSessionPanel } from './SpaceSessionPanel';
 import { WidgetPalette } from './WidgetPalette';
@@ -27,13 +28,73 @@ const SpaceRow: React.FC<{ id: string; canDelete: boolean; today: string }> = ({
   const name = useSpaceStore((s) => s.spaces[id]?.name ?? '');
   const isActive = useSpaceStore((s) => s.activeSpaceId === id);
   const setActiveSpace = useSpaceStore((s) => s.setActiveSpace);
-  const removeSpace = useSpaceStore((s) => s.removeSpace);
   // Ticks up once a second while this is the space in front of the user.
   const seconds = useSpaceTimeStore((s) => s.time[id]?.[today] ?? 0);
+  // The row is also where a space gets renamed and where deleting it is
+  // confirmed, so those replace it in place rather than opening a dialog.
+  const [mode, setMode] = useState<'view' | 'rename' | 'confirm'>('view');
+  const [draft, setDraft] = useState(name);
+
+  const startRename = () => {
+    setDraft(name);
+    setMode('rename');
+  };
+
+  if (mode === 'rename') {
+    const commit = () => {
+      useSpaceStore.getState().renameSpace(id, draft);
+      setMode('view');
+    };
+    return (
+      <div className="row row-on flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium">
+        <span className="t-ink">{spaceIcon(name)}</span>
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (isComposing(e)) return;
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') setMode('view');
+          }}
+          className="field border-hair flex-1 min-w-0 !bg-transparent border-b text-sm outline-none"
+        />
+      </div>
+    );
+  }
+
+  if (mode === 'confirm') {
+    return (
+      <div className="glass border-hair p-2.5 rounded-xl border">
+        <p className="t-ink text-[11px] leading-snug mb-2">
+          Delete “{name}”? Its widgets, its logged time and its logins go with it.
+        </p>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setMode('view')}
+            className="row flex-1 py-1 rounded-md text-[11px]"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              setMode('view');
+              useSpaceStore.getState().removeSpace(id);
+            }}
+            className="chrome-button flex-1 py-1 rounded-md text-[11px] font-medium hover:!text-red-300"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <button
       onClick={() => setActiveSpace(id)}
+      onDoubleClick={startRename}
       className={`row w-full group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
         isActive ? 'row-on shadow-sm' : ''
       }`}
@@ -45,11 +106,22 @@ const SpaceRow: React.FC<{ id: string; canDelete: boolean; today: string }> = ({
           {seconds > 0 ? formatDuration(seconds) : '—'}
         </span>
       </span>
+      <span
+        title="Rename (or double-click the row)"
+        onClick={(e) => {
+          e.stopPropagation();
+          startRename();
+        }}
+        className="t-faint opacity-0 group-hover:opacity-100 p-1 rounded transition-all"
+      >
+        <Pencil size={12} />
+      </span>
       {canDelete && (
         <span
+          title="Delete this space"
           onClick={(e) => {
             e.stopPropagation();
-            removeSpace(id);
+            setMode('confirm');
           }}
           className="t-faint opacity-0 group-hover:opacity-100 p-1 rounded transition-all hover:!text-red-300"
         >
@@ -155,7 +227,7 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
                   className="field border-hair w-full !bg-transparent border-b text-sm pb-1 mb-2 outline-none"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && create()}
+                  onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && create()}
                 />
                 <div className="flex gap-1.5">
                   <button

@@ -18,7 +18,7 @@ export function useKeyboardShortcuts() {
     const onKeyDown = (e: KeyboardEvent) => {
       trackAlt(e);
       // macOS's own fullscreen chord, so it works from anywhere in the app.
-      if (e.metaKey && e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+      if (e.metaKey && e.ctrlKey && e.code === 'KeyF') {
         e.preventDefault();
         void window.windowMode?.toggleFullscreen();
         return;
@@ -40,8 +40,7 @@ export function useKeyboardShortcuts() {
 
       // ⌥N/⌥G/⌥F do the same as N/G/F. They exist because a focused web page eats
       // the plain letters, and only a chord can be told apart from typing well
-      // enough for the main process to forward it out of the guest. `code`, not
-      // `key`: macOS turns ⌥G into '©'.
+      // enough for the main process to forward it out of the guest.
       if (e.altKey && !e.metaKey && !e.ctrlKey && !isTyping(e.target)) {
         if (e.code === 'KeyN') {
           e.preventDefault();
@@ -62,16 +61,18 @@ export function useKeyboardShortcuts() {
 
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
 
-      if (e.key === 'n' || e.key === 'N') {
+      // `code`, not `key`, for the same reason the ⌥ chords use it: with a Korean
+      // or Japanese input source selected, the G key does not report 'g'.
+      if (e.code === 'KeyN') {
         e.preventDefault();
         openQuickAddAtCentre();
-      } else if (e.key === 'g' || e.key === 'G') {
+      } else if (e.code === 'KeyG') {
         e.preventDefault();
         arrangeWidgets();
-      } else if (e.key === 'f' || e.key === 'F') {
+      } else if (e.code === 'KeyF') {
         e.preventDefault();
         fitToWidgets();
-      } else if (e.key === '?') {
+      } else if (e.key === '?' || (e.code === 'Slash' && e.shiftKey)) {
         e.preventDefault();
         useUiStore.getState().toggleShortcuts();
       }

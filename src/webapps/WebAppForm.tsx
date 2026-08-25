@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check, Trash2, X } from 'lucide-react';
 import type { WebAppIcon } from '../spaces/types';
 import type { WebApp } from '../stores/webappStore';
+import { isComposing } from '../app/ime';
 import { ICON_EMOJI, hostOf, normalizeUrl } from './presets';
 
 /**
@@ -50,7 +51,7 @@ export const WebAppForm: React.FC<{
             autoFocus
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && save()}
+            onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && save()}
             placeholder="figma.com/files"
             className="field border-hair w-full !bg-transparent border-b text-sm pb-1 outline-none"
           />
@@ -61,7 +62,7 @@ export const WebAppForm: React.FC<{
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && save()}
+            onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && save()}
             placeholder={address ? hostOf(address) : 'Figma'}
             className="field border-hair w-full !bg-transparent border-b text-sm pb-1 outline-none"
           />

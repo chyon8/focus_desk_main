@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge } from 'electron';
+import { ipcRenderer, contextBridge, webUtils } from 'electron';
 
 contextBridge.exposeInMainWorld('store', {
   get: (key: string) => ipcRenderer.invoke('store:get', key),
@@ -122,6 +122,12 @@ contextBridge.exposeInMainWorld('images', {
   save: (buffer: ArrayBuffer, fileName: string) =>
     ipcRenderer.invoke('images:save', buffer, fileName),
   wallpapers: () => ipcRenderer.invoke('images:wallpapers'),
+});
+
+contextBridge.exposeInMainWorld('files', {
+  // Where a dropped file actually lives. `File.path` was removed in Electron 32;
+  // this is the replacement, and it only works from the preload.
+  pathFor: (file: File) => webUtils.getPathForFile(file),
 });
 
 contextBridge.exposeInMainWorld('windowMode', {

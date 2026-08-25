@@ -4,6 +4,7 @@ import { WIDGET_DRAG_TYPE, WidgetDragPayload } from '../app/WidgetPalette';
 import { useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { screenToWorld } from './camera';
+import { addDroppedFiles } from './fileDrop';
 import { useCameraControls } from './useCameraControls';
 import { useCameraMotion } from './useCameraMotion';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
@@ -23,6 +24,8 @@ export const Canvas: React.FC = () => {
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(
     null
   );
+  /** Files dropped that the app has no way to show. */
+  const [refused, setRefused] = useState<string[] | null>(null);
   const { isSpaceHeld, isPanning } = useCameraControls(viewportRef);
   const isCameraMoving = useCameraMotion(camera ?? { x: 0, y: 0, zoom: 1 });
   useKeyboardShortcuts();
@@ -36,18 +39,37 @@ export const Canvas: React.FC = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  useEffect(() => {
+    if (!refused) return;
+    const timer = setTimeout(() => setRefused(null), 6000);
+    return () => clearTimeout(timer);
+  }, [refused]);
+
   if (!camera) return null;
 
   // A widget dragged out of the sidebar palette lands where it was let go, so the
   // pointer has to be read in world units.
   const onDrop = (e: React.DragEvent) => {
-    const raw = e.dataTransfer.getData(WIDGET_DRAG_TYPE);
     const box = viewportRef.current?.getBoundingClientRect();
-    if (!raw || !box) return;
-    e.preventDefault();
-    const { type, data } = JSON.parse(raw) as WidgetDragPayload;
+    if (!box) return;
     const at = screenToWorld(camera, { x: e.clientX - box.left, y: e.clientY - box.top });
-    useSpaceStore.getState().addWidget(type, data, at);
+
+    const raw = e.dataTransfer.getData(WIDGET_DRAG_TYPE);
+    if (raw) {
+      e.preventDefault();
+      const { type, data } = JSON.parse(raw) as WidgetDragPayload;
+      useSpaceStore.getState().addWidget(type, data, at);
+      return;
+    }
+
+    // Files from the Finder. The list has to be copied out now: the transfer is
+    // emptied as soon as this handler returns, and the first file is read async.
+    const files = [...e.dataTransfer.files];
+    if (files.length === 0) return;
+    e.preventDefault();
+    void addDroppedFiles(files, at).then((rejected) => {
+      setRefused(rejected.length ? rejected : null);
+    });
   };
 
   // The rect that covers the visible canvas, minus the strip the floating chrome
@@ -148,8 +170,10 @@ export const Canvas: React.FC = () => {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onDragOver={(e) => {
-        // Only palette drags: a file dropped on a widget is that widget's business.
-        if (!e.dataTransfer.types.includes(WIDGET_DRAG_TYPE)) return;
+        // Palette drags and files. A file dropped on a widget is that widget's
+        // business — this only fires for what lands on the canvas itself.
+        const { types } = e.dataTransfer;
+        if (!types.includes(WIDGET_DRAG_TYPE) && !types.includes('Files')) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
       }}
@@ -181,6 +205,18 @@ export const Canvas: React.FC = () => {
             background: 'color-mix(in srgb, var(--accent) 18%, transparent)',
           }}
         />
+      )}
+
+      {refused && (
+        <div
+          onClick={() => setRefused(null)}
+          className="glass-panel absolute bottom-6 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-2xl shadow-2xl cursor-default"
+        >
+          <span className="t-ink text-xs">
+            Can’t show {refused.length === 1 ? refused[0] : `${refused.length} of those files`} —
+            images, PDFs and text files only
+          </span>
+        </div>
       )}
     </div>
   );

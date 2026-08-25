@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ExternalLink, Plus, X } from 'lucide-react';
 import { BookmarksData } from '../spaces/types';
 import { useSpaceStore } from '../stores/spaceStore';
+import { isComposing } from '../app/ime';
 import { useWidgetData } from './useWidgetData';
 
 function hostOf(url: string) {
@@ -61,7 +62,7 @@ export const BookmarksWidget: React.FC<{ id: string }> = ({ id }) => {
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && add()}
+          onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && add()}
           placeholder="Paste a link"
           className="field flex-1 min-w-0 !bg-transparent outline-none text-sm"
         />

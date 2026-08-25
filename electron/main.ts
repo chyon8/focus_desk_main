@@ -45,6 +45,8 @@ function createWindow() {
   // that page — after that, clicking through the site autoplays as usual.
   win.webContents.on('will-attach-webview', (_e, webPreferences) => {
     webPreferences.autoplayPolicy = 'document-user-activation-required';
+    // Chromium's own PDF viewer, for a PDF dropped onto the canvas.
+    webPreferences.plugins = true;
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -118,7 +120,8 @@ app.on('web-contents-created', (_event, contents) => {
     if (input.type !== 'keyDown' || !win || win.isDestroyed()) return;
 
     if (input.key === 'Escape') win.webContents.send('guest-key', 'escape');
-    else if (input.meta && input.control && input.key.toLowerCase() === 'f') {
+    // `code`, not `key`: a non-Latin input source does not report 'f'.
+    else if (input.meta && input.control && input.code === 'KeyF') {
       win.webContents.send('guest-key', 'fullscreen');
     } else if (input.meta && !input.control && ZOOM_KEYS[input.key]) {
       // Page zoom. The widget owns the value (it persists it), so the chord goes

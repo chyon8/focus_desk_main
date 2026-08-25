@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { KanbanData } from '../spaces/types';
+import { isComposing } from '../app/ime';
 import { useWidgetData } from './useWidgetData';
 
 type ColumnKey = keyof KanbanData['columns'];
@@ -106,7 +107,7 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
               <input
                 value={drafts[key] ?? ''}
                 onChange={(e) => setDrafts({ ...drafts, [key]: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && addCard(key)}
+                onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && addCard(key)}
                 placeholder="Add"
                 className="field flex-1 min-w-0 !bg-transparent outline-none text-xs"
               />

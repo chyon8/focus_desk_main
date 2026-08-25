@@ -10,31 +10,54 @@ const VISIBLE_MS = 8000;
 /**
  * Closing a widget throws away everything in it — a memo's text included — and
  * there is no other way back. So every ✕ leaves this behind for a few seconds
- * (D-061).
+ * (D-061). Deleting a space works the same way, and takes its logged time and
+ * its logins with it, so nothing is actually deleted until this clears.
  */
 export const UndoToast: React.FC = () => {
-  const removed = useSpaceStore((s) => s.lastRemoved);
+  const removedWidget = useSpaceStore((s) => s.lastRemoved);
+  const removedSpace = useSpaceStore((s) => s.lastRemovedSpace);
 
+  // A deleted space wins the slot: it is the larger of the two undos, and the
+  // space it was in took the widget toast with it anyway.
+  const entry = removedSpace
+    ? {
+        key: removedSpace.doc.id,
+        label: `Deleted ${removedSpace.doc.name}`,
+        undo: () => useSpaceStore.getState().undoRemoveSpace(),
+        dismiss: () => useSpaceStore.getState().dismissRemovedSpace(),
+      }
+    : removedWidget
+      ? {
+          key: removedWidget.widget.id,
+          label: `Closed ${WIDGET_REGISTRY[removedWidget.widget.type].label}`,
+          undo: () => useSpaceStore.getState().undoRemove(),
+          dismiss: () => useSpaceStore.getState().dismissRemoved(),
+        }
+      : null;
+
+  const key = entry?.key;
+  const dismiss = entry?.dismiss;
   useEffect(() => {
-    if (!removed) return;
-    const timer = setTimeout(() => useSpaceStore.getState().dismissRemoved(), VISIBLE_MS);
+    if (!dismiss) return;
+    const timer = setTimeout(dismiss, VISIBLE_MS);
     return () => clearTimeout(timer);
-  }, [removed]);
+    // Restarting the countdown is what a new key means; `dismiss` is rebuilt
+    // every render and would restart it on every one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   return (
     <AnimatePresence>
-      {removed && (
+      {entry && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
           className="glass-panel fixed bottom-6 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-2xl shadow-2xl"
         >
-          <span className="t-ink text-xs">
-            Closed {WIDGET_REGISTRY[removed.widget.type].label}
-          </span>
+          <span className="t-ink text-xs">{entry.label}</span>
           <button
-            onClick={() => useSpaceStore.getState().undoRemove()}
+            onClick={entry.undo}
             className="chrome-button-on flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-medium"
           >
             <Undo2 size={13} />
