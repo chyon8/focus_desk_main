@@ -2,6 +2,8 @@ import { useSpaceStore } from '../stores/spaceStore';
 
 /** Read into a memo, since a memo is what the user would have pasted them into. */
 const TEXT_EXTS = new Set(['.txt', '.md', '.markdown', '.csv', '.log', '.json']);
+/** Named in the notice, so "not yet" is a list and not a shrug. */
+export const SUPPORTED_DROPS = 'Images · PDF · .txt .md .csv .json';
 /** A memo is a note, not a log viewer. Past this the file is refused. */
 const MAX_TEXT_BYTES = 200_000;
 /** Dropping several files at once fans them out instead of stacking them. */

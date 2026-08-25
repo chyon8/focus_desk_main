@@ -32,6 +32,8 @@ interface UiState {
   quickAdd: { screen: Point; world: Point } | null;
   /** The keyboard cheatsheet. */
   isShortcutsOpen: boolean;
+  /** The window covers the screen (⇧M, or the sidebar button). */
+  isFullscreen: boolean;
   /**
    * App widgets the user has opened: their real windows sit on them whenever the
    * widget is fully on the canvas. Not persisted — real windows do not survive a
@@ -56,6 +58,7 @@ interface UiState {
   openQuickAdd: (screen: Point, world: Point) => void;
   closeQuickAdd: () => void;
   toggleShortcuts: () => void;
+  toggleFullscreen: () => void;
   setStaged: (staged: boolean) => void;
   toggleAppOpen: (widgetId: string) => void;
   closeApp: (widgetId: string) => void;
@@ -69,6 +72,7 @@ export const useUiStore = create<UiState>((set) => ({
   isAltHeld: false,
   quickAdd: null,
   isShortcutsOpen: false,
+  isFullscreen: false,
   openAppIds: [],
   // Nothing is placed yet, so the desk is simply a window like any other.
   isStaged: false,
@@ -98,6 +102,12 @@ export const useUiStore = create<UiState>((set) => ({
   closeQuickAdd: () => set({ quickAdd: null }),
 
   toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
+
+  // The main process owns the real state and hands it back; the flag here is only
+  // so the button can show which way it goes next.
+  toggleFullscreen: () => {
+    void window.windowMode?.toggleFullscreen().then((on) => set({ isFullscreen: on }));
+  },
 
   setStaged: (isStaged) => set({ isStaged }),
 

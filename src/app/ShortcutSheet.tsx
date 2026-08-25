@@ -8,36 +8,37 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
   {
     title: 'Canvas',
     items: [
-      ['Double-click', 'Add a widget right there'],
-      ['N', 'Add a widget in the middle of the view'],
-      ['G', 'Arrange — widgets fill the screen'],
-      ['F', 'Fit — frame what is there, move nothing'],
+      ['N', 'Add a widget'],
+      ['G', 'Arrange'],
+      ['F', 'Fit'],
+      ['M', 'Fullscreen'],
+      ['Double-click', 'Add one right here'],
+      ['?', 'This sheet'],
+      ['Esc', 'Back out'],
+    ],
+  },
+  {
+    title: 'Move around',
+    items: [
       ['Space + drag', 'Pan'],
       ['⌘ + scroll', 'Zoom'],
-      ['Esc', 'Back out: palette → maximise → selection'],
-      ['?', 'This sheet'],
+      ['Pinch a photo', 'Zoom the picture'],
+      ['⌃⌥D', 'Desk ↔ app windows'],
     ],
   },
   {
-    title: 'Selection',
+    title: 'Pick widgets',
     items: [
-      ['⇧ + drag', 'Band-select'],
-      ['⌥ + click', 'Pick one at a time'],
-      ['⌥ (hold)', 'Show what a click would pick'],
+      ['⌥ (hold)', 'Show what a click picks'],
+      ['⌥ + click', 'Pick one'],
+      ['⇧ + drag', 'Pick several'],
     ],
   },
   {
-    title: 'Inside a web page',
+    title: 'In a web page',
     items: [
-      ['⌥N · ⌥G · ⌥F', 'Add · arrange · fit — the page eats the plain letters'],
+      ['⇧N ⇧G ⇧F ⇧M', 'Same four'],
       ['⌘+ ⌘− ⌘0', 'Page zoom'],
-    ],
-  },
-  {
-    title: 'Window',
-    items: [
-      ['⌃⌘F', 'Fullscreen'],
-      ['⌃⌥D', 'Swap between the desk and the app windows open on it'],
     ],
   },
 ];
@@ -62,8 +63,13 @@ export const ShortcutSheet: React.FC = () => {
         transition={{ duration: 0.15 }}
         className="glass-panel fixed left-1/2 top-1/2 z-[98] w-[560px] max-w-[92vw] max-h-[80vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-5 rounded-2xl shadow-2xl"
       >
-        <div className="flex items-center mb-4">
+        <div className="flex items-baseline gap-3 mb-4">
           <h2 className="t-ink text-sm font-bold tracking-wide">Keyboard</h2>
+          {/* The one rule behind the whole list, so the ⇧ column needs no
+              explaining of its own. */}
+          <span className="t-faint text-[11px]">
+            Letters work on the canvas. Add ⇧ when a web page has focus.
+          </span>
           <button
             onClick={close}
             title="Close"

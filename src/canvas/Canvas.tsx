@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { FileQuestion } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { WIDGET_DRAG_TYPE, WidgetDragPayload } from '../app/WidgetPalette';
 import { useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { screenToWorld } from './camera';
-import { addDroppedFiles } from './fileDrop';
+import { addDroppedFiles, SUPPORTED_DROPS } from './fileDrop';
 import { useCameraControls } from './useCameraControls';
 import { useCameraMotion } from './useCameraMotion';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
@@ -38,12 +39,6 @@ export const Canvas: React.FC = () => {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-
-  useEffect(() => {
-    if (!refused) return;
-    const timer = setTimeout(() => setRefused(null), 6000);
-    return () => clearTimeout(timer);
-  }, [refused]);
 
   if (!camera) return null;
 
@@ -207,15 +202,30 @@ export const Canvas: React.FC = () => {
         />
       )}
 
+      {/* A dropped file that goes nowhere looks like a bug, so this says what
+          happened where the eye already is — the middle of the canvas, not a
+          strip along the bottom that gets missed. */}
       {refused && (
         <div
           onClick={() => setRefused(null)}
-          className="glass-panel absolute bottom-6 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-2xl shadow-2xl cursor-default"
+          className="glass-panel absolute left-1/2 top-1/2 z-[94] w-[26rem] max-w-[80%] -translate-x-1/2 -translate-y-1/2 p-5 rounded-2xl shadow-2xl text-center cursor-default"
         >
-          <span className="t-ink text-xs">
-            Can’t show {refused.length === 1 ? refused[0] : `${refused.length} of those files`} —
-            images, PDFs and text files only
-          </span>
+          <FileQuestion size={26} className="t-faint mx-auto mb-3" />
+          <p className="t-ink text-sm font-medium mb-1">Not supported yet</p>
+          <p className="t-faint text-xs leading-relaxed break-all">
+            {refused.length === 1 ? refused[0] : `${refused.length} files`}
+          </p>
+          <p className="t-faint mt-3 text-[11px] leading-relaxed">
+            Focus Desk can show {SUPPORTED_DROPS}.
+            <br />
+            Word, Excel, PowerPoint and Keynote are not in yet.
+          </p>
+          <button
+            onClick={() => setRefused(null)}
+            className="chrome-button-on mt-4 px-4 py-1.5 rounded-lg text-xs font-medium"
+          >
+            OK
+          </button>
         </div>
       )}
     </div>

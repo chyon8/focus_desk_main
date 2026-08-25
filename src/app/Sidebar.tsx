@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { BarChart2, BookOpen, ChevronLeft, Coffee, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Pencil, Plus, Scan, Trash2 } from 'lucide-react';
+import { BarChart2, BookOpen, ChevronLeft, Coffee, Expand, Frame, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Pencil, Plus, Shrink, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
@@ -147,6 +147,8 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
   const addSpace = useSpaceStore((s) => s.addSpace);
   const fitToWidgets = useSpaceStore((s) => s.fitToWidgets);
   const zoom = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera.zoom ?? 1);
+  const isFullscreen = useUiStore((s) => s.isFullscreen);
+  const toggleFullscreen = useUiStore((s) => s.toggleFullscreen);
   const today = useToday();
   const todayTotal = useSpaceTimeStore((s) =>
     spaceIds.reduce((sum, id) => sum + (s.time[id]?.[today] ?? 0), 0)
@@ -261,10 +263,17 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
               <ArrangeMenu />
               <button
                 onClick={fitToWidgets}
-                title="Fit to widgets (F, or ⌥F inside a page)"
+                title="Fit — frame every widget (F, or ⇧F inside a page)"
                 className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
               >
-                <Scan size={18} />
+                <Frame size={18} />
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                title={isFullscreen ? 'Leave fullscreen (⇧M)' : 'Fullscreen (⇧M)'}
+                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
+              >
+                {isFullscreen ? <Shrink size={18} /> : <Expand size={18} />}
               </button>
               <button
                 onClick={useUiStore.getState().toggleShortcuts}

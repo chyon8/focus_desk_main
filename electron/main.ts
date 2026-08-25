@@ -25,6 +25,11 @@ function createWindow() {
     width: 1440,
     height: 900,
     titleBarStyle: 'hidden',
+    // macOS's own fullscreen puts the window on a Space of its own, where no app
+    // window can join it — which is the whole app surface (D-038). Turning it off
+    // also disables the ⌃⌘F the default menu would otherwise answer with it; the
+    // app's own fullscreen is ⇧M.
+    fullscreenable: false,
     trafficLightPosition: { x: 10, y: 10 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -64,6 +69,9 @@ function createWindow() {
   });
 }
 
+/** The physical keys ⇧ turns into app shortcuts, matching `useKeyboardShortcuts`. */
+const SHIFT_SHORTCUTS = new Set(['KeyN', 'KeyG', 'KeyF', 'KeyM']);
+
 // ⌘+ arrives as '=' unless shift is down, and the numpad spells it '+'.
 const ZOOM_KEYS: Record<string, string> = {
   '=': 'zoom-in',
@@ -74,7 +82,7 @@ const ZOOM_KEYS: Record<string, string> = {
 
 // Key presses inside a browser widget stay in that page — the app never sees them.
 // Without this, clicking into a page while a widget is maximised or the window is
-// fullscreen leaves no way out: Esc and ⌃⌘F both go to the site instead.
+// fullscreen leaves no way out: Esc and ⇧M both go to the site instead.
 app.on('web-contents-created', (_event, contents) => {
   if (contents.getType() !== 'webview') return;
 
@@ -119,30 +127,21 @@ app.on('web-contents-created', (_event, contents) => {
   contents.on('before-input-event', (e, input) => {
     if (input.type !== 'keyDown' || !win || win.isDestroyed()) return;
 
-    if (input.key === 'Escape') win.webContents.send('guest-key', 'escape');
-    // `code`, not `key`: a non-Latin input source does not report 'f'.
-    else if (input.meta && input.control && input.code === 'KeyF') {
-      win.webContents.send('guest-key', 'fullscreen');
+    if (input.key === 'Escape') {
+      win.webContents.send('guest-key', 'escape');
     } else if (input.meta && !input.control && ZOOM_KEYS[input.key]) {
       // Page zoom. The widget owns the value (it persists it), so the chord goes
       // to the renderer rather than straight to this guest's zoom factor — the id
       // says which browser widget was in front.
       e.preventDefault();
       win.webContents.send('guest-key', ZOOM_KEYS[input.key], contents.id);
-    } else if (input.alt && !input.meta && !input.control) {
-      // Add, arrange and fit. The page keeps plain N/G/F (it may well be typing),
-      // so the app's copies are ⌥N/⌥G/⌥F — `code`, because ⌥G arrives as '©'.
-      const action =
-        input.code === 'KeyN'
-          ? 'add'
-          : input.code === 'KeyG'
-            ? 'arrange'
-            : input.code === 'KeyF'
-              ? 'fit'
-              : null;
-      if (!action) return;
+    } else if (input.shift && !input.meta && !input.control && !input.alt) {
+      // Add, arrange, fit and fullscreen. The page keeps the plain letters (it
+      // may well be typing), so the app's copies are ⇧N/⇧G/⇧F/⇧M. `code`, since
+      // that is what the renderer matches on too.
+      if (!SHIFT_SHORTCUTS.has(input.code)) return;
       e.preventDefault();
-      win.webContents.send('guest-key', action);
+      win.webContents.send('guest-key', input.code);
     }
   });
 });

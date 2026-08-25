@@ -9,6 +9,20 @@ function isTyping(target: EventTarget | null) {
   return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA)$/.test(el.tagName));
 }
 
+/**
+ * The four canvas actions, by physical key. Shared by the plain letters, their ⇧
+ * twins, and the copies forwarded out of a browser widget.
+ */
+function runShortcut(code: string) {
+  const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
+  if (code === 'KeyN') openQuickAddAtCentre();
+  else if (code === 'KeyG') arrangeWidgets();
+  else if (code === 'KeyF') fitToWidgets();
+  else if (code === 'KeyM') useUiStore.getState().toggleFullscreen();
+  else return false;
+  return true;
+}
+
 export function useKeyboardShortcuts() {
   useEffect(() => {
     // ⌥ makes every widget show a rim on hover, so it is clear what a click picks.
@@ -17,12 +31,6 @@ export function useKeyboardShortcuts() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       trackAlt(e);
-      // macOS's own fullscreen chord, so it works from anywhere in the app.
-      if (e.metaKey && e.ctrlKey && e.code === 'KeyF') {
-        e.preventDefault();
-        void window.windowMode?.toggleFullscreen();
-        return;
-      }
       // Esc backs out of things; it never destroys one. Closing a widget is the ✕
       // alone (which can be undone) — Esc did it once by accident and that was
       // enough (D-061).
@@ -36,43 +44,22 @@ export function useKeyboardShortcuts() {
         else if (ui.selectedIds.length) ui.clearSelection();
         return;
       }
-      const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
-
-      // ⌥N/⌥G/⌥F do the same as N/G/F. They exist because a focused web page eats
-      // the plain letters, and only a chord can be told apart from typing well
-      // enough for the main process to forward it out of the guest.
-      if (e.altKey && !e.metaKey && !e.ctrlKey && !isTyping(e.target)) {
-        if (e.code === 'KeyN') {
-          e.preventDefault();
-          openQuickAddAtCentre();
-          return;
-        }
-        if (e.code === 'KeyG') {
-          e.preventDefault();
-          arrangeWidgets();
-          return;
-        }
-        if (e.code === 'KeyF') {
-          e.preventDefault();
-          fitToWidgets();
-          return;
-        }
-      }
 
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
 
-      // `code`, not `key`, for the same reason the ⌥ chords use it: with a Korean
-      // or Japanese input source selected, the G key does not report 'g'.
-      if (e.code === 'KeyN') {
+      // N·G·F·M, with or without ⇧. The plain letters are for the canvas; ⇧ makes
+      // the same shortcut reachable from inside a web page, where a plain letter
+      // is something the page is being typed into (the main process forwards the
+      // ⇧ ones back out of the guest).
+      //
+      // `code`, not `key`: a Korean or Japanese input source does not report 'g',
+      // and ⇧G is 'G' only on a Latin layout (D-078).
+      if (runShortcut(e.code)) {
         e.preventDefault();
-        openQuickAddAtCentre();
-      } else if (e.code === 'KeyG') {
-        e.preventDefault();
-        arrangeWidgets();
-      } else if (e.code === 'KeyF') {
-        e.preventDefault();
-        fitToWidgets();
-      } else if (e.key === '?' || (e.code === 'Slash' && e.shiftKey)) {
+        return;
+      }
+
+      if (e.key === '?' || (e.code === 'Slash' && e.shiftKey)) {
         e.preventDefault();
         useUiStore.getState().toggleShortcuts();
       }
@@ -80,12 +67,8 @@ export function useKeyboardShortcuts() {
 
     // The same shortcuts, but pressed while a browser widget had focus.
     const offGuestKey = window.windowMode?.onGuestKey((key) => {
-      const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
       if (key === 'escape') useUiStore.getState().clearMaximized();
-      else if (key === 'fullscreen') void window.windowMode?.toggleFullscreen();
-      else if (key === 'add') openQuickAddAtCentre();
-      else if (key === 'arrange') arrangeWidgets();
-      else if (key === 'fit') fitToWidgets();
+      else runShortcut(key);
     });
 
     window.addEventListener('keydown', onKeyDown);

@@ -119,6 +119,11 @@ export interface BookmarksData {
 export interface PhotoData {
   url: string;
   caption: string;
+  /** How far the picture is zoomed inside the frame. 1 fills it. */
+  zoom?: number;
+  /** Where the zoomed picture sits, as a fraction of the frame (-0.5…0.5). */
+  panX?: number;
+  panY?: number;
 }
 
 export interface SketchStroke {

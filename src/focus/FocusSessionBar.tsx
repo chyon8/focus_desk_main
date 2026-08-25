@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Pause, Play, Square, Timer as TimerIcon } from 'lucide-react';
+import { Pause, Play, Square } from 'lucide-react';
 import { useFocusStore } from '../stores/focusStore';
 import { formatClock } from './stats';
 
 /**
  * The running focus session, shown as a capsule at the top of the canvas.
- * Idle state is a single button; once running it takes over as the timer.
+ *
+ * Nothing is shown while there is no session. There used to be a "Start focus"
+ * button sitting there, and it went unused — a session starts from a task's ▶ in
+ * a todo widget, which is where the user already is when they mean to start one.
  */
 export const FocusSessionBar: React.FC = () => {
   const startedAt = useFocusStore((s) => s.startedAt);
@@ -24,25 +27,13 @@ export const FocusSessionBar: React.FC = () => {
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  const { start, pause, resume, stop } = useFocusStore.getState();
+  const { pause, resume, stop } = useFocusStore.getState();
   const elapsed = useFocusStore.getState().elapsed();
 
   return (
     <div className="fixed top-9 left-1/2 -translate-x-1/2 z-50">
       <AnimatePresence mode="wait">
-        {!isActive ? (
-          <motion.button
-            key="idle"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            onClick={() => start()}
-            className="glass chrome-button flex items-center gap-2 px-4 py-2 rounded-full shadow-lg"
-          >
-            <TimerIcon size={14} />
-            <span className="text-xs font-medium">Start focus</span>
-          </motion.button>
-        ) : (
+        {isActive && (
           <motion.div
             key="running"
             initial={{ opacity: 0, y: -8 }}
