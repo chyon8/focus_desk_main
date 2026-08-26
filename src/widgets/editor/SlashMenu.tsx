@@ -1,6 +1,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import {
   CheckSquare,
+  CornerDownLeft,
   Code2,
   Heading1,
   Heading2,
@@ -17,16 +18,27 @@ import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { type SuggestionProps } from '@tiptap/suggestion';
 import { DEFAULT_DIAGRAM } from './Mermaid';
 
+/**
+ * Inserting a thing and changing what this line *is* are two different actions,
+ * and the list reads as half its length once they are apart.
+ */
+type SlashGroup = 'Insert' | 'Turn into';
+
+/** Reading order of the groups, and so of the whole list. */
+const GROUP_ORDER: SlashGroup[] = ['Insert', 'Turn into'];
+
 interface SlashItem {
   label: string;
+  group: SlashGroup;
   icon: LucideIcon;
   run: (editor: Editor, range: Range) => void;
 }
 
-/** Everything a note can hold that is not a paragraph. */
+/** Everything a note can hold that is not a paragraph, in the order offered. */
 const ITEMS: SlashItem[] = [
   {
     label: 'Table',
+    group: 'Insert',
     icon: TableIcon,
     run: (editor, range) =>
       editor
@@ -38,6 +50,7 @@ const ITEMS: SlashItem[] = [
   },
   {
     label: 'Diagram',
+    group: 'Insert',
     icon: Workflow,
     run: (editor, range) =>
       editor
@@ -49,43 +62,51 @@ const ITEMS: SlashItem[] = [
   },
   {
     label: 'Checklist',
+    group: 'Turn into',
     icon: CheckSquare,
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleTaskList().run(),
   },
   {
     label: 'Bullet list',
+    group: 'Turn into',
     icon: List,
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleBulletList().run(),
   },
   {
     label: 'Numbered list',
+    group: 'Turn into',
     icon: ListOrdered,
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
   },
   {
     label: 'Heading',
+    group: 'Turn into',
     icon: Heading1,
     run: (editor, range) =>
       editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run(),
   },
   {
     label: 'Subheading',
+    group: 'Turn into',
     icon: Heading2,
     run: (editor, range) =>
       editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run(),
   },
   {
     label: 'Quote',
+    group: 'Turn into',
     icon: Quote,
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
   },
   {
     label: 'Code',
+    group: 'Insert',
     icon: Code2,
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
   },
   {
     label: 'Divider',
+    group: 'Insert',
     icon: Minus,
     run: (editor, range) => editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
   },
@@ -125,20 +146,32 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>((props, ref
   if (props.items.length === 0) return null;
 
   return (
-    <div className="glass-panel w-48 overflow-hidden rounded-xl shadow-2xl p-1">
-      {props.items.map((item, index) => (
-        <button
-          key={item.label}
-          onMouseMove={() => setActive(index)}
-          onClick={() => pick(index)}
-          className={`!text-[inherit] w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-xs ${
-            index === active ? 'chrome-button-on' : 'row'
-          }`}
-        >
-          <item.icon size={13} className="shrink-0" />
-          <span className="truncate">{item.label}</span>
-        </button>
-      ))}
+    <div className="glass-panel w-56 max-h-[19rem] overflow-y-auto rounded-2xl shadow-2xl p-1.5">
+      {props.items.map((item, index) => {
+        const isActive = index === active;
+        // A heading wherever the group changes — the list is already sorted.
+        const heading = props.items[index - 1]?.group !== item.group ? item.group : null;
+        return (
+          <React.Fragment key={item.label}>
+            {heading && (
+              <div className="t-faint px-2 pt-2 pb-1 text-[9px] font-bold uppercase tracking-[0.12em]">
+                {heading}
+              </div>
+            )}
+            <button
+              onMouseMove={() => setActive(index)}
+              onClick={() => pick(index)}
+              className={`slash-row ${isActive ? 'slash-row-on' : ''}`}
+            >
+              <span className="slash-mark">
+                <item.icon size={13} />
+              </span>
+              <span className="flex-1 min-w-0 truncate text-xs">{item.label}</span>
+              {isActive && <CornerDownLeft size={11} className="t-faint shrink-0" />}
+            </button>
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 });
@@ -160,44 +193,35 @@ export const SlashCommands = Extension.create({
         editor: this.editor,
         char: '/',
         startOfLine: false,
+        // Sorted here rather than at render, so the row the arrow keys are on is
+        // the row that is highlighted.
         items: ({ query }) =>
-          ITEMS.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())),
+          ITEMS.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())).sort(
+            (a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group)
+          ),
         command: ({ editor, range, props }) => props.run(editor, range),
         render: () => {
           let renderer: ReactRenderer<ListHandle, SuggestionProps<SlashItem>> | null = null;
-
-          const place = (rect: DOMRect | null | undefined) => {
-            const element = renderer?.element as HTMLElement | undefined;
-            if (!element || !rect) return;
-            element.style.position = 'fixed';
-            element.style.zIndex = '9500';
-            element.style.left = `${Math.min(rect.left, window.innerWidth - 200)}px`;
-            // Above the caret when there is no room below it.
-            const below = rect.bottom + 6;
-            element.style.top =
-              below + 280 > window.innerHeight ? `${rect.top - 286}px` : `${below}px`;
-          };
+          let unmount: (() => void) | null = null;
 
           return {
             onStart: (props) => {
               renderer = new ReactRenderer(SlashList, { props, editor: props.editor });
-              document.body.appendChild(renderer.element);
-              place(props.clientRect?.());
+              const element = renderer.element as HTMLElement;
+              element.style.zIndex = '9500';
+              // The plugin mounts and anchors it. Doing that by hand is what kept
+              // the menu on screen after a click outside the widget: the built-in
+              // dismissal needs the plugin to know which element the popup is.
+              // `animationFrame`, because the caret it is anchored to lives in the
+              // scaled world container and moves whenever the camera does.
+              unmount = props.mount(element, { autoUpdate: { animationFrame: true } });
             },
-            onUpdate: (props) => {
-              renderer?.updateProps(props);
-              place(props.clientRect?.());
-            },
-            onKeyDown: (props) => {
-              if (props.event.key === 'Escape') {
-                renderer?.element.remove();
-                return false;
-              }
-              return renderer?.ref?.onKeyDown(props.event) ?? false;
-            },
+            onUpdate: (props) => renderer?.updateProps(props),
+            onKeyDown: (props) => renderer?.ref?.onKeyDown(props.event) ?? false,
             onExit: () => {
-              renderer?.element.remove();
+              unmount?.();
               renderer?.destroy();
+              unmount = null;
               renderer = null;
             },
           };

@@ -237,14 +237,24 @@ body {
    border, table rule and faint label inside reads from those, and on a dark
    theme they would otherwise stay light-on-white. */
 .memo-paper {
-  --ink: #23222a;
+  --ink: #22212a;
   --ink-soft: #56545f;
-  --panel-border: rgba(30, 28, 40, 0.14);
+  --panel-border: rgba(30, 28, 40, 0.13);
   /* A shade off the paper, so a diagram's boxes read as boxes. Mermaid fills
      with this and writes in `--ink`, both taken from here (editor/Mermaid). */
   --surface: #eceae4;
-  background: #fcfcfa;
+  /* Warm paper, not screen white, with a breath of the room's accent along the
+     top — the sheet then belongs to the space instead of being a white
+     rectangle cut out of it. `--accent` is deliberately not redefined above, so
+     this is the theme's own colour. */
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, #fbfaf6) 0, #fbfaf6 160px);
   color: var(--ink);
+  /* Lit top edge, then a soft shadow under the header: the paper sits inside the
+     widget rather than being pasted over it. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 12px 22px -16px rgba(26, 24, 36, 0.45);
 }
 
 /* A memo is a document now. Everything here reads its colour from the theme
@@ -253,7 +263,10 @@ body {
   outline: none;
   color: var(--ink);
   font-size: 0.95rem;
-  line-height: 1.6;
+  line-height: 1.65;
+  /* A measure, so pulling the widget wide gives more page rather than longer
+     lines than anyone reads. */
+  max-width: 68ch;
 }
 .memo-doc > * + * {
   margin-top: 0.55em;
@@ -379,4 +392,42 @@ body {
 .mermaid-selected {
   outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
   border-radius: 10px;
+}
+
+/* The `/` menu inside a note. It is drawn in the page, over the paper, so it
+   keeps the app's glass rather than the note's — a menu belongs to the app. */
+.slash-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border-radius: 0.6rem;
+  color: var(--ink-soft);
+  text-align: left;
+  transition: background-color 0.12s, color 0.12s;
+}
+.slash-row:hover {
+  color: var(--ink);
+}
+.slash-row-on {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink);
+}
+/* The icon sits in its own tile, which is what gives the list a spine. */
+.slash-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border-radius: 0.45rem;
+  border: 1px solid var(--panel-border);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.slash-row-on .slash-mark {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
 }
