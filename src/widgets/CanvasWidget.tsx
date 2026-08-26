@@ -60,6 +60,12 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
       return;
     }
     if (!drawing.current) return;
+    // A release this element never saw would leave the stroke open, and the next
+    // hover would keep drawing it.
+    if (e.buttons === 0) {
+      onPointerUp();
+      return;
+    }
     drawing.current.points.push(pointAt(e));
     redraw((n) => n + 1);
   };

@@ -13,11 +13,13 @@ import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { useWebAppStore } from '../stores/webappStore';
 import { SceneLayer } from '../themes/SceneLayer';
 import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
+import { Launcher } from './Launcher';
 import { QuickAdd } from './QuickAdd';
 import { ShortcutSheet } from './ShortcutSheet';
 import { ThemePicker } from './ThemePicker';
 import { Sidebar } from './Sidebar';
 import { HiddenAppsToast } from './HiddenAppsToast';
+import { NoticeToast } from './NoticeToast';
 import { UndoToast } from './UndoToast';
 
 export const App: React.FC = () => {
@@ -65,8 +67,10 @@ export const App: React.FC = () => {
       <AmbienceDock />
       <ThemePicker />
       <QuickAdd />
+      <Launcher />
       <ShortcutSheet />
       <UndoToast />
+      <NoticeToast />
       <HiddenAppsToast />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
     </div>

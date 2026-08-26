@@ -176,3 +176,36 @@ export function fitCamera(
     y: (minY + maxY) / 2 - (area.y + area.height / 2) / zoom,
   };
 }
+
+/**
+ * Camera that puts one box in the middle of the area, at the zoom already in
+ * use. Unlike `fitCamera` this does not change how far in the user is — it is
+ * for going to look at something, not for reframing the whole space.
+ */
+export function centreCamera(
+  cam: Camera,
+  box: Box,
+  area: { y: number; width: number; height: number }
+): Camera {
+  return {
+    zoom: cam.zoom,
+    x: box.x + box.width / 2 - area.width / (2 * cam.zoom),
+    y: box.y + box.height / 2 - (area.y + area.height / 2) / cam.zoom,
+  };
+}
+
+/** Whether the whole box is on screen — so the app can tell when it has put something where the user cannot see it. */
+export function isFullyVisible(
+  cam: Camera,
+  box: Box,
+  area: { y: number; width: number; height: number }
+): boolean {
+  const left = (box.x - cam.x) * cam.zoom;
+  const top = (box.y - cam.y) * cam.zoom;
+  return (
+    left >= 0 &&
+    top >= area.y &&
+    left + box.width * cam.zoom <= area.width &&
+    top + box.height * cam.zoom <= area.y + area.height
+  );
+}

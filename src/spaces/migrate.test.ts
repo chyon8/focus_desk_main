@@ -51,7 +51,8 @@ describe('migrateLegacySpaces', () => {
     const [space] = migrateLegacySpaces(legacy);
     const memo = space.widgets['w2'];
     expect(memo.type).toBe('memo');
-    expect(memo.data).toEqual({ theme: 'LIGHT', content: 'Notes\n\nbody text' });
+    // The body arrives as a document: a memo is no longer a textarea (D-080).
+    expect(memo.data).toEqual({ theme: 'LIGHT', content: '<p>Notes</p><p>body text</p>' });
     expect(memo.width).toBe(350);
   });
 
@@ -91,6 +92,36 @@ describe('migrateSpace', () => {
     expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
     expect(migrated.widgets['a'].z).toBe(0);
     expect(migrated.widgets['b'].z).toBe(1);
+  });
+
+  it('turns a v4 memo from text into a document, and leaves other widgets be', () => {
+    const v4 = {
+      id: 's',
+      schemaVersion: 4,
+      name: 'Old',
+      background: null,
+      camera: { x: 0, y: 0, zoom: 1 },
+      widgets: {
+        a: {
+          id: 'a',
+          type: 'memo',
+          x: 0,
+          y: 0,
+          width: 10,
+          height: 10,
+          z: 0,
+          data: { content: 'line one\n\nline two', theme: 'LIGHT' },
+        },
+        b: { id: 'b', type: 'todo', x: 0, y: 0, width: 10, height: 10, z: 1, data: { items: [] } },
+      },
+    } as unknown as SpaceDoc;
+
+    const migrated = migrateSpace(v4);
+    expect(migrated.widgets['a'].data).toEqual({
+      content: '<p>line one</p><p>line two</p>',
+      theme: 'LIGHT',
+    });
+    expect(migrated.widgets['b'].data).toEqual({ items: [] });
   });
 
   it('leaves an already-current document alone', () => {

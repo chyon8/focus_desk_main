@@ -16,6 +16,13 @@ export interface Rect {
   height: number;
 }
 
+export interface Notice {
+  /** Changes on every notice, so the toast restarts its countdown. */
+  id: number;
+  label: string;
+  action?: { label: string; run: () => void };
+}
+
 interface UiState {
   isSidebarOpen: boolean;
   // Widget blown up to fill the canvas. Purely a view state: the widget keeps its
@@ -30,8 +37,16 @@ interface UiState {
    * coordinates, `world` is where the chosen widget lands. Null when closed.
    */
   quickAdd: { screen: Point; world: Point } | null;
+  /** Search across everything openable (K). */
+  isLauncherOpen: boolean;
   /** The keyboard cheatsheet. */
   isShortcutsOpen: boolean;
+  /**
+   * A one-line report of something the app did on its own, with an optional way
+   * to go and look at it. Nothing here is a question — it is for work that
+   * happened off-screen, where silence reads as nothing having happened.
+   */
+  notice: Notice | null;
   /** The window covers the screen (⇧M, or the sidebar button). */
   isFullscreen: boolean;
   /**
@@ -57,7 +72,11 @@ interface UiState {
   clearMaximized: () => void;
   openQuickAdd: (screen: Point, world: Point) => void;
   closeQuickAdd: () => void;
+  toggleLauncher: () => void;
+  closeLauncher: () => void;
   toggleShortcuts: () => void;
+  showNotice: (label: string, action?: Notice['action']) => void;
+  dismissNotice: () => void;
   toggleFullscreen: () => void;
   setStaged: (staged: boolean) => void;
   toggleAppOpen: (widgetId: string) => void;
@@ -71,7 +90,9 @@ export const useUiStore = create<UiState>((set) => ({
   selectedIds: [],
   isAltHeld: false,
   quickAdd: null,
+  isLauncherOpen: false,
   isShortcutsOpen: false,
+  notice: null,
   isFullscreen: false,
   openAppIds: [],
   // Nothing is placed yet, so the desk is simply a window like any other.
@@ -101,7 +122,12 @@ export const useUiStore = create<UiState>((set) => ({
 
   closeQuickAdd: () => set({ quickAdd: null }),
 
+  toggleLauncher: () => set((s) => ({ isLauncherOpen: !s.isLauncherOpen, quickAdd: null })),
+  closeLauncher: () => set({ isLauncherOpen: false }),
   toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
+
+  showNotice: (label, action) => set((s) => ({ notice: { id: (s.notice?.id ?? 0) + 1, label, action } })),
+  dismissNotice: () => set({ notice: null }),
 
   // The main process owns the real state and hands it back; the flag here is only
   // so the button can show which way it goes next.

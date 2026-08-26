@@ -5,11 +5,14 @@ import { WIDGET_DRAG_TYPE, WidgetDragPayload } from '../app/WidgetPalette';
 import { useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { screenToWorld } from './camera';
-import { addDroppedFiles, SUPPORTED_DROPS } from './fileDrop';
+import { addDroppedContent, addDroppedFiles, SUPPORTED_DROPS } from './fileDrop';
 import { useCameraControls } from './useCameraControls';
 import { useCameraMotion } from './useCameraMotion';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { WidgetFrame } from './WidgetFrame';
+
+/** What a drag from outside the app can carry that the canvas knows what to do with. */
+const CONTENT_TYPES = ['text/uri-list', 'text/html', 'text/plain'];
 
 export const Canvas: React.FC = () => {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -60,11 +63,24 @@ export const Canvas: React.FC = () => {
     // Files from the Finder. The list has to be copied out now: the transfer is
     // emptied as soon as this handler returns, and the first file is read async.
     const files = [...e.dataTransfer.files];
-    if (files.length === 0) return;
+    if (files.length > 0) {
+      e.preventDefault();
+      void addDroppedFiles(files, at).then((rejected) => {
+        setRefused(rejected.length ? rejected : null);
+      });
+      return;
+    }
+
+    // A picture, a link or a passage of text dragged out of a page (D-081). The
+    // same reading has to happen now, for the same reason.
+    const content = new DataTransfer();
+    for (const type of CONTENT_TYPES) {
+      const value = e.dataTransfer.getData(type);
+      if (value) content.setData(type, value);
+    }
+    if (content.types.length === 0) return;
     e.preventDefault();
-    void addDroppedFiles(files, at).then((rejected) => {
-      setRefused(rejected.length ? rejected : null);
-    });
+    void addDroppedContent(content, at);
   };
 
   // The rect that covers the visible canvas, minus the strip the floating chrome
@@ -119,6 +135,12 @@ export const Canvas: React.FC = () => {
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!marquee) return;
+    // Same reason as the widget frame's: a release this element never saw would
+    // otherwise leave the band being drawn by a bare hover.
+    if (e.buttons === 0) {
+      setMarquee(null);
+      return;
+    }
     const point = pointIn(e);
     setMarquee({ ...marquee, x1: point.x, y1: point.y });
   };
@@ -164,11 +186,16 @@ export const Canvas: React.FC = () => {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onLostPointerCapture={() => setMarquee(null)}
       onDragOver={(e) => {
         // Palette drags and files. A file dropped on a widget is that widget's
         // business — this only fires for what lands on the canvas itself.
         const { types } = e.dataTransfer;
-        if (!types.includes(WIDGET_DRAG_TYPE) && !types.includes('Files')) return;
+        const takeable =
+          types.includes(WIDGET_DRAG_TYPE) ||
+          types.includes('Files') ||
+          CONTENT_TYPES.some((type) => types.includes(type));
+        if (!takeable) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
       }}

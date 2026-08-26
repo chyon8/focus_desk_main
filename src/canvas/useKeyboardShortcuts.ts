@@ -10,12 +10,13 @@ function isTyping(target: EventTarget | null) {
 }
 
 /**
- * The four canvas actions, by physical key. Shared by the plain letters, their ⇧
+ * The canvas actions, by physical key. Shared by the plain letters, their ⇧
  * twins, and the copies forwarded out of a browser widget.
  */
 function runShortcut(code: string) {
   const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
-  if (code === 'KeyN') openQuickAddAtCentre();
+  if (code === 'KeyK') useUiStore.getState().toggleLauncher();
+  else if (code === 'KeyN') openQuickAddAtCentre();
   else if (code === 'KeyG') arrangeWidgets();
   else if (code === 'KeyF') fitToWidgets();
   else if (code === 'KeyM') useUiStore.getState().toggleFullscreen();
@@ -38,16 +39,28 @@ export function useKeyboardShortcuts() {
         const ui = useUiStore.getState();
         e.preventDefault();
         // Newest layer first, so Esc peels one thing off at a time.
-        if (ui.quickAdd) ui.closeQuickAdd();
+        if (ui.isLauncherOpen) ui.closeLauncher();
+        else if (ui.quickAdd) ui.closeQuickAdd();
         else if (ui.isShortcutsOpen) ui.toggleShortcuts();
         else if (ui.maximizedWidgetId) ui.clearMaximized();
         else if (ui.selectedIds.length) ui.clearSelection();
         return;
       }
 
+      // ⌘D copies the widgets that are picked out. With nothing picked there is
+      // no target to guess at — the copy button in a widget's header covers that.
+      if ((e.metaKey || e.ctrlKey) && e.code === 'KeyD' && !isTyping(e.target)) {
+        const { selectedIds } = useUiStore.getState();
+        if (selectedIds.length) {
+          e.preventDefault();
+          useSpaceStore.getState().duplicateWidgets(selectedIds);
+        }
+        return;
+      }
+
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
 
-      // N·G·F·M, with or without ⇧. The plain letters are for the canvas; ⇧ makes
+      // K·N·G·F·M, with or without ⇧. The plain letters are for the canvas; ⇧ makes
       // the same shortcut reachable from inside a web page, where a plain letter
       // is something the page is being typed into (the main process forwards the
       // ⇧ ones back out of the guest).

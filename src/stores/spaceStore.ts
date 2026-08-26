@@ -15,6 +15,8 @@ const ACTIVE_SPACE_KEY = 'active-space-id';
 const LEGACY_SPACES_KEY = 'focus-window-spaces-v13';
 const SAVE_DEBOUNCE_MS = 500;
 const MIN_WIDGET_SIZE = 140;
+// Far enough that the copy reads as a second widget, near enough to be the same one.
+const DUPLICATE_OFFSET = 24;
 
 interface SpaceState {
   spaces: Record<string, SpaceDoc>;
@@ -35,12 +37,17 @@ interface SpaceState {
   setParticles: (particles: ParticlesChoice | null) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
   fitToWidgets: () => void;
-  /** `at` is a world point the widget is centred on — where the palette icon was dropped. */
+  /**
+   * `at` is a world point the widget is centred on — where the palette icon was
+   * dropped. Hands back the new id, so a caller can look at where it landed.
+   */
   addWidget: (
     type: WidgetType,
     data?: Record<string, unknown>,
     at?: { x: number; y: number }
-  ) => void;
+  ) => string;
+  /** Copies widgets, contents and all, offset so the copy is visible on top. */
+  duplicateWidgets: (ids: string[]) => void;
   bringToFront: (id: string) => void;
   moveWidget: (id: string, x: number, y: number) => void;
   /** Moves a whole selection by one delta, so the group keeps its shape. */
@@ -316,6 +323,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   addWidget: (type, data, at) => {
     const def = WIDGET_DEFS[type];
+    let created = '';
     updateActive(set, (space) => {
       // Dropped from the palette: centre it on the pointer. Clicked: the middle of
       // the canvas area the user is looking at.
@@ -335,9 +343,44 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         z: topZ(space) + 1,
         data: { ...def.createData(), ...data },
       };
+      created = widget.id;
       return { ...space, widgets: { ...space.widgets, [widget.id]: widget } };
     });
+    return created;
   },
+
+  duplicateWidgets: (ids) =>
+    updateActive(set, (space) => {
+      const widgets = { ...space.widgets };
+      let z = topZ(space);
+      const copies: string[] = [];
+
+      for (const id of ids) {
+        const source = space.widgets[id];
+        if (!source) continue;
+        z += 1;
+        const copy: WidgetDoc = {
+          ...source,
+          id: crypto.randomUUID(),
+          x: source.x + DUPLICATE_OFFSET,
+          y: source.y + DUPLICATE_OFFSET,
+          z,
+          data: structuredClone(source.data),
+        };
+        // Two app widgets must not claim the same window: the copy starts with no
+        // window chosen, so it takes another one of that app's (D-072).
+        if (copy.type === 'app') delete (copy.data as { windowTitle?: string }).windowTitle;
+        widgets[copy.id] = copy;
+        copies.push(copy.id);
+      }
+
+      // Copying a group leaves the group picked out — otherwise the next drag
+      // moves the originals, which is not what was just asked for.
+      if (useUiStore.getState().selectedIds.length > 1) {
+        useUiStore.getState().setSelection(copies);
+      }
+      return { ...space, widgets };
+    }),
 
   bringToFront: (id) =>
     updateActive(set, (space) => {

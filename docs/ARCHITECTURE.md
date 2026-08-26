@@ -63,6 +63,9 @@ docs/
 - **위젯을 키우면 본문도 커진다**(D-059): `WidgetFrame`이 본문에 `scale(width / defaultSize.width)`(0.5~3배)를 건다. 브라우저 위젯만 예외(페이지가 스스로 리플로우)
 - **다중 선택**(D-060): ⇧+빈 캔버스 드래그 = 밴드 선택, ⌥+클릭 = 토글, ⌥ 누르는 동안 hover 테두리. 선택이 있으면 정렬·맞춤·드래그가 그것만 건드린다(`uiStore.selectedIds`, 비영속)
 - **Esc는 지우지 않는다**(D-061): 최대화 복귀 → 선택 해제까지만. 위젯 ✕는 8초 Undo 토스트(`UndoToast`)로 되돌릴 수 있다
+- **메모는 문서다**(D-080): Tiptap. `/`가 블록 메뉴(표·다이어그램·체크리스트·제목…), 저장은 HTML. 표·다이어그램은 **별도 위젯 타입이 아니라** 노트 안의 블록이고, 팔레트의 Table·Diagram은 그 블록이 미리 들어간 노트다. 다이어그램은 Mermaid(`src/widgets/editor/`)
+- **런처 `K`**(페이지 안에서는 `⇧K`, D-082): 공간의 위젯·저장한 웹앱·설치된 앱·자주 간 사이트·프리셋·위젯 종류를 한 목록에서. 색인은 [launcherItems.ts](../src/app/launcherItems.ts). 사이드바 웹앱 독이 같은 `openWebApp`을 쓴다
+- **위젯 복제**: 헤더 hover 아이콘, 또는 선택이 있을 때 `⌘D`
 - 위젯 컴포넌트는 **`{ id }`만** 받고 `useWidgetData<D>(id)`로 자기 데이터만 구독 (prop drilling 금지)
 - 위젯 **본체는 투명**이고 색은 전부 테마 토큰에서 온다 (D-033). 새 위젯을 만들 때 `bg-white`/`bg-black/40` 같은 색을 직접 쓰지 말 것 — `.glass`, `.t-ink`, `.field`, `.row`, `.chrome-button`을 쓴다
 - 예외: Photo·Sketch는 `.photo-paper`로 불투명 유지 (인쇄물이라는 개념)
@@ -74,6 +77,9 @@ docs/
 - 스페이스별 `partition="persist:space-<id>"` → 로그인 분리
 - 스페이스 전환 = 언마운트 = 웹 컨텐츠 파괴. 돌아오면 `data.url`(마지막 방문 주소)로 재로드
 - ⚠️ 과거 WebContentsView 방식은 D-029에서 폐기. 그 흔적(스냅샷·hibernation·클리핑)은 코드에 남아 있지 않음
+
+### 페이지에서 캔버스로 (D-081)
+게스트 `webContents`의 `context-menu` → 이미지·선택한 글을 그 위젯 **오른쪽 옆**에 위젯으로. 이미지는 `images:from-url`이 **그 공간의 세션으로** 받아 파일로 복사한다. 캔버스의 드롭 핸들러도 같은 규칙(`text/uri-list`·`text/html`·`text/plain`)이라 앱 밖에서 끌어오는 것도 받는다. **webview→호스트 드래그가 실제로 오는지는 미검증**
 
 ### 새 창으로 열리는 링크 (고침 2026-08-18, D-055 — 실기 미검증)
 유튜브 설명란 링크(`youtube.com/redirect?q=…`를 `target="_blank"`로)가 앱 안에도 밖에도 아무것도 안 띄우던 문제. `allowpopups`는 켜져 있었지만 `setWindowOpenHandler`가 없어 팝업이 조용히 버려졌다. 지금은 [main.ts](../electron/main.ts)의 `web-contents-created`에서 `deny` + URL과 게스트 id를 렌더러로 → **옆에 새 브라우저 위젯이 뜬다**(D-055 → D-065). `LINK_SHIM`은 `<a target="_blank">` 클릭을 가로채 네이티브 `window.open`으로 돌려준다(그래야 핸들러까지 온다).

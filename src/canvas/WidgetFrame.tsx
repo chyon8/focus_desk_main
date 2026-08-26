@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { LogOut, Maximize2, Minimize2, X } from 'lucide-react';
+import { Copy, LogOut, Maximize2, Minimize2, X } from 'lucide-react';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
@@ -83,6 +83,17 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   const onPointerMove = (e: React.PointerEvent) => {
     const gesture = drag.current;
     if (!gesture || gesture.pointerId !== e.pointerId) return;
+    // No button down means the drag ended somewhere this element never heard
+    // about: a mouse keeps the same pointer id for every gesture, so a `pointerup`
+    // that went astray leaves this one armed and the *next hover* moves the
+    // widget — it jumps and chases the cursor without anything being pressed.
+    // A pointerup goes astray whenever pointer capture is lost mid-drag: the page
+    // inside a browser widget takes the release, or the window goes to the
+    // background with the button still down.
+    if (e.buttons === 0) {
+      drag.current = null;
+      return;
+    }
 
     const { zoom } = getCamera();
     const dx = (e.clientX - gesture.lastX) / zoom;
@@ -107,7 +118,14 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
 
   const endGesture = (e: React.PointerEvent) => {
     if (drag.current?.pointerId !== e.pointerId) return;
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    const el = e.currentTarget as HTMLElement;
+    // Releasing a capture that is already gone throws.
+    if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    drag.current = null;
+  };
+
+  /** Capture taken away — by a guest page, or by the window losing focus. */
+  const onLostCapture = () => {
     drag.current = null;
   };
 
@@ -159,6 +177,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
         onPointerMove={onPointerMove}
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
+        onLostPointerCapture={onLostCapture}
       >
         <entry.icon size={14} style={{ color: 'var(--ink-soft)' }} />
         <span className="text-xs tracking-wide" style={{ color: 'var(--ink)' }}>
@@ -182,6 +201,19 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
             >
               <LogOut size={14} />
             </HeaderButton>
+          )}
+          {/* Only on hover: a header can be as narrow as 140px, and copying is
+              not something a widget needs to offer at rest. ⌘D does the same to
+              whatever is picked out. */}
+          {!fullRect && (
+            <div className="opacity-0 group-hover:opacity-100">
+              <HeaderButton
+                onClick={() => useSpaceStore.getState().duplicateWidgets([id])}
+                label="Duplicate"
+              >
+                <Copy size={13} />
+              </HeaderButton>
+            </div>
           )}
           <HeaderButton
             onClick={() => useUiStore.getState().toggleMaximized(id)}
@@ -223,6 +255,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
           onPointerMove={onPointerMove}
           onPointerUp={endGesture}
           onPointerCancel={endGesture}
+          onLostPointerCapture={onLostCapture}
         >
           <div
             className="absolute bottom-1 right-1 w-2 h-2 border-r-2 border-b-2"

@@ -8,6 +8,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
   {
     title: 'Canvas',
     items: [
+      ['K', 'Open anything — search'],
       ['N', 'Add a widget'],
       ['G', 'Arrange'],
       ['F', 'Fit'],
@@ -32,12 +33,13 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['⌥ (hold)', 'Show what a click picks'],
       ['⌥ + click', 'Pick one'],
       ['⇧ + drag', 'Pick several'],
+      ['⌘D', 'Duplicate what is picked'],
     ],
   },
   {
     title: 'In a web page',
     items: [
-      ['⇧N ⇧G ⇧F ⇧M', 'Same four'],
+      ['⇧K ⇧N ⇧G ⇧F ⇧M', 'The same five'],
       ['⌘+ ⌘− ⌘0', 'Page zoom'],
     ],
   },

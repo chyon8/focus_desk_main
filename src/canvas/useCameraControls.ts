@@ -76,6 +76,13 @@ export function useCameraControls(ref: React.RefObject<HTMLElement | null>) {
 
     const onPointerMove = (e: PointerEvent) => {
       if (!last) return;
+      // A pan whose release went astray would otherwise carry on under a bare
+      // hover, sliding the whole space around.
+      if (e.buttons === 0) {
+        last = null;
+        setIsPanning(false);
+        return;
+      }
       useSpaceStore.getState().setCamera(panCamera(getCamera(), e.clientX - last.x, e.clientY - last.y));
       last = { x: e.clientX, y: e.clientY };
     };
@@ -84,18 +91,25 @@ export function useCameraControls(ref: React.RefObject<HTMLElement | null>) {
       if (!last) return;
       last = null;
       setIsPanning(false);
-      el.releasePointerCapture(e.pointerId);
+      if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    };
+
+    const onLostCapture = () => {
+      last = null;
+      setIsPanning(false);
     };
 
     el.addEventListener('pointerdown', onPointerDown);
     el.addEventListener('pointermove', onPointerMove);
     el.addEventListener('pointerup', onPointerUp);
     el.addEventListener('pointercancel', onPointerUp);
+    el.addEventListener('lostpointercapture', onLostCapture);
     return () => {
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onPointerUp);
       el.removeEventListener('pointercancel', onPointerUp);
+      el.removeEventListener('lostpointercapture', onLostCapture);
     };
   }, [ref, isSpaceHeld]);
 

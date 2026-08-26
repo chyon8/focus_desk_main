@@ -122,6 +122,10 @@ contextBridge.exposeInMainWorld('images', {
   save: (buffer: ArrayBuffer, fileName: string) =>
     ipcRenderer.invoke('images:save', buffer, fileName),
   wallpapers: () => ipcRenderer.invoke('images:wallpapers'),
+  // Saves a picture the app only knows the address of, fetched through the
+  // given session so a login-only image still arrives.
+  fromUrl: (url: string, partition: string) =>
+    ipcRenderer.invoke('images:from-url', url, partition),
 });
 
 contextBridge.exposeInMainWorld('files', {
@@ -142,6 +146,16 @@ contextBridge.exposeInMainWorld('windowMode', {
   },
   // A guest asked for a new tab or window. `contentsId` names the guest that
   // asked, so the widget it came from can place the new one next to itself.
+  // The user asked, from a page's context menu, for something in it to become a
+  // widget. `kind` is 'image' or 'text'; `value` is the address or the passage.
+  onGuestToCanvas: (
+    handler: (kind: 'image' | 'text', value: string, contentsId: number) => void
+  ) => {
+    const listener = (_event: unknown, kind: 'image' | 'text', value: string, contentsId: number) =>
+      handler(kind, value, contentsId);
+    ipcRenderer.on('guest-to-canvas', listener);
+    return () => ipcRenderer.removeListener('guest-to-canvas', listener);
+  },
   onGuestOpenUrl: (handler: (url: string, contentsId: number) => void) => {
     const listener = (_event: unknown, url: string, contentsId: number) =>
       handler(url, contentsId);

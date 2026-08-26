@@ -10,6 +10,7 @@ import { SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { isComposing } from './ime';
 import { ArrangeMenu } from './ArrangeMenu';
 import { SpaceSessionPanel } from './SpaceSessionPanel';
+import { WebAppDock } from './WebAppDock';
 import { WidgetPalette } from './WidgetPalette';
 
 function spaceIcon(name: string) {
@@ -255,6 +256,7 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
                 <span>New Space</span>
               </button>
             )}
+            <WebAppDock />
             <WidgetPalette />
 
             {/* Canvas tools. They were a floating bar across the bottom of the

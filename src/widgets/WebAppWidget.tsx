@@ -7,13 +7,11 @@ import { WEB_APP_PRESETS, hostOf } from '../webapps/presets';
 import type { WebAppPreset } from '../webapps/presets';
 import { WebAppForm } from '../webapps/WebAppForm';
 import { WebAppMark } from '../webapps/WebAppMark';
-import { WIDGET_DEFS } from './defs';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
 import { ALLOW_POPUPS, LINK_SHIM } from './browserLinks';
+import { openTabBeside, sendToCanvas } from './newTab';
 import { useWidgetData } from './useWidgetData';
 
-// Space left between a widget and the one a link opened out of it.
-const NEW_TAB_GAP = 32;
 // The levels a browser's ⌘+/⌘− walks through.
 const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 
@@ -191,14 +189,16 @@ const WebAppPage: React.FC<{
   useEffect(() => {
     const off = window.windowMode?.onGuestOpenUrl((url, guestId) => {
       if (guestId !== contentsId.current) return;
-      const state = useSpaceStore.getState();
-      const self = state.spaces[state.activeSpaceId]?.widgets[id];
-      if (!self) return;
-      const size = WIDGET_DEFS.browser.defaultSize;
-      state.addWidget('browser', { url }, {
-        x: self.x + self.width + NEW_TAB_GAP + size.width / 2,
-        y: self.y + size.height / 2,
-      });
+      openTabBeside(id, url);
+    });
+    return () => off?.();
+  }, [id]);
+
+  // "Send to the canvas" from the page's context menu (D-081).
+  useEffect(() => {
+    const off = window.windowMode?.onGuestToCanvas((kind, value, guestId) => {
+      if (guestId !== contentsId.current) return;
+      void sendToCanvas(id, kind, value);
     });
     return () => off?.();
   }, [id]);

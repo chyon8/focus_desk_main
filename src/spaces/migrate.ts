@@ -1,4 +1,5 @@
 import { SILENT_AMBIENCE } from '../ambience/engine';
+import { asDocument } from '../widgets/memoContent';
 import { DEFAULT_THEME_ID, THEMES } from '../themes/themes';
 import { SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from './types';
 
@@ -37,6 +38,23 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     doc.themeId = matched?.id ?? DEFAULT_THEME_ID;
     doc.background = matched ? null : doc.background;
     doc.schemaVersion = 4;
+  }
+
+  if (doc.schemaVersion < 5) {
+    // v5 made a memo a document. Everything written into the old textarea is
+    // plain text, so it is converted once here rather than guessed at on every
+    // read.
+    const widgets: Record<string, WidgetDoc> = {};
+    Object.values(doc.widgets).forEach((widget) => {
+      if (widget.type !== 'memo') {
+        widgets[widget.id] = widget;
+        return;
+      }
+      const data = widget.data as { content?: string };
+      widgets[widget.id] = { ...widget, data: { ...data, content: asDocument(data.content ?? '') } };
+    });
+    doc.widgets = widgets;
+    doc.schemaVersion = 5;
   }
 
   doc.schemaVersion = SCHEMA_VERSION;
@@ -119,7 +137,9 @@ function convertWidget(legacy: LegacyWidget, z: number): WidgetDoc | null {
       // Legacy editors carried a separate title; fold it into the body.
       data = {
         theme,
-        content: legacy.title ? `${legacy.title}\n\n${legacy.content ?? ''}` : (legacy.content ?? ''),
+        content: asDocument(
+          legacy.title ? `${legacy.title}\n\n${legacy.content ?? ''}` : (legacy.content ?? '')
+        ),
       };
       break;
     case 'timer':

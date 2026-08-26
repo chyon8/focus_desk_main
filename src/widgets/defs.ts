@@ -16,7 +16,8 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   },
   memo: {
     label: 'Memo',
-    defaultSize: { width: 360, height: 400 },
+    // A document, not a scrap: a three-column table at 360 wide is unreadable.
+    defaultSize: { width: 420, height: 460 },
     createData: () => ({ content: '', theme: 'LIGHT' }),
   },
   timer: {

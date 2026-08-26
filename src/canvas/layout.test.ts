@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { arrange, autoColumns, fitCamera, Box } from './layout';
+import { arrange, autoColumns, centreCamera, fitCamera, isFullyVisible, Box } from './layout';
 import { worldToScreen } from './camera';
 
 const boxes: Box[] = [
@@ -114,3 +114,35 @@ describe('fitCamera', () => {
   });
 });
 
+
+describe('centreCamera', () => {
+  const inset = { y: 84, width: 1400, height: 900 };
+  const box: Box = { id: 'a', x: 2000, y: 1200, width: 400, height: 300 };
+
+  it('keeps the zoom and puts the box in the middle of the area', () => {
+    const cam = centreCamera({ x: 0, y: 0, zoom: 0.5 }, box, inset);
+    expect(cam.zoom).toBe(0.5);
+    const centre = worldToScreen(cam, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    expect(centre.x).toBeCloseTo(inset.width / 2);
+    expect(centre.y).toBeCloseTo(inset.y + inset.height / 2);
+  });
+
+  it('leaves the box fully visible', () => {
+    const cam = centreCamera({ x: 0, y: 0, zoom: 1 }, box, inset);
+    expect(isFullyVisible(cam, box, inset)).toBe(true);
+  });
+});
+
+describe('isFullyVisible', () => {
+  const inset = { y: 84, width: 1400, height: 900 };
+
+  it('is false for a box off to the right', () => {
+    const box: Box = { id: 'a', x: 1300, y: 100, width: 400, height: 300 };
+    expect(isFullyVisible({ x: 0, y: 0, zoom: 1 }, box, inset)).toBe(false);
+  });
+
+  it('is false for a box hidden under the top chrome', () => {
+    const box: Box = { id: 'a', x: 100, y: 40, width: 200, height: 200 };
+    expect(isFullyVisible({ x: 0, y: 0, zoom: 1 }, box, inset)).toBe(false);
+  });
+});

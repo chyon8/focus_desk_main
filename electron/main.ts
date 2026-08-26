@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, clipboard, Menu } from 'electron';
 import path from 'node:path';
 import { NEW_TAB_FRAME } from '../src/widgets/browserLinks';
 import { createHelper } from './apps/helperClient';
@@ -70,7 +70,7 @@ function createWindow() {
 }
 
 /** The physical keys ⇧ turns into app shortcuts, matching `useKeyboardShortcuts`. */
-const SHIFT_SHORTCUTS = new Set(['KeyN', 'KeyG', 'KeyF', 'KeyM']);
+const SHIFT_SHORTCUTS = new Set(['KeyK', 'KeyN', 'KeyG', 'KeyF', 'KeyM']);
 
 // ⌘+ arrives as '=' unless shift is down, and the numpad spells it '+'.
 const ZOOM_KEYS: Record<string, string> = {
@@ -124,6 +124,60 @@ app.on('web-contents-created', (_event, contents) => {
     };
   });
 
+  // Right-click in a page. There was no menu at all before — not even "open in a
+  // new tab", which is what a right-click on a link is for. That one goes down
+  // the same path as a `target="_blank"` link (D-065), and below it are the two
+  // things that leave the page for the canvas beside it (D-081).
+  contents.on('context-menu', (_e, params) => {
+    if (!win || win.isDestroyed()) return;
+    const items: Electron.MenuItemConstructorOptions[] = [];
+    const send = (channel: string, ...args: unknown[]) =>
+      win?.webContents.send(channel, ...args);
+
+    if (/^https?:\/\//.test(params.linkURL)) {
+      items.push(
+        {
+          label: 'Open link in a new tab',
+          click: () => send('guest-open-url', params.linkURL, contents.id),
+        },
+        { label: 'Copy link address', click: () => clipboard.writeText(params.linkURL) }
+      );
+    }
+
+    if (params.mediaType === 'image' && params.srcURL) {
+      if (items.length) items.push({ type: 'separator' });
+      items.push({
+        label: 'Send image to the canvas',
+        click: () => send('guest-to-canvas', 'image', params.srcURL, contents.id),
+      });
+      if (/^https?:\/\//.test(params.srcURL)) {
+        items.push({
+          label: 'Open image in a new tab',
+          click: () => send('guest-open-url', params.srcURL, contents.id),
+        });
+      }
+    }
+
+    if (params.selectionText.trim()) {
+      if (items.length) items.push({ type: 'separator' });
+      items.push(
+        {
+          label: 'Send text to the canvas',
+          click: () => send('guest-to-canvas', 'text', params.selectionText, contents.id),
+        },
+        { role: 'copy' }
+      );
+    }
+
+    if (params.isEditable) {
+      if (items.length) items.push({ type: 'separator' });
+      items.push({ role: 'paste' });
+    }
+    if (items.length === 0) return;
+
+    Menu.buildFromTemplate(items).popup({ window: win });
+  });
+
   contents.on('before-input-event', (e, input) => {
     if (input.type !== 'keyDown' || !win || win.isDestroyed()) return;
 
@@ -136,9 +190,9 @@ app.on('web-contents-created', (_event, contents) => {
       e.preventDefault();
       win.webContents.send('guest-key', ZOOM_KEYS[input.key], contents.id);
     } else if (input.shift && !input.meta && !input.control && !input.alt) {
-      // Add, arrange, fit and fullscreen. The page keeps the plain letters (it
-      // may well be typing), so the app's copies are ⇧N/⇧G/⇧F/⇧M. `code`, since
-      // that is what the renderer matches on too.
+      // The launcher, add, arrange, fit and fullscreen. The page keeps the plain
+      // letters (it may well be typing), so the app's copies are ⇧K/⇧N/⇧G/⇧F/⇧M.
+      // `code`, since that is what the renderer matches on too.
       if (!SHIFT_SHORTCUTS.has(input.code)) return;
       e.preventDefault();
       win.webContents.send('guest-key', input.code);

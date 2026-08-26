@@ -3,7 +3,7 @@ import type { Camera } from '../canvas/camera';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export type WidgetType =
   | 'todo'
@@ -70,6 +70,7 @@ export interface TodoData {
 }
 
 export interface MemoData {
+  /** The note as HTML. Stored plain text from before v5 is converted on load. */
   content: string;
   theme: 'LIGHT' | 'DARK';
 }

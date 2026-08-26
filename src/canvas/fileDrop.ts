@@ -1,4 +1,51 @@
 import { useSpaceStore } from '../stores/spaceStore';
+import { textToHtml } from '../widgets/memoContent';
+
+/** The first address in a `text/uri-list`, ignoring its comment lines. */
+function firstUri(list: string) {
+  return list.split(/\r?\n/).find((line) => line && !line.startsWith('#')) ?? '';
+}
+
+/** The picture in a dragged fragment of a page. */
+const IMG_SRC = /<img[^>]+src=["']([^"']+)["']/i;
+
+/**
+ * What something dragged out of a web page becomes (D-081): a picture is copied
+ * in and left as a photo, a link opens as a browser widget, and anything else is
+ * the text, as a note. Answers whether it took the drop.
+ */
+export async function addDroppedContent(transfer: DataTransfer, at: { x: number; y: number }) {
+  const uri = firstUri(transfer.getData('text/uri-list'));
+  const text = transfer.getData('text/plain');
+  const src = transfer.getData('text/html').match(IMG_SRC)?.[1] ?? (isWeb(uri) ? uri : '');
+  const { addWidget, activeSpaceId } = useSpaceStore.getState();
+
+  if (src) {
+    // Copied in rather than linked: a page that changes, or one behind a login,
+    // would otherwise leave an empty frame on the canvas.
+    const saved = await window.images?.fromUrl(src, `persist:space-${activeSpaceId}`);
+    if (saved) {
+      addWidget('photo', { url: saved, caption: '' }, at);
+      return true;
+    }
+  }
+
+  if (isWeb(uri)) {
+    addWidget('browser', { url: uri }, at);
+    return true;
+  }
+
+  if (text.trim()) {
+    addWidget('memo', { content: textToHtml(text), theme: 'LIGHT' }, at);
+    return true;
+  }
+
+  return false;
+}
+
+function isWeb(url: string) {
+  return /^https?:\/\//.test(url);
+}
 
 /** Read into a memo, since a memo is what the user would have pasted them into. */
 const TEXT_EXTS = new Set(['.txt', '.md', '.markdown', '.csv', '.log', '.json']);
@@ -39,7 +86,7 @@ async function widgetFor(file: File) {
 
   if (TEXT_EXTS.has(extOf(file.name))) {
     if (file.size > MAX_TEXT_BYTES) return null;
-    return { type: 'memo' as const, data: { content: await file.text(), theme: 'LIGHT' } };
+    return { type: 'memo' as const, data: { content: textToHtml(await file.text()), theme: 'LIGHT' } };
   }
 
   return null;

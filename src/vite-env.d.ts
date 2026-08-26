@@ -104,11 +104,16 @@ declare global {
       save: (buffer: ArrayBuffer, fileName: string) => Promise<string>;
       /** Everything currently sitting in the public/wallpapers folder. */
       wallpapers: () => Promise<string[]>;
+      /** Downloads a picture through a space's session and files it. Null if it could not be had. */
+      fromUrl: (url: string, partition: string) => Promise<string | null>;
     };
     windowMode?: {
       toggleFullscreen: () => Promise<boolean>;
       onGuestKey: (handler: (key: string, contentsId?: number) => void) => () => void;
       onGuestOpenUrl: (handler: (url: string, contentsId: number) => void) => () => void;
+      onGuestToCanvas: (
+        handler: (kind: 'image' | 'text', value: string, contentsId: number) => void
+      ) => () => void;
     };
   }
 
