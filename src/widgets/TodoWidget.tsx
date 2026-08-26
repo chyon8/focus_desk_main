@@ -8,6 +8,9 @@ import { useWidgetData } from './useWidgetData';
 export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
   const [data, update] = useWidgetData<TodoData>(id);
   const [draft, setDraft] = useState('');
+  // The task being rewritten, and what it says so far. A task was write-once
+  // before this: a typo meant deleting it and adding it again.
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
 
   const add = () => {
     const text = draft.trim();
@@ -25,6 +28,16 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
 
   const remove = (itemId: string) =>
     update({ items: data.items.filter((i) => i.id !== itemId) });
+
+  /** Empty is treated as leaving it alone — deleting is the ✕, and it can miss. */
+  const commitEdit = () => {
+    if (!editing) return;
+    const text = editing.text.trim();
+    if (text) {
+      update({ items: data.items.map((i) => (i.id === editing.id ? { ...i, text } : i)) });
+    }
+    setEditing(null);
+  };
 
   const remaining = data.items.filter((i) => !i.done).length;
 
@@ -55,11 +68,30 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
               {item.done && <Check size={12} strokeWidth={3} />}
             </button>
 
-            <span
-              className={`flex-1 text-sm leading-snug ${item.done ? 't-faint line-through' : ''}`}
-            >
-              {item.text}
-            </span>
+            {editing?.id === item.id ? (
+              <input
+                value={editing.text}
+                autoFocus
+                onChange={(e) => setEditing({ id: item.id, text: e.target.value })}
+                onBlur={commitEdit}
+                onKeyDown={(e) => {
+                  if (isComposing(e)) return;
+                  if (e.key === 'Enter') commitEdit();
+                  if (e.key === 'Escape') setEditing(null);
+                }}
+                className="field flex-1 min-w-0 !bg-transparent outline-none text-sm leading-snug"
+              />
+            ) : (
+              <button
+                onClick={() => setEditing({ id: item.id, text: item.text })}
+                title="Click to rewrite"
+                className={`!text-[inherit] flex-1 min-w-0 text-left text-sm leading-snug ${
+                  item.done ? 't-faint line-through' : ''
+                }`}
+              >
+                {item.text}
+              </button>
+            )}
 
             {!item.done && (
               <button

@@ -136,6 +136,7 @@ contextBridge.exposeInMainWorld('files', {
 
 contextBridge.exposeInMainWorld('windowMode', {
   toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
+  setWebDark: (dark: boolean) => ipcRenderer.invoke('window:set-web-dark', dark),
   // Shortcuts pressed while a browser widget had focus, forwarded by the main
   // process. `contentsId` names the guest they were pressed in.
   onGuestKey: (handler: (key: string, contentsId?: number) => void) => {

@@ -156,11 +156,34 @@ body {
   background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
 
-/* Photos and sketches are printed objects: they keep their own sheet of paper
-   rather than going see-through like the rest of the widgets. */
+/* --- Paper ---------------------------------------------------------------
+   The note, the photo and the sketch are printed objects: they keep their own
+   sheet rather than going see-through like the rest of the widgets. One switch
+   lights all three (D-084) — by default the sheet is the room's own surface, so
+   a dark theme gets dark paper. */
+:root {
+  --paper: var(--surface);
+  --paper-ink: var(--ink);
+  --paper-ink-soft: var(--ink-soft);
+  --paper-border: var(--panel-border);
+  /* A shade off the sheet: table headers, and the boxes Mermaid fills. */
+  --paper-fill: color-mix(in srgb, var(--ink) 9%, var(--surface));
+  /* The lit top edge of the sheet. */
+  --paper-edge: rgba(255, 255, 255, 0.07);
+}
+
+:root[data-paper='light'] {
+  --paper: #fbfaf6;
+  --paper-ink: #22212a;
+  --paper-ink-soft: #56545f;
+  --paper-border: rgba(30, 28, 40, 0.13);
+  --paper-fill: #eceae4;
+  --paper-edge: rgba(255, 255, 255, 0.85);
+}
+
 .photo-paper {
-  background: var(--surface);
-  color: var(--ink);
+  background: var(--paper);
+  color: var(--paper-ink);
 }
 
 /* The clock is a physical face, lifted slightly off the glass behind it. */
@@ -236,24 +259,28 @@ body {
    It redefines the ink tokens locally rather than only its background: every
    border, table rule and faint label inside reads from those, and on a dark
    theme they would otherwise stay light-on-white. */
+/* A note redefines the ink tokens rather than only its background: every border,
+   table rule and faint label inside reads from those, and Mermaid takes its
+   colours from the block it is drawn in. Setting the sheet alone would leave
+   light text on light paper. */
 .memo-paper {
-  --ink: #22212a;
-  --ink-soft: #56545f;
-  --panel-border: rgba(30, 28, 40, 0.13);
-  /* A shade off the paper, so a diagram's boxes read as boxes. Mermaid fills
-     with this and writes in `--ink`, both taken from here (editor/Mermaid). */
-  --surface: #eceae4;
-  /* Warm paper, not screen white, with a breath of the room's accent along the
-     top — the sheet then belongs to the space instead of being a white
-     rectangle cut out of it. `--accent` is deliberately not redefined above, so
-     this is the theme's own colour. */
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, #fbfaf6) 0, #fbfaf6 160px);
+  --ink: var(--paper-ink);
+  --ink-soft: var(--paper-ink-soft);
+  --panel-border: var(--paper-border);
+  --surface: var(--paper-fill);
+  /* A breath of the room's accent along the top, so the sheet belongs to the
+     space instead of being a rectangle cut out of it. `--accent` is deliberately
+     not redefined above, so this is the theme's own colour. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 7%, var(--paper)) 0,
+    var(--paper) 160px
+  );
   color: var(--ink);
   /* Lit top edge, then a soft shadow under the header: the paper sits inside the
      widget rather than being pasted over it. */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 1px 0 var(--paper-edge),
     inset 0 12px 22px -16px rgba(26, 24, 36, 0.45);
 }
 

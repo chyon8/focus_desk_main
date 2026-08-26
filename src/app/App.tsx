@@ -8,6 +8,7 @@ import { FocusSessionBar } from '../focus/FocusSessionBar';
 import { useSpaceTimeTracker } from '../focus/useSpaceTimeTracker';
 import { useSpaceApps } from '../apps/useSpaceApps';
 import { useAppTimeStore } from '../stores/appTimeStore';
+import { usePrefsStore } from '../stores/prefsStore';
 import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { useWebAppStore } from '../stores/webappStore';
@@ -38,7 +39,14 @@ export const App: React.FC = () => {
     void useAppTimeStore.getState().load();
     void useWebAppStore.getState().load();
     void useSiteVisitStore.getState().load();
+    void usePrefsStore.getState().load();
   }, []);
+
+  // The paper switch is one attribute on the root; the CSS does the rest.
+  const paper = usePrefsStore((s) => s.paper);
+  useEffect(() => {
+    document.documentElement.dataset.paper = paper;
+  }, [paper]);
 
   // Saves are debounced, so closing the window right after an edit would drop it.
   useEffect(() => {

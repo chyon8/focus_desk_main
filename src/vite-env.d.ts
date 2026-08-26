@@ -109,6 +109,8 @@ declare global {
     };
     windowMode?: {
       toggleFullscreen: () => Promise<boolean>;
+      /** Asks every guest page for its dark theme, via `prefers-color-scheme`. */
+      setWebDark: (dark: boolean) => Promise<boolean>;
       onGuestKey: (handler: (key: string, contentsId?: number) => void) => () => void;
       onGuestOpenUrl: (handler: (url: string, contentsId: number) => void) => () => void;
       onGuestToCanvas: (

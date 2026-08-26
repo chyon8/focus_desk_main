@@ -1,6 +1,19 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, nativeTheme } from 'electron';
 
 export function registerWindowModeIpc(getWindow: () => BrowserWindow | null) {
+  /**
+   * Whether pages are told the reader wants a dark theme (D-084).
+   *
+   * `themeSource` is what `prefers-color-scheme` answers inside every guest, so
+   * a site with a dark theme of its own serves it. Sites without one are left
+   * alone — Chromium can force-invert them, but it wrecks logos and photographs,
+   * so that is not on the table here.
+   */
+  ipcMain.handle('window:set-web-dark', (_event, dark: boolean) => {
+    nativeTheme.themeSource = dark ? 'dark' : 'system';
+    return nativeTheme.shouldUseDarkColors;
+  });
+
   ipcMain.handle('window:toggle-fullscreen', () => {
     const win = getWindow();
     if (!win || win.isDestroyed()) return false;

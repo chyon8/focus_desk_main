@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Ban, CloudRain, Flame, Palette, Snowflake, Sparkles, Upload, type LucideIcon } from 'lucide-react';
+import { Ban, CloudRain, Flame, Moon, Palette, Snowflake, Sparkles, Sun, Upload, type LucideIcon } from 'lucide-react';
 import { assetUrl, SOLID_COLORS } from '../spaces/backgrounds';
 import type { ParticlesChoice } from '../spaces/types';
+import { usePrefsStore } from '../stores/prefsStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { getTheme, THEMES } from '../themes/themes';
 import type { SceneSpec } from '../themes/types';
@@ -46,6 +47,8 @@ export const ThemePicker: React.FC = () => {
   const themeId = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.themeId);
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
+  const paper = usePrefsStore((s) => s.paper);
+  const webDark = usePrefsStore((s) => s.webDark);
   const fileInput = useRef<HTMLInputElement>(null);
   const [wallpapers, setWallpapers] = useState<string[]>([]);
 
@@ -106,6 +109,46 @@ export const ThemePicker: React.FC = () => {
                 </button>
               ))}
             </div>
+
+            <Label>Paper</Label>
+            <div className="flex items-center gap-1 mb-2">
+              {(
+                [
+                  { mode: 'theme', label: 'Follows the theme', icon: Moon },
+                  { mode: 'light', label: 'Always light', icon: Sun },
+                ] as const
+              ).map(({ mode, label, icon: Icon }) => (
+                <button
+                  key={mode}
+                  onClick={() => usePrefsStore.getState().setPaper(mode)}
+                  className={`chrome-button flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-[11px] ${
+                    paper === mode ? 'chrome-button-on' : ''
+                  }`}
+                >
+                  <Icon size={13} />
+                  {mode === 'theme' ? 'Theme' : 'Light'}
+                </button>
+              ))}
+            </div>
+            <p className="t-faint mb-5 px-0.5 text-[10px] leading-snug">
+              Notes, photos and sketches keep their own sheet. Light gives them white paper
+              whatever the room is doing.
+            </p>
+
+            <Label>Web pages</Label>
+            <button
+              onClick={() => usePrefsStore.getState().setWebDark(!webDark)}
+              className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-lg text-[11px] ${
+                webDark ? 'chrome-button-on' : ''
+              }`}
+            >
+              <Moon size={13} />
+              Ask sites for their dark theme
+            </button>
+            <p className="t-faint mb-5 px-0.5 text-[10px] leading-snug">
+              Sites with a dark theme of their own will use it. Sites without one look the same
+              either way.
+            </p>
 
             <Label>Weather</Label>
             <div className="flex items-center gap-1 mb-2">
