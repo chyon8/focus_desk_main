@@ -245,7 +245,7 @@ const WebAppPage: React.FC<{
         // different account in each space (D-074).
         partition={`persist:space-${spaceId}`}
         {...ALLOW_POPUPS}
-        className="flex-1 w-full"
+        className="web-page flex-1 w-full"
       />
     </div>
   );

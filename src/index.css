@@ -458,3 +458,17 @@ body {
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent);
 }
+
+/* What a browser paints behind a page (D-085).
+   A `<webview>` guest starts transparent, where a real browser window starts
+   white — so a site that never sets a background of its own showed the widget's
+   glass and the wallpaper through it, and every site looked like that for the
+   moment before its CSS landed. `webContents` has no `setBackgroundColor`, so
+   the element carries it.
+
+   White rather than something that follows the web-dark switch: a page that
+   wants a dark base paints one itself, and the pages that reach this are by
+   definition the ones expecting a browser's light default. */
+.web-page {
+  background: #ffffff;
+}

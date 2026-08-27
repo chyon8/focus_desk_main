@@ -281,7 +281,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
             // signed in as different accounts in different spaces (D-074).
             partition={`persist:space-${spaceId}`}
             {...ALLOW_POPUPS}
-            className="w-full h-full"
+            className="web-page w-full h-full"
           />
         ) : (
           <BrowserStartPage onOpen={go} />

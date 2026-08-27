@@ -6,13 +6,45 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tip
 export const DEFAULT_DIAGRAM = 'flowchart TD\n  A[Idea] --> B[Draft]\n  B --> C[Done]';
 
 /**
+ * The colour a token actually paints, not the recipe for it.
+ *
+ * A custom property's computed value is the text it was written as, so
+ * `--paper-fill: color-mix(…)` reads back as the whole `color-mix(…)` string.
+ * Mermaid parses colours itself and throws on anything but a plain one — and
+ * that throw took down the entire app, since the diagram is rendered inside the
+ * React tree (D-086). Painting it onto a probe hands back a resolved `rgb(…)`.
+ */
+function resolve(within: Element, token: string) {
+  const probe = document.createElement('span');
+  probe.style.color = `var(${token})`;
+  probe.style.display = 'none';
+  within.appendChild(probe);
+  const colour = getComputedStyle(probe).color;
+  probe.remove();
+  return toRgb(colour);
+}
+
+/**
+ * A colour mixed in a named space comes back as `color(srgb r g b)`, which
+ * Mermaid rejects just as flatly as the `color-mix()` it replaced. Everything
+ * else already arrives as `rgb(…)` and passes straight through.
+ */
+function toRgb(colour: string) {
+  const parts = colour.match(/^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/);
+  if (!parts) return colour;
+  const [r, g, b] = parts.slice(1).map((n) => Math.round(Number(n) * 255));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
  * Mermaid draws with its own palette; these hand it the note's instead. Read
  * from the block itself rather than the app root — a note is written on paper
  * and redefines the ink tokens for everything inside it.
  */
 function themeVariables(from: Element) {
   const style = getComputedStyle(from);
-  const token = (name: string) => style.getPropertyValue(name).trim();
+  const token = (name: string) =>
+    name === '--font-ui' ? style.getPropertyValue(name).trim() : resolve(from, name);
   return {
     background: 'transparent',
     primaryColor: token('--surface'),
@@ -41,27 +73,39 @@ const MermaidView: React.FC<NodeViewProps> = ({ node, updateAttributes, selected
 
   useEffect(() => {
     let alive = true;
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'base',
-      themeVariables: themeVariables(hostRef.current ?? document.documentElement),
-      // The diagram source is the user's own, but it is still text that can end
-      // up in a note from a drop or a paste.
-      securityLevel: 'strict',
-    });
-    mermaid
-      .render(idRef.current, code)
-      .then(({ svg: rendered }) => {
-        if (!alive) return;
-        setSvg(rendered);
-        setError(null);
-      })
-      .catch((e: Error) => {
-        if (!alive) return;
-        // Mermaid leaves its failed attempt in the document.
-        document.getElementById(`d${idRef.current}`)?.remove();
-        setError(e.message.split('\n')[0]);
+    const fail = (e: Error) => {
+      if (!alive) return;
+      // Mermaid leaves its failed attempt in the document.
+      document.getElementById(`d${idRef.current}`)?.remove();
+      setError(e.message.split('\n')[0]);
+    };
+
+    // Everything Mermaid does is inside this try: it parses colours and diagram
+    // text itself and throws on anything it does not like, and a throw out of an
+    // effect unmounts the whole React tree — one bad diagram took the app down to
+    // a white screen (D-086). A diagram that cannot be drawn says so, in its own
+    // block, and nothing else notices.
+    try {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: themeVariables(hostRef.current ?? document.documentElement),
+        // The diagram source is the user's own, but it is still text that can end
+        // up in a note from a drop or a paste.
+        securityLevel: 'strict',
       });
+      mermaid
+        .render(idRef.current, code)
+        .then(({ svg: rendered }) => {
+          if (!alive) return;
+          setSvg(rendered);
+          setError(null);
+        })
+        .catch(fail);
+    } catch (e) {
+      fail(e as Error);
+    }
+
     return () => {
       alive = false;
     };
