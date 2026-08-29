@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Undo2 } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 
 /** Long enough to notice the mistake, short enough not to sit there. */
@@ -16,6 +17,8 @@ const VISIBLE_MS = 8000;
 export const UndoToast: React.FC = () => {
   const removedWidget = useSpaceStore((s) => s.lastRemoved);
   const removedSpace = useSpaceStore((s) => s.lastRemovedSpace);
+  // The selection bar owns the bottom slot while it is up; the toast sits above it.
+  const hasSelection = useUiStore((s) => s.selectedIds.length > 0);
 
   // A deleted space wins the slot: it is the larger of the two undos, and the
   // space it was in took the widget toast with it anyway.
@@ -28,8 +31,11 @@ export const UndoToast: React.FC = () => {
       }
     : removedWidget
       ? {
-          key: removedWidget.widget.id,
-          label: `Closed ${WIDGET_REGISTRY[removedWidget.widget.type].label}`,
+          key: removedWidget.widgets.map((w) => w.id).join(),
+          label:
+            removedWidget.widgets.length === 1
+              ? `Closed ${WIDGET_REGISTRY[removedWidget.widgets[0].type].label}`
+              : `Closed ${removedWidget.widgets.length} widgets`,
           undo: () => useSpaceStore.getState().undoRemove(),
           dismiss: () => useSpaceStore.getState().dismissRemoved(),
         }
@@ -53,7 +59,7 @@ export const UndoToast: React.FC = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
-          className="glass-panel fixed bottom-6 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-2xl shadow-2xl"
+          className={`glass-panel fixed ${hasSelection ? 'bottom-20' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-2xl shadow-2xl`}
         >
           <span className="t-ink text-xs">{entry.label}</span>
           <button

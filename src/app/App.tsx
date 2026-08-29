@@ -21,6 +21,7 @@ import { ThemePicker } from './ThemePicker';
 import { Sidebar } from './Sidebar';
 import { HiddenAppsToast } from './HiddenAppsToast';
 import { NoticeToast } from './NoticeToast';
+import { SelectionBar } from './SelectionBar';
 import { UndoToast } from './UndoToast';
 
 export const App: React.FC = () => {
@@ -77,6 +78,7 @@ export const App: React.FC = () => {
       <QuickAdd />
       <Launcher />
       <ShortcutSheet />
+      <SelectionBar />
       <UndoToast />
       <NoticeToast />
       <HiddenAppsToast />

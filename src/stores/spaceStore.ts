@@ -55,8 +55,10 @@ interface SpaceState {
   resizeWidget: (id: string, width: number, height: number) => void;
   updateWidgetData: (id: string, patch: Record<string, unknown>) => void;
   removeWidget: (id: string) => void;
-  /** The last widget closed, kept so the toast can put it back. */
-  lastRemoved: { spaceId: string; widget: WidgetDoc } | null;
+  /** Closes a whole selection at once, so one undo brings all of it back. */
+  removeWidgets: (ids: string[]) => void;
+  /** The widgets closed by the last close, kept so the toast can put them back. */
+  lastRemoved: { spaceId: string; widgets: WidgetDoc[] } | null;
   undoRemove: () => void;
   dismissRemoved: () => void;
   /**
@@ -427,15 +429,20 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       },
     })),
 
-  removeWidget: (id) => {
+  removeWidget: (id) => get().removeWidgets([id]),
+
+  removeWidgets: (ids) => {
     const ui = useUiStore.getState();
-    ui.setSelection(ui.selectedIds.filter((selected) => selected !== id));
+    ui.setSelection(ui.selectedIds.filter((selected) => !ids.includes(selected)));
     const { spaces, activeSpaceId } = get();
-    const widget = spaces[activeSpaceId]?.widgets[id];
-    if (widget) set({ lastRemoved: { spaceId: activeSpaceId, widget } });
+    const closed = ids
+      .map((id) => spaces[activeSpaceId]?.widgets[id])
+      .filter((widget): widget is WidgetDoc => !!widget);
+    if (closed.length === 0) return;
+    set({ lastRemoved: { spaceId: activeSpaceId, widgets: closed } });
     updateActive(set, (space) => {
       const widgets = { ...space.widgets };
-      delete widgets[id];
+      for (const id of ids) delete widgets[id];
       return { ...space, widgets };
     });
   },
@@ -450,10 +457,9 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       const removed = s.lastRemoved;
       const space = removed && s.spaces[removed.spaceId];
       if (!removed || !space) return { lastRemoved: null };
-      const next = {
-        ...space,
-        widgets: { ...space.widgets, [removed.widget.id]: removed.widget },
-      };
+      const widgets = { ...space.widgets };
+      for (const widget of removed.widgets) widgets[widget.id] = widget;
+      const next = { ...space, widgets };
       scheduleSave(next);
       return { lastRemoved: null, spaces: { ...s.spaces, [next.id]: next } };
     }),

@@ -24,10 +24,16 @@ export const Canvas: React.FC = () => {
   );
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen);
   const maximizedId = useUiStore((s) => s.maximizedWidgetId);
-  // Rubber band in screen pixels, live only while ⇧-dragging the background.
-  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(
-    null
-  );
+  // Rubber band in screen pixels, live only while dragging the background.
+  // `additive` is a ⇧-drag: what it touches joins the selection instead of
+  // replacing it.
+  const [marquee, setMarquee] = useState<{
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    additive: boolean;
+  } | null>(null);
   /** Files dropped that the app has no way to show. */
   const [refused, setRefused] = useState<string[] | null>(null);
   const { isSpaceHeld, isPanning } = useCameraControls(viewportRef);
@@ -106,19 +112,16 @@ export const Canvas: React.FC = () => {
     return { x: e.clientX - box.left, y: e.clientY - box.top };
   };
 
-  // ⇧-drag on empty canvas draws a band and picks up everything it touches; a
-  // plain click on empty canvas drops the selection again.
+  // Dragging bare canvas draws a band and picks up everything it touches; a plain
+  // click on bare canvas is a band of no size, which drops the selection. ⇧ adds
+  // to the selection and can start over a widget, where a plain drag moves it.
   const onPointerDown = (e: React.PointerEvent) => {
     // Space-drag is a pan; it must not drop the selection on the way past.
     if (e.button !== 0 || isSpaceHeld) return;
-    if (!e.shiftKey) {
-      // Only a click on bare canvas clears — one on a widget is that widget's.
-      if (e.target === e.currentTarget) useUiStore.getState().clearSelection();
-      return;
-    }
     // ⇧ bands from anywhere, widgets included: the frames let the event through.
+    if (!e.shiftKey && e.target !== e.currentTarget) return;
     const point = pointIn(e);
-    setMarquee({ x0: point.x, y0: point.y, x1: point.x, y1: point.y });
+    setMarquee({ x0: point.x, y0: point.y, x1: point.x, y1: point.y, additive: e.shiftKey });
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -168,7 +171,8 @@ export const Canvas: React.FC = () => {
           w.y + w.height > band.top
       )
       .map((w) => w.id);
-    useUiStore.getState().setSelection(hits);
+    const ui = useUiStore.getState();
+    ui.setSelection(marquee.additive ? [...new Set([...ui.selectedIds, ...hits])] : hits);
   };
 
   return (

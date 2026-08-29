@@ -32,7 +32,8 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     items: [
       ['⌥ (hold)', 'Show what a click picks'],
       ['⌥ + click', 'Pick one'],
-      ['⇧ + drag', 'Pick several'],
+      ['Drag the canvas', 'Pick several'],
+      ['⇧ + drag', 'Add to what is picked'],
       ['⌘D', 'Duplicate what is picked'],
     ],
   },
