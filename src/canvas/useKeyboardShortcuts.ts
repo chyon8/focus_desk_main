@@ -40,6 +40,7 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         // Newest layer first, so Esc peels one thing off at a time.
         if (ui.isLauncherOpen) ui.closeLauncher();
+        else if (ui.isMoveMenuOpen) ui.closeMoveMenu();
         else if (ui.quickAdd) ui.closeQuickAdd();
         else if (ui.isShortcutsOpen) ui.toggleShortcuts();
         else if (ui.maximizedWidgetId) ui.clearMaximized();

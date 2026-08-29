@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Copy, LogOut, Maximize2, Minimize2, X } from 'lucide-react';
+import { ArrowRightLeft, Copy, LogOut, Maximize2, Minimize2, X } from 'lucide-react';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
@@ -206,12 +206,21 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
               not something a widget needs to offer at rest. ⌘D does the same to
               whatever is picked out. */}
           {!fullRect && (
-            <div className="opacity-0 group-hover:opacity-100">
+            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
               <HeaderButton
                 onClick={() => useSpaceStore.getState().duplicateWidgets([id])}
                 label="Duplicate"
               >
                 <Copy size={13} />
+              </HeaderButton>
+              {/* The list itself lives on the selection bar, which is not scaled by
+                  the camera and has room for it — so this picks the widget out and
+                  opens it there. */}
+              <HeaderButton
+                onClick={() => useUiStore.getState().openMoveMenu([id])}
+                label="Move to another space"
+              >
+                <ArrowRightLeft size={13} />
               </HeaderButton>
             </div>
           )}

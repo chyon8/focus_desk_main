@@ -12,10 +12,13 @@ const VISIBLE_MS = 8000;
  * Closing a widget throws away everything in it — a memo's text included — and
  * there is no other way back. So every ✕ leaves this behind for a few seconds
  * (D-061). Deleting a space works the same way, and takes its logged time and
- * its logins with it, so nothing is actually deleted until this clears.
+ * its logins with it, so nothing is actually deleted until this clears. Moving
+ * widgets to another space is here too: they are off screen afterwards, so
+ * without this there is no way to tell where they went.
  */
 export const UndoToast: React.FC = () => {
   const removedWidget = useSpaceStore((s) => s.lastRemoved);
+  const moved = useSpaceStore((s) => s.lastMoved);
   const removedSpace = useSpaceStore((s) => s.lastRemovedSpace);
   // The selection bar owns the bottom slot while it is up; the toast sits above it.
   const hasSelection = useUiStore((s) => s.selectedIds.length > 0);
@@ -39,7 +42,18 @@ export const UndoToast: React.FC = () => {
           undo: () => useSpaceStore.getState().undoRemove(),
           dismiss: () => useSpaceStore.getState().dismissRemoved(),
         }
-      : null;
+      : moved
+        ? {
+            key: moved.widgets.map((w) => w.id).join(),
+            label: `Moved ${
+              moved.widgets.length === 1
+                ? WIDGET_REGISTRY[moved.widgets[0].type].label
+                : `${moved.widgets.length} widgets`
+            } to ${useSpaceStore.getState().spaces[moved.toSpaceId]?.name ?? 'another space'}`,
+            undo: () => useSpaceStore.getState().undoMove(),
+            dismiss: () => useSpaceStore.getState().dismissMoved(),
+          }
+        : null;
 
   const key = entry?.key;
   const dismiss = entry?.dismiss;

@@ -33,6 +33,11 @@ interface UiState {
   /** ⌥ is down, so hovering a widget shows it can be picked. */
   isAltHeld: boolean;
   /**
+   * The "move to space" list on the selection bar. In the store rather than the
+   * bar because a widget's own header opens it too, by picking that widget out.
+   */
+  isMoveMenuOpen: boolean;
+  /**
    * The quick-add palette, open at a point: `screen` places the popover in window
    * coordinates, `world` is where the chosen widget lands. Null when closed.
    */
@@ -68,6 +73,8 @@ interface UiState {
   toggleSelected: (widgetId: string) => void;
   clearSelection: () => void;
   setAltHeld: (held: boolean) => void;
+  openMoveMenu: (widgetIds?: string[]) => void;
+  closeMoveMenu: () => void;
   toggleMaximized: (widgetId: string) => void;
   clearMaximized: () => void;
   openQuickAdd: (screen: Point, world: Point) => void;
@@ -89,6 +96,7 @@ export const useUiStore = create<UiState>((set) => ({
   maximizedWidgetId: null,
   selectedIds: [],
   isAltHeld: false,
+  isMoveMenuOpen: false,
   quickAdd: null,
   isLauncherOpen: false,
   isShortcutsOpen: false,
@@ -109,9 +117,16 @@ export const useUiStore = create<UiState>((set) => ({
         : [...s.selectedIds, widgetId],
     })),
 
-  clearSelection: () => set({ selectedIds: [] }),
+  clearSelection: () => set({ selectedIds: [], isMoveMenuOpen: false }),
 
   setAltHeld: (isAltHeld) => set({ isAltHeld }),
+
+  // Given ids, those become the selection: the menu acts on what is picked, and a
+  // widget's own header asks for that one widget.
+  openMoveMenu: (widgetIds) =>
+    set((s) => ({ selectedIds: widgetIds ?? s.selectedIds, isMoveMenuOpen: true })),
+
+  closeMoveMenu: () => set({ isMoveMenuOpen: false }),
 
   toggleMaximized: (widgetId) =>
     set((s) => ({ maximizedWidgetId: s.maximizedWidgetId === widgetId ? null : widgetId })),

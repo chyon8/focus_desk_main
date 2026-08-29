@@ -21,7 +21,11 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
   {
     title: 'Move around',
     items: [
+      ['Right-drag', 'Pan'],
       ['Space + drag', 'Pan'],
+      ['Wheel', 'Zoom (mouse)'],
+      ['⇧ + wheel', 'Scroll instead'],
+      ['Two fingers', 'Pan (trackpad)'],
       ['⌘ + scroll', 'Zoom'],
       ['Pinch a photo', 'Zoom the picture'],
       ['⌃⌥D', 'Desk ↔ app windows'],

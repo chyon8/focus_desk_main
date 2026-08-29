@@ -17,6 +17,8 @@ const SAVE_DEBOUNCE_MS = 500;
 const MIN_WIDGET_SIZE = 140;
 // Far enough that the copy reads as a second widget, near enough to be the same one.
 const DUPLICATE_OFFSET = 24;
+// Clear space between what the target already holds and what lands in it.
+const MOVE_GAP = 48;
 
 interface SpaceState {
   spaces: Record<string, SpaceDoc>;
@@ -24,7 +26,11 @@ interface SpaceState {
   isLoaded: boolean;
 
   load: () => Promise<void>;
-  addSpace: (name: string) => void;
+  /**
+   * Hands back the new id. `activate` is false when a space is made to receive
+   * widgets — the user is tidying and should stay where they are.
+   */
+  addSpace: (name: string, activate?: boolean) => string;
   renameSpace: (id: string, name: string) => void;
   removeSpace: (id: string) => void;
   setActiveSpace: (id: string) => void;
@@ -57,6 +63,12 @@ interface SpaceState {
   removeWidget: (id: string) => void;
   /** Closes a whole selection at once, so one undo brings all of it back. */
   removeWidgets: (ids: string[]) => void;
+  /** Sends widgets to another space, keeping the shape of the group. */
+  moveWidgetsToSpace: (ids: string[], targetSpaceId: string) => void;
+  /** The widgets sent away by the last move, kept so the toast can bring them back. */
+  lastMoved: { fromSpaceId: string; toSpaceId: string; widgets: WidgetDoc[] } | null;
+  undoMove: () => void;
+  dismissMoved: () => void;
   /** The widgets closed by the last close, kept so the toast can put them back. */
   lastRemoved: { spaceId: string; widgets: WidgetDoc[] } | null;
   undoRemove: () => void;
@@ -207,14 +219,15 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     set({ spaces, activeSpaceId, isLoaded: true });
   },
 
-  addSpace: (name) => {
+  addSpace: (name, activate = true) => {
     const space = newSpace(name.trim() || 'Untitled');
     void window.spaces?.save(space);
-    void window.store?.set(ACTIVE_SPACE_KEY, space.id);
+    if (activate) void window.store?.set(ACTIVE_SPACE_KEY, space.id);
     set((state) => ({
       spaces: { ...state.spaces, [space.id]: space },
-      activeSpaceId: space.id,
+      activeSpaceId: activate ? space.id : state.activeSpaceId,
     }));
+    return space.id;
   },
 
   renameSpace: (id, name) =>
@@ -447,8 +460,91 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     });
   },
 
+  moveWidgetsToSpace: (ids, targetSpaceId) => {
+    const { spaces, activeSpaceId } = get();
+    const source = spaces[activeSpaceId];
+    const target = spaces[targetSpaceId];
+    if (!source || !target || targetSpaceId === activeSpaceId) return;
+
+    const moving = ids
+      .map((id) => source.widgets[id])
+      .filter((widget): widget is WidgetDoc => !!widget);
+    if (moving.length === 0) return;
+
+    // The group keeps its shape, but is set down clear of what the target already
+    // holds — dropping it on the stored coordinates would land it on top.
+    const existing = Object.values(target.widgets);
+    const originX = existing.length ? Math.max(...existing.map((w) => w.x + w.width)) + MOVE_GAP : 0;
+    const originY = existing.length ? Math.min(...existing.map((w) => w.y)) : 0;
+    const fromX = Math.min(...moving.map((w) => w.x));
+    const fromY = Math.min(...moving.map((w) => w.y));
+
+    let z = topZ(target);
+    const targetWidgets = { ...target.widgets };
+    const sourceWidgets = { ...source.widgets };
+    for (const widget of moving) {
+      z += 1;
+      targetWidgets[widget.id] = {
+        ...widget,
+        x: widget.x - fromX + originX,
+        y: widget.y - fromY + originY,
+        z,
+      };
+      delete sourceWidgets[widget.id];
+    }
+
+    const nextSource = { ...source, widgets: sourceWidgets };
+    const nextTarget = { ...target, widgets: targetWidgets };
+    scheduleSave(nextSource);
+    scheduleSave(nextTarget);
+
+    const ui = useUiStore.getState();
+    // A real window cannot sit on a slot that is no longer in this space (D-072).
+    for (const widget of moving) if (widget.type === 'app') ui.closeApp(widget.id);
+    ui.setSelection(ui.selectedIds.filter((id) => !ids.includes(id)));
+
+    // Browser and web app widgets read the cookie jar of the space they are in
+    // (D-074), so the same page opens signed out over there. Said once, here,
+    // because finding out by looking at a logged-out page reads as a bug.
+    if (moving.some((widget) => widget.type === 'browser' || widget.type === 'webapp')) {
+      ui.showNotice('Logins are per space, so those pages open signed out there.');
+    }
+
+    set({
+      spaces: { ...spaces, [nextSource.id]: nextSource, [nextTarget.id]: nextTarget },
+      lastMoved: { fromSpaceId: source.id, toSpaceId: target.id, widgets: moving },
+    });
+  },
+
+  // Puts them back in the space they left, at the coordinates they had there.
+  undoMove: () =>
+    set((s) => {
+      const moved = s.lastMoved;
+      const from = moved && s.spaces[moved.fromSpaceId];
+      const to = moved && s.spaces[moved.toSpaceId];
+      if (!moved || !from || !to) return { lastMoved: null };
+
+      const toWidgets = { ...to.widgets };
+      const fromWidgets = { ...from.widgets };
+      for (const widget of moved.widgets) {
+        delete toWidgets[widget.id];
+        fromWidgets[widget.id] = widget;
+      }
+      const nextFrom = { ...from, widgets: fromWidgets };
+      const nextTo = { ...to, widgets: toWidgets };
+      scheduleSave(nextFrom);
+      scheduleSave(nextTo);
+      return {
+        lastMoved: null,
+        spaces: { ...s.spaces, [nextFrom.id]: nextFrom, [nextTo.id]: nextTo },
+      };
+    }),
+
+  dismissMoved: () => set({ lastMoved: null }),
+
   lastRemoved: null,
   lastRemovedSpace: null,
+  lastMoved: null,
 
   // Puts it back where it was, in the space it was closed in — which may not be
   // the one on screen now.
