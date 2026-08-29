@@ -62,7 +62,7 @@ export const THEMES: Theme[] = [
       surface: '#2e1c1a',
       panelBorder: 'rgba(255, 208, 168, 0.17)',
       accent: '#ffb27a',
-      font: 'serif',
+      font: 'sans',
     },
   },
   {

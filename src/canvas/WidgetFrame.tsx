@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { ArrowRightLeft, Copy, LogOut, Maximize2, Minimize2, X } from 'lucide-react';
+import { hostOf } from '../widgets/browserAddress';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
+import type { BrowserData } from '../spaces/types';
 import { Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 
@@ -57,6 +59,11 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
 
   const entry = WIDGET_REGISTRY[widget.type];
   const Body = entry.Component;
+
+  // A browser widget's header shows the page it is on. Open three of them and the
+  // registry's fixed "Browser" label with a globe makes all three look the same.
+  const page = widget.type === 'browser' ? (widget.data as Partial<BrowserData>) : null;
+  const label = (page && (page.title || (page.url && hostOf(page.url)))) || entry.label;
 
   const box = fullRect ?? widget;
   const bodyHeight = box.height - HEADER_HEIGHT;
@@ -179,12 +186,27 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
         onPointerCancel={endGesture}
         onLostPointerCapture={onLostCapture}
       >
-        <entry.icon size={14} style={{ color: 'var(--ink-soft)' }} />
-        <span className="text-xs tracking-wide" style={{ color: 'var(--ink)' }}>
-          {entry.label}
+        {page?.favicon ? (
+          <img
+            src={page.favicon}
+            alt=""
+            draggable={false}
+            className="shrink-0 w-3.5 h-3.5 rounded-sm object-contain"
+          />
+        ) : (
+          <entry.icon size={14} className="shrink-0" style={{ color: 'var(--ink-soft)' }} />
+        )}
+        {/* The header narrows to 140px, so a page title has to cut off. The full
+            one stays reachable as a tooltip. */}
+        <span
+          className="text-xs tracking-wide truncate min-w-0"
+          title={label}
+          style={{ color: 'var(--ink)' }}
+        >
+          {label}
         </span>
 
-        <div className="ml-auto flex items-center gap-0.5">
+        <div className="ml-auto shrink-0 flex items-center gap-0.5">
           {fullRect && (
             <button
               onPointerDown={(e) => e.stopPropagation()}

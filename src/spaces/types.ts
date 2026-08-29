@@ -100,6 +100,12 @@ export interface BrowserData {
   url: string;
   /** Page zoom, like a browser's ⌘+/⌘−. 1 is 100%. */
   zoom?: number;
+  /**
+   * The page's own name and icon, kept here so the widget header shows them the
+   * moment the space opens instead of waiting for the page to load.
+   */
+  title?: string;
+  favicon?: string;
 }
 
 export interface CalendarData {

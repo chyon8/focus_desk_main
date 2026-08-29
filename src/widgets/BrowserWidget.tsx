@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Home, RotateCw, X, ZoomIn, ZoomOut } from 'lucid
 import { BrowserData } from '../spaces/types';
 import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceStore } from '../stores/spaceStore';
-import { toAddress } from './browserAddress';
+import { hostOf, toAddress } from './browserAddress';
 import { BrowserStartPage } from './BrowserStartPage';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
 import { ALLOW_POPUPS, LINK_SHIM } from './browserLinks';
@@ -70,6 +70,9 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   // Read by the shortcut handler, which must not re-subscribe on every change.
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
+  // Read by the navigation handler for the same reason.
+  const urlRef = useRef(data.url);
+  urlRef.current = data.url;
   // Set on the first dom-ready: which guest this is, and proof it can be zoomed
   // at all (setZoomFactor throws before the element is attached).
   const contentsId = useRef<number | null>(null);
@@ -96,7 +99,11 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
 
     const onNavigate = (e: Electron.DidNavigateEvent) => {
       setAddress(e.url);
-      update({ url: e.url });
+      // A new site gets a blank header until it says its own name: otherwise the
+      // last page's title sits there, and on a site with no favicon at all the
+      // last page's icon would stay for good.
+      const sameSite = hostOf(e.url) === hostOf(urlRef.current);
+      update(sameSite ? { url: e.url } : { url: e.url, title: '', favicon: '' });
       // What the start page offers next time. Only full loads: a single-page
       // site would otherwise count a dozen times for one visit.
       useSiteVisitStore.getState().record(e.url);
@@ -123,6 +130,14 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       void el.executeJavaScript(LINK_SHIM);
     };
 
+    // What the widget header wears, so several browsers can be told apart. Saved
+    // in the widget so it is there before the page has loaded.
+    const onTitle = (e: Electron.PageTitleUpdatedEvent) => update({ title: e.title });
+    const onFavicon = (e: Electron.PageFaviconUpdatedEvent) => {
+      const src = e.favicons?.[0];
+      if (src) update({ favicon: src });
+    };
+
     const onStart = () => setIsLoading(true);
     const onStop = () => setIsLoading(false);
     // A page that will not load leaves the guest blank, which reads as the widget
@@ -135,6 +150,8 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
     el.addEventListener('dom-ready', onDomReady);
     el.addEventListener('did-navigate', onNavigate);
     el.addEventListener('did-navigate-in-page', onNavigateInPage);
+    el.addEventListener('page-title-updated', onTitle);
+    el.addEventListener('page-favicon-updated', onFavicon);
     el.addEventListener('did-start-loading', onStart);
     el.addEventListener('did-stop-loading', onStop);
     el.addEventListener('did-fail-load', onFail);
@@ -142,6 +159,8 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       el.removeEventListener('dom-ready', onDomReady);
       el.removeEventListener('did-navigate', onNavigate);
       el.removeEventListener('did-navigate-in-page', onNavigateInPage);
+      el.removeEventListener('page-title-updated', onTitle);
+      el.removeEventListener('page-favicon-updated', onFavicon);
       el.removeEventListener('did-start-loading', onStart);
       el.removeEventListener('did-stop-loading', onStop);
       el.removeEventListener('did-fail-load', onFail);
@@ -224,7 +243,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
           onClick={() => {
             setAddress('');
             setFailure(null);
-            update({ url: '' });
+            update({ url: '', title: '', favicon: '' });
           }}
         >
           <Home size={12} />
