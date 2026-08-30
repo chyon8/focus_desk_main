@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { ArrowRightLeft, Copy, LogOut, Maximize2, Minimize2, X } from 'lucide-react';
+import { Copy, LogOut, X } from 'lucide-react';
 import { hostOf } from '../widgets/browserAddress';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import type { BrowserData } from '../spaces/types';
@@ -144,7 +144,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
       className={`widget-glass no-drag absolute rounded-2xl overflow-hidden ${
         isAltHeld ? 'alt-pick' : ''
       } ${isSelected ? 'widget-selected' : ''} ${
-        isLastActive && !isSelected && !fullRect ? 'widget-last-active' : ''
+        isLastActive && !fullRect ? 'widget-last-active' : ''
       }`}
       style={{
         left: box.x,
@@ -168,7 +168,6 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
           return;
         }
         useSpaceStore.getState().bringToFront(id);
-        useUiStore.getState().noteActive(id);
       }}
       /* A picking click must not also press what is under it — ⌥-clicking an app
          widget used to launch the app. */
@@ -228,34 +227,21 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
               <LogOut size={14} />
             </HeaderButton>
           )}
-          {/* Only on hover: a header can be as narrow as 140px, and copying is
-              not something a widget needs to offer at rest. ⌘D does the same to
-              whatever is picked out. */}
+          {/* Only two buttons, and one of them only on hover. A header can be as
+              narrow as 140px, where four of them fill the whole bar and get
+              pressed by accident. The two that are gone have other ways in:
+              double-clicking the header fills the canvas, and moving to another
+              space is on the selection bar. */}
           {!fullRect && (
-            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
+            <div className="opacity-0 group-hover:opacity-100 flex items-center">
               <HeaderButton
                 onClick={() => useSpaceStore.getState().duplicateWidgets([id])}
-                label="Duplicate"
+                label="Duplicate (⌘D)"
               >
                 <Copy size={13} />
               </HeaderButton>
-              {/* The list itself lives on the selection bar, which is not scaled by
-                  the camera and has room for it — so this picks the widget out and
-                  opens it there. */}
-              <HeaderButton
-                onClick={() => useUiStore.getState().openMoveMenu([id])}
-                label="Move to another space"
-              >
-                <ArrowRightLeft size={13} />
-              </HeaderButton>
             </div>
           )}
-          <HeaderButton
-            onClick={() => useUiStore.getState().toggleMaximized(id)}
-            label={fullRect ? 'Restore' : 'Fill the canvas'}
-          >
-            {fullRect ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </HeaderButton>
           <HeaderButton
             onClick={() => useSpaceStore.getState().removeWidget(id)}
             label="Remove"
@@ -270,7 +256,14 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
           the same content more room: a memo at twice the size is meant to be twice
           as readable. The browser is the exception — a real page lays itself out
           again for the space it is given, and scaling it would fight that. */}
-      <div className="w-full overflow-hidden" style={{ height: bodyHeight }}>
+      {/* Working in a widget marks it as where you were; grabbing its header to
+          move it does not. A browser widget's page swallows the click, so it
+          reports itself instead (BrowserWidget). */}
+      <div
+        className="w-full overflow-hidden"
+        style={{ height: bodyHeight }}
+        onPointerDownCapture={() => useUiStore.getState().noteActive(id)}
+      >
         <div
           style={{
             width: box.width / contentScale,

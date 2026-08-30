@@ -209,6 +209,11 @@ export const Canvas: React.FC = () => {
         className="absolute top-0 left-0 origin-top-left"
         style={{
           transform: `translate(${-camera.x * camera.zoom}px, ${-camera.y * camera.zoom}px) scale(${camera.zoom})`,
+          // Marks that must stay the same size on screen divide by this — the
+          // container transform shrinks everything inside it, and a 3px ring at
+          // 40% zoom is a hairline. Set here so widgets do not each have to
+          // subscribe to the camera.
+          ['--zoom' as string]: camera.zoom,
           // Only while moving: a permanently promoted layer never repaints, so
           // zooming in scales a bitmap of the text rather than redrawing it.
           willChange: isCameraMoving ? 'transform' : 'auto',
