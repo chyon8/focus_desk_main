@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { BarChart2, BookOpen, ChevronLeft, Coffee, Expand, Frame, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Pencil, Plus, Shrink, Trash2 } from 'lucide-react';
+import { BarChart2, BookOpen, ChevronLeft, Coffee, Expand, Frame, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Pencil, Plus, Settings, Shrink, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
@@ -9,6 +9,7 @@ import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { isComposing } from './ime';
 import { ArrangeMenu } from './ArrangeMenu';
+import { SettingsPanel } from './SettingsPanel';
 import { SpaceSessionPanel } from './SpaceSessionPanel';
 import { WebAppDock } from './WebAppDock';
 import { WidgetPalette } from './WidgetPalette';
@@ -141,6 +142,7 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
   const [newName, setNewName] = useState('');
   /** What this space is signed in to (D-074). */
   const [isSessionOpen, setIsSessionOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Select ids only. A selector that builds new objects would fail useShallow's
   // Object.is comparison on every render and loop forever (React #185).
@@ -291,6 +293,13 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
               >
                 <KeyRound size={18} />
               </button>
+              <button
+                onClick={() => setIsSettingsOpen((open) => !open)}
+                title="Settings — data, backups, paper"
+                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
+              >
+                <Settings size={18} />
+              </button>
               <span className="t-faint ml-auto px-2 text-xs tabular-nums" title="Canvas zoom">
                 {Math.round(zoom * 100)}%
               </span>
@@ -301,6 +310,7 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
       </AnimatePresence>
 
       {isSessionOpen && <SpaceSessionPanel onClose={() => setIsSessionOpen(false)} />}
+      {isSettingsOpen && <SettingsPanel onClose={() => setIsSettingsOpen(false)} />}
     </>
   );
 };

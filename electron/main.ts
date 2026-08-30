@@ -4,6 +4,7 @@ import { NEW_TAB_FRAME } from '../src/widgets/browserLinks';
 import { createHelper } from './apps/helperClient';
 import { registerActivityIpc } from './ipc/activity';
 import { registerAppsIpc } from './ipc/apps';
+import { registerBackupIpc, snapshotIfNeeded } from './ipc/backup';
 import { registerStorageIpc } from './ipc/storage';
 import { registerImageProtocolScheme, registerImagesIpc } from './ipc/images';
 import { registerSessionIpc } from './ipc/session';
@@ -211,6 +212,9 @@ app.whenReady().then(() => {
   registerWindowModeIpc(() => win);
   registerAppsIpc(helper, () => win);
   registerActivityIpc(() => win, helper);
+  registerBackupIpc();
+  // Before the window opens, so the copy is of the last session's data.
+  snapshotIfNeeded();
   createWindow();
 });
 

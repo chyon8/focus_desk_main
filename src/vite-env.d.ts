@@ -96,6 +96,16 @@ declare global {
       saveSync: (doc: unknown) => void;
       delete: (id: string) => Promise<void>;
     };
+    /** Local backups: snapshots, and a folder you can carry to another mac. */
+    backup?: {
+      openFolder: () => Promise<string>;
+      status: () => Promise<{ last: string | null }>;
+      /** The folder written, or null if the user cancelled. */
+      export: () => Promise<string | null>;
+      /** How much was added, an error, or null if the user cancelled. */
+      import: () => Promise<{ spaces: number; images: number } | { error: string } | null>;
+      restart: () => Promise<void>;
+    };
     files?: {
       /** The absolute path of a file dropped onto the window. */
       pathFor: (file: File) => string;

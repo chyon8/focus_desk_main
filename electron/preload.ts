@@ -128,6 +128,18 @@ contextBridge.exposeInMainWorld('images', {
     ipcRenderer.invoke('images:from-url', url, partition),
 });
 
+contextBridge.exposeInMainWorld('backup', {
+  /** Opens the folder everything is stored in, in Finder. */
+  openFolder: () => ipcRenderer.invoke('backup:open-folder'),
+  /** The date of the most recent automatic snapshot, or null. */
+  status: () => ipcRenderer.invoke('backup:status'),
+  /** Asks where to put a copy; returns the folder written, or null if cancelled. */
+  export: () => ipcRenderer.invoke('backup:export'),
+  /** Asks for a backup folder and adds what this profile does not have. */
+  import: () => ipcRenderer.invoke('backup:import'),
+  restart: () => ipcRenderer.invoke('backup:restart'),
+});
+
 contextBridge.exposeInMainWorld('files', {
   // Where a dropped file actually lives. `File.path` was removed in Electron 32;
   // this is the replacement, and it only works from the preload.
