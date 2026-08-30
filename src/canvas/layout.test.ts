@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { arrange, autoColumns, centreCamera, fitCamera, isFullyVisible, Box } from './layout';
+import {
+  arrange,
+  autoColumns,
+  centreCamera,
+  fitCamera,
+  inReadingOrder,
+  isFullyVisible,
+  Box,
+} from './layout';
 import { worldToScreen } from './camera';
 
 const boxes: Box[] = [
@@ -18,12 +26,16 @@ function placed(input: Box[], ...args: [] | [typeof area, 'grid' | 'cascade', nu
 }
 
 describe('arrange', () => {
-  it('grid lays boxes out in reading order, not input order', () => {
+  it('grid fills the cells in the order it is given', () => {
     // Boxes are centred in their cells, so compare rows and columns, not exact px.
     const [b, a, c] = placed(boxes, area, 'grid', 2);
-    expect(a.x).toBeLessThan(b.x); // a is first in reading order → column 0
-    expect(b.y).toBeLessThan(a.y + a.height); // b shares a's row
-    expect(c.y).toBeGreaterThan(a.y + a.height); // c is on the next row
+    expect(b.x).toBeLessThan(a.x); // b is first in input order → column 0
+    expect(a.y).toBeLessThan(b.y + b.height); // a shares b's row
+    expect(c.y).toBeGreaterThan(b.y + b.height); // c is on the next row
+  });
+
+  it('reading order puts the top-left box first', () => {
+    expect(inReadingOrder(boxes).map((box) => box.id)).toEqual(['a', 'b', 'c']);
   });
 
   it('grid fills the area: the block spans it and nothing spills out', () => {
@@ -68,8 +80,8 @@ describe('arrange', () => {
     const out = placed(boxes, area, 'cascade');
     const a = out.find((p) => p.id === 'a')!;
     const b = out.find((p) => p.id === 'b')!;
-    expect(a.x).toBe(0);
-    expect(b.x).toBe(b.y);
+    expect(b.x).toBe(0); // b is first in input order → the front of the deck
+    expect(a.x).toBe(a.y);
     expect(b.width).toBe(200);
   });
 

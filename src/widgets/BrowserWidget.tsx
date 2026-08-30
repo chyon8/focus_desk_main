@@ -190,7 +190,12 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
 
     // A click inside the page goes to the guest, so the frame's own pointer
     // handler never runs — the widget has to report being used itself.
-    const onUsed = () => useUiStore.getState().noteActive(id);
+    // The page swallows the pointer, so the frame never learns it was used —
+    // and `z` is what an arrange reads as "most recently used".
+    const onUsed = () => {
+      useUiStore.getState().noteActive(id);
+      useSpaceStore.getState().bringToFront(id);
+    };
 
     const onStart = () => setIsLoading(true);
     const onStop = () => setIsLoading(false);

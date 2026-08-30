@@ -314,7 +314,10 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         : { x: 0, y: 0 };
 
       const area = canvasArea();
-      const placements = arrange(boxes, area, mode, columns);
+      // Most recently used first: `z` is bumped every time a widget is touched,
+      // so the top of the stack is also the thing worked on last.
+      const ordered = [...boxes].sort((a, b) => b.z - a.z);
+      const placements = arrange(ordered, area, mode, columns);
       const widgets = { ...space.widgets };
       for (const [id, place] of Object.entries(placements)) {
         widgets[id] = {

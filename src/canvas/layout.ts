@@ -28,8 +28,8 @@ export interface Area {
   height: number;
 }
 
-/** Reading order, so an arrange feels like tidying rather than reshuffling. */
-function inReadingOrder(boxes: Box[]) {
+/** Reading order: top-left first, for callers that want tidying over reordering. */
+export function inReadingOrder(boxes: Box[]) {
   return [...boxes].sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
 }
 
@@ -108,7 +108,8 @@ function fillGrid(boxes: Box[], area: Area, columns?: number): Record<string, Pl
 }
 
 /**
- * Lays boxes out in world space, relative to the origin.
+ * Lays boxes out in world space, relative to the origin, **in the order given** —
+ * the first box takes the first cell. The caller decides what that order means.
  * - grid: fills `area` — `columns` per row, or the count that wastes the least
  *   space when omitted. Boxes are resized to their cells (aspect kept).
  * - cascade: overlapping stagger, like a deck of windows. Sizes are left alone.
@@ -120,7 +121,7 @@ export function arrange(
   columns?: number
 ): Record<string, Placement> {
   if (boxes.length === 0) return {};
-  const ordered = inReadingOrder(boxes);
+  const ordered = boxes;
 
   if (mode === 'cascade') {
     const placements: Record<string, Placement> = {};
