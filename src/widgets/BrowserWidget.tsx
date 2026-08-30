@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Home, RotateCw, X, ZoomIn, ZoomOut } from 'lucid
 import { BrowserData } from '../spaces/types';
 import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
 import { hostOf, toAddress } from './browserAddress';
 import { BrowserStartPage } from './BrowserStartPage';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
@@ -23,6 +24,20 @@ function stepZoom(zoom: number, direction: 1 | -1) {
 
 /** A load the user cancelled, which is not a failure worth a page about. */
 const ERR_ABORTED = -3;
+
+/**
+ * The width the guest is laid out at when the widget is narrower than this.
+ *
+ * A <webview> is a real browser window: make it 300px wide and sites lay
+ * themselves out for a 300px phone, so a shelf of small browser widgets shows a
+ * column of unrecognisable fragments. Below this the page is laid out at this
+ * width and scaled down instead, which keeps the desktop layout — small, but the
+ * same shape the user remembers.
+ */
+const MIN_LAYOUT_WIDTH = 640;
+
+/** Under this the address row is only taking up room; the header still names the page. */
+const CHROME_MIN_WIDTH = 380;
 
 const NavButton: React.FC<{
   label: string;
@@ -60,6 +75,9 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const view = useRef<Electron.WebviewTag>(null);
+  // The page area in world units, which is what the guest is laid out at.
+  const pageBox = useRef<HTMLDivElement>(null);
+  const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
   // src is set once: after that the page navigates itself, and re-rendering with
   // a new src would yank it back. Empty means the start page is showing, and the
   // first address typed is what mounts the guest.
@@ -78,6 +96,38 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   const contentsId = useRef<number | null>(null);
 
   const hasPage = !!data.url;
+
+  useEffect(() => {
+    const el = pageBox.current;
+    if (!el) return;
+    // contentRect is the layout size, so the camera zoom does not enter into it —
+    // a zoomed-out canvas must not relayout every page on it.
+    const observer = new ResizeObserver(([entry]) =>
+      setPageSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasPage]);
+
+  const shrink =
+    pageSize.width > 0 && pageSize.width < MIN_LAYOUT_WIDTH
+      ? pageSize.width / MIN_LAYOUT_WIDTH
+      : 1;
+  // Always pixels, never percentages: the guest only follows the element when its
+  // own style changes, so a percentage that stays "100%" leaves the page laid out
+  // at its old width — maximising a browser widget used to do exactly that.
+  const pageStyle: React.CSSProperties =
+    pageSize.width === 0
+      ? { width: '100%', height: '100%' }
+      : {
+          width: pageSize.width / shrink,
+          height: pageSize.height / shrink,
+          ...(shrink !== 1 && {
+            transform: `scale(${shrink})`,
+            transformOrigin: 'top left',
+          }),
+        };
+  const showChrome = pageSize.width === 0 || pageSize.width >= CHROME_MIN_WIDTH;
 
   /** Goes somewhere, mounting the guest if this widget has not been anywhere yet. */
   const go = (url: string) => {
@@ -138,6 +188,10 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       if (src) update({ favicon: src });
     };
 
+    // A click inside the page goes to the guest, so the frame's own pointer
+    // handler never runs — the widget has to report being used itself.
+    const onUsed = () => useUiStore.getState().noteActive(id);
+
     const onStart = () => setIsLoading(true);
     const onStop = () => setIsLoading(false);
     // A page that will not load leaves the guest blank, which reads as the widget
@@ -150,6 +204,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
     el.addEventListener('dom-ready', onDomReady);
     el.addEventListener('did-navigate', onNavigate);
     el.addEventListener('did-navigate-in-page', onNavigateInPage);
+    el.addEventListener('focus', onUsed);
     el.addEventListener('page-title-updated', onTitle);
     el.addEventListener('page-favicon-updated', onFavicon);
     el.addEventListener('did-start-loading', onStart);
@@ -159,13 +214,14 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       el.removeEventListener('dom-ready', onDomReady);
       el.removeEventListener('did-navigate', onNavigate);
       el.removeEventListener('did-navigate-in-page', onNavigateInPage);
+      el.removeEventListener('focus', onUsed);
       el.removeEventListener('page-title-updated', onTitle);
       el.removeEventListener('page-favicon-updated', onFavicon);
       el.removeEventListener('did-start-loading', onStart);
       el.removeEventListener('did-stop-loading', onStop);
       el.removeEventListener('did-fail-load', onFail);
     };
-  }, [update, hasPage]);
+  }, [update, hasPage, id]);
 
   useEffect(() => {
     if (contentsId.current !== null) view.current?.setZoomFactor(zoom);
@@ -204,6 +260,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
 
   return (
     <div className="h-full w-full flex flex-col">
+      {showChrome && (
       <form
         className="border-hair h-9 shrink-0 flex items-center px-2 gap-1 border-b"
         onSubmit={(e) => {
@@ -290,8 +347,9 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
           <ZoomIn size={12} />
         </NavButton>
       </form>
+      )}
 
-      <div className="relative flex-1 min-h-0">
+      <div ref={pageBox} className="relative flex-1 min-h-0 overflow-hidden">
         {hasPage ? (
           <webview
             ref={view}
@@ -300,7 +358,8 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
             // signed in as different accounts in different spaces (D-074).
             partition={`persist:space-${spaceId}`}
             {...ALLOW_POPUPS}
-            className="web-page w-full h-full"
+            className="web-page absolute top-0 left-0"
+            style={pageStyle}
           />
         ) : (
           <BrowserStartPage onOpen={go} />

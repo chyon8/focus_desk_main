@@ -52,6 +52,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   // out: the window covers the widget, so nothing in the body can be clicked.
   const isAppOpen = useUiStore((s) => s.openAppIds.includes(id)) && widget.type === 'app';
   const isSelected = useUiStore((s) => s.selectedIds.includes(id));
+  const isLastActive = useUiStore((s) => s.lastActiveId === id);
   const isAltHeld = useUiStore((s) => s.isAltHeld);
   const drag = useRef<{ pointerId: number; lastX: number; lastY: number; mode: 'move' | 'resize' } | null>(
     null
@@ -142,7 +143,9 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
          itself when its header is dragged, not the whole window (App.tsx). */
       className={`widget-glass no-drag absolute rounded-2xl overflow-hidden ${
         isAltHeld ? 'alt-pick' : ''
-      } ${isSelected ? 'widget-selected' : ''}`}
+      } ${isSelected ? 'widget-selected' : ''} ${
+        isLastActive && !isSelected && !fullRect ? 'widget-last-active' : ''
+      }`}
       style={{
         left: box.x,
         top: box.y,
@@ -165,6 +168,7 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
           return;
         }
         useSpaceStore.getState().bringToFront(id);
+        useUiStore.getState().noteActive(id);
       }}
       /* A picking click must not also press what is under it — ⌥-clicking an app
          widget used to launch the app. */
