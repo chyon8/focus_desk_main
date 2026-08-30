@@ -7,6 +7,7 @@ import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
 import { AppData } from '../spaces/types';
 import { useAppTimeStore } from '../stores/appTimeStore';
+import { usePrefsStore } from '../stores/prefsStore';
 import { useActiveSpace, useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 import { useWidgetData } from './useWidgetData';
@@ -51,6 +52,7 @@ export const AppWidget: React.FC<{ id: string }> = ({ id }) => {
         // just said what should stand here, so it opens in the slot rather than
         // waiting to be opened a second time. Not the space-entry auto-launch
         // that D-054 threw out — that one nobody asked for.
+        if (!usePrefsStore.getState().attachApps) return;
         const ui = useUiStore.getState();
         if (!ui.openAppIds.includes(id)) ui.toggleAppOpen(id);
       }}
@@ -81,6 +83,7 @@ const AppFace: React.FC<{
     choice,
     (windowTitle) => update({ windowTitle })
   );
+  const attachApps = usePrefsStore((s) => s.attachApps);
   const [permissions, setPermissions] = useState({ accessibility: true });
   const [picking, setPicking] = useState(false);
 
@@ -209,6 +212,12 @@ const AppFace: React.FC<{
           which is the whole point of the widget. Leaving is the ↗ button. */}
       <button
         onClick={() => {
+          // Without the switch the widget is a launcher: it starts the app or
+          // switches to it, and no window is moved, so nothing needs permission.
+          if (!attachApps) {
+            void window.apps?.launch(data.appKey);
+            return;
+          }
           const ui = useUiStore.getState();
           // The helper remembers one window per app, so two widgets on the same
           // app cannot both be open — the second would take over the size the
@@ -218,7 +227,7 @@ const AppFace: React.FC<{
           }
           ui.toggleAppOpen(id);
         }}
-        title={`Open ${data.name} here, at this size`}
+        title={attachApps ? `Open ${data.name} here, at this size` : `Switch to ${data.name}`}
         className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2.5"
       >
         {data.icon ? (
@@ -230,7 +239,10 @@ const AppFace: React.FC<{
       </button>
 
       {/* Which window this widget stands for. Its own row rather than a label on
-          the icon, because it is also the way to change it (D-048). */}
+          the icon, because it is also the way to change it (D-048). Hidden while
+          nothing is placed: there is no window to choose between, and asking the
+          helper for the list is itself an accessibility prompt. */}
+      {attachApps && (
       <button
         onClick={() => setPicking(true)}
         title="Choose which window this widget opens"
@@ -239,6 +251,7 @@ const AppFace: React.FC<{
         <Layers size={10} className="shrink-0" />
         <span className="truncate">{data.windowTitle ?? 'Any window'}</span>
       </button>
+      )}
 
       <div className="flex items-center justify-between gap-2 px-1">
         <span className="t-soft text-[11px] tabular-nums truncate">
@@ -249,13 +262,15 @@ const AppFace: React.FC<{
               : data.name}
         </span>
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => void window.apps?.launch(data.appKey)}
-            title={`Switch to ${data.name} outside Focus Desk`}
-            className="t-faint hover:t-ink"
-          >
-            <ArrowUpRight size={12} />
-          </button>
+          {attachApps && (
+            <button
+              onClick={() => void window.apps?.launch(data.appKey)}
+              title={`Switch to ${data.name} outside Focus Desk`}
+              className="t-faint hover:t-ink"
+            >
+              <ArrowUpRight size={12} />
+            </button>
+          )}
           <button onClick={onClear} title="Pick a different app" className="t-faint hover:t-ink">
             <RotateCcw size={10} />
           </button>

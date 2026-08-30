@@ -13,16 +13,24 @@ interface Prefs {
   paper: PaperMode;
   /** Web pages inside browser and web app widgets ask sites for their dark theme. */
   webDark: boolean;
+  /**
+   * Whether an app widget seats the real window in its slot. Off by default: it
+   * needs accessibility access and it hides the other applications, and neither
+   * should happen to someone who has not asked for it. Off, an app
+   * widget is a tile that launches the app.
+   */
+  attachApps: boolean;
 }
 
 interface PrefsState extends Prefs {
   load: () => Promise<void>;
   setPaper: (paper: PaperMode) => void;
   setWebDark: (webDark: boolean) => void;
+  setAttachApps: (attachApps: boolean) => void;
 }
 
 /** Dark, because five of the six themes are. */
-const DEFAULTS: Prefs = { paper: 'theme', webDark: true };
+const DEFAULTS: Prefs = { paper: 'theme', webDark: true, attachApps: false };
 
 /**
  * Settings that belong to the person rather than to a space (D-084). A space
@@ -42,14 +50,23 @@ export const usePrefsStore = create<PrefsState>((set, get) => ({
 
   setPaper: (paper) => {
     set({ paper });
-    void window.store?.set(KEY, { paper, webDark: get().webDark });
+    save(get());
   },
 
   setWebDark: (webDark) => {
     set({ webDark });
-    void window.store?.set(KEY, { paper: get().paper, webDark });
+    save(get());
     // The switch is the main process's to throw: `prefers-color-scheme` is a
     // property of the whole app, not of one page.
     void window.windowMode?.setWebDark(webDark);
   },
+
+  setAttachApps: (attachApps) => {
+    set({ attachApps });
+    save(get());
+  },
 }));
+
+function save({ paper, webDark, attachApps }: Prefs) {
+  void window.store?.set(KEY, { paper, webDark, attachApps });
+}

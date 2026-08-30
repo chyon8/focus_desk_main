@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FolderOpen, Download, Upload, X } from 'lucide-react';
+import { usePrefsStore } from '../stores/prefsStore';
+import { useUiStore } from '../stores/uiStore';
+import { FolderOpen, Download, Upload, AppWindow, X } from 'lucide-react';
 
 /**
  * The app's own settings, as opposed to how anything looks — brightness lives
@@ -29,6 +31,8 @@ const Row: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void 
 );
 
 export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const attachApps = usePrefsStore((s) => s.attachApps);
+  const [accessibility, setAccessibility] = useState(true);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [imported, setImported] = useState(false);
@@ -36,6 +40,19 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   useEffect(() => {
     void window.backup?.status().then((s) => setLastBackup(s.last));
   }, []);
+
+  // Only worth reading while the switch is on: with it off no window is moved,
+  // so whether macOS would allow it says nothing the user needs.
+  useEffect(() => {
+    if (attachApps) void window.apps?.permissions().then((p) => setAccessibility(p.accessibility));
+  }, [attachApps]);
+
+  const toggleAttachApps = () => {
+    // Turning it off gives every placed window its own size and place back;
+    // closing an app widget is what releases its window.
+    if (attachApps) useUiStore.getState().closeAllApps();
+    usePrefsStore.getState().setAttachApps(!attachApps);
+  };
 
   const exportTo = async () => {
     const dest = await window.backup?.export();
@@ -75,6 +92,30 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             <X size={12} />
           </button>
         </div>
+
+        <Label>Apps</Label>
+        <button
+          onClick={toggleAttachApps}
+          className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-lg text-[11px] ${
+            attachApps ? 'chrome-button-on' : ''
+          }`}
+        >
+          <AppWindow size={13} />
+          Sit app windows in the space
+        </button>
+        <p className="t-faint mb-2 px-0.5 text-[10px] leading-snug">
+          On, an app widget brings the real window to its slot and holds the other applications
+          out of the way, which macOS asks you to allow. Off, it is a tile that opens the app.
+        </p>
+        {attachApps && !accessibility && (
+          <button
+            onClick={() => void window.apps?.showAccessibilitySettings()}
+            className="chrome-button w-full py-1.5 mb-5 rounded-lg text-[11px]"
+          >
+            Allow Focus Desk to move windows…
+          </button>
+        )}
+        {(!attachApps || accessibility) && <div className="mb-5" />}
 
         <Label>Data</Label>
         <p className="t-faint mb-2 px-0.5 text-[10px] leading-snug">

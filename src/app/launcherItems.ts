@@ -3,6 +3,7 @@ import type { AppData, SpaceDoc, WebAppIcon, WidgetDoc } from '../spaces/types';
 import type { SiteVisit } from '../stores/siteVisitStore';
 import type { WebApp } from '../stores/webappStore';
 import { centreCamera } from '../canvas/layout';
+import { usePrefsStore } from '../stores/prefsStore';
 import { getCamera, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
 import { hostOf } from '../widgets/browserAddress';
@@ -105,8 +106,9 @@ function openApp(app: AppData) {
     name: app.name,
     icon: app.icon,
   });
-  // Picking is the asking, as in the app widget's own picker.
-  useUiStore.getState().toggleAppOpen(id);
+  // Picking is the asking, as in the app widget's own picker — but only when
+  // widgets seat windows at all.
+  if (usePrefsStore.getState().attachApps) useUiStore.getState().toggleAppOpen(id);
 }
 
 export interface LauncherSources {
