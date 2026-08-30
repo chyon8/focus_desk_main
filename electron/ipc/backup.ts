@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain, shell } from 'electron';
+import { app, dialog, ipcMain, shell, type BrowserWindow } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -120,7 +120,7 @@ export function mergeFrom(src: string, root = userData()) {
   return { spaces, images };
 }
 
-export function registerBackupIpc() {
+export function registerBackupIpc(getWindow: () => BrowserWindow | null) {
   ipcMain.handle('backup:open-folder', () => shell.openPath(userData()));
 
   /** The most recent snapshot's date, for the settings panel to show. */
@@ -160,9 +160,11 @@ export function registerBackupIpc() {
     return mergeFrom(src);
   });
 
-  /** Imported files are read at startup, so the window has to come back new. */
-  ipcMain.handle('backup:restart', () => {
-    app.relaunch();
-    app.quit();
-  });
+  /**
+   * The stores read their files once, when the window loads, so imported spaces
+   * only appear after a reload. Reloading the window is enough — nothing in the
+   * main process holds the data: `spaces:list` reads the folder on every call,
+   * and electron-store reads its file on every access.
+   */
+  ipcMain.handle('backup:reload', () => getWindow()?.webContents.reload());
 }

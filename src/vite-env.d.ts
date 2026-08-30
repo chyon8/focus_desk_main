@@ -104,7 +104,8 @@ declare global {
       export: () => Promise<string | null>;
       /** How much was added, an error, or null if the user cancelled. */
       import: () => Promise<{ spaces: number; images: number } | { error: string } | null>;
-      restart: () => Promise<void>;
+      /** Re-reads the space files, for spaces that have just been imported. */
+      reload: () => Promise<void>;
     };
     files?: {
       /** The absolute path of a file dropped onto the window. */

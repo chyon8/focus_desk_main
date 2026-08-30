@@ -212,7 +212,7 @@ app.whenReady().then(() => {
   registerWindowModeIpc(() => win);
   registerAppsIpc(helper, () => win);
   registerActivityIpc(() => win, helper);
-  registerBackupIpc();
+  registerBackupIpc(() => win);
   // Before the window opens, so the copy is of the last session's data.
   snapshotIfNeeded();
   createWindow();

@@ -137,7 +137,8 @@ contextBridge.exposeInMainWorld('backup', {
   export: () => ipcRenderer.invoke('backup:export'),
   /** Asks for a backup folder and adds what this profile does not have. */
   import: () => ipcRenderer.invoke('backup:import'),
-  restart: () => ipcRenderer.invoke('backup:restart'),
+  /** Re-reads the space files, for spaces that have just been imported. */
+  reload: () => ipcRenderer.invoke('backup:reload'),
 });
 
 contextBridge.exposeInMainWorld('files', {

@@ -31,7 +31,7 @@ const Row: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void 
 export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const [importedNeedsRestart, setImportedNeedsRestart] = useState(false);
+  const [imported, setImported] = useState(false);
 
   useEffect(() => {
     void window.backup?.status().then((s) => setLastBackup(s.last));
@@ -54,8 +54,8 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
         ? 'Nothing new — this profile already has all of it.'
         : `Added ${result.spaces} space${result.spaces === 1 ? '' : 's'}.`
     );
-    // The stores read their files once, at startup.
-    if (result.spaces > 0 || result.images > 0) setImportedNeedsRestart(true);
+    // The stores read their files once, when the window loads.
+    if (result.spaces > 0 || result.images > 0) setImported(true);
   };
 
   return (
@@ -102,12 +102,12 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
           {lastBackup ? `Last automatic copy: ${lastBackup}` : 'No automatic copy yet.'}
         </p>
         {note && <p className="t-soft mb-2 px-2.5 text-[10px] leading-snug">{note}</p>}
-        {importedNeedsRestart && (
+        {imported && (
           <button
-            onClick={() => void window.backup?.restart()}
+            onClick={() => void window.backup?.reload()}
             className="chrome-button-on w-full py-1.5 rounded-lg text-[11px] font-medium"
           >
-            Restart to see them
+            Show them
           </button>
         )}
       </motion.div>
