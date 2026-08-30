@@ -5,6 +5,7 @@ import { createHelper } from './apps/helperClient';
 import { registerActivityIpc } from './ipc/activity';
 import { registerAppsIpc } from './ipc/apps';
 import { registerBackupIpc, snapshotIfNeeded } from './ipc/backup';
+import { registerChromeIpc } from './ipc/chrome';
 import { registerStorageIpc } from './ipc/storage';
 import { registerImageProtocolScheme, registerImagesIpc } from './ipc/images';
 import { registerSessionIpc } from './ipc/session';
@@ -213,6 +214,7 @@ app.whenReady().then(() => {
   app.on('will-quit', helper.stop);
 
   registerStorageIpc();
+  registerChromeIpc();
   registerSessionIpc();
   registerSpacesIpc();
   registerImagesIpc();

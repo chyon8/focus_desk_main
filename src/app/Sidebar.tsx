@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { BarChart2, BookOpen, ChevronLeft, Coffee, Expand, Frame, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Pencil, Plus, Settings, Shrink, Trash2 } from 'lucide-react';
+import { BarChart2, BookOpen, ChevronLeft, Chrome, Coffee, Expand, Frame, Home, Keyboard, KeyRound, Layout, Monitor, PanelLeft, Pencil, Plus, Settings, Shrink, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDuration } from '../focus/stats';
 import { useToday } from '../focus/useToday';
@@ -9,6 +9,7 @@ import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
 import { isComposing } from './ime';
 import { ArrangeMenu } from './ArrangeMenu';
+import { ChromeImportPanel } from './ChromeImportPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { SpaceSessionPanel } from './SpaceSessionPanel';
 import { WebAppDock } from './WebAppDock';
@@ -141,6 +142,7 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   /** What this space is signed in to (D-074). */
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -287,6 +289,13 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
                 <Keyboard size={18} />
               </button>
               <button
+                onClick={() => setIsImportOpen((open) => !open)}
+                title="Bring in the windows open in Chrome"
+                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
+              >
+                <Chrome size={18} />
+              </button>
+              <button
                 onClick={() => setIsSessionOpen((open) => !open)}
                 title="What this space is signed in to"
                 className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
@@ -309,6 +318,7 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
         )}
       </AnimatePresence>
 
+      {isImportOpen && <ChromeImportPanel onClose={() => setIsImportOpen(false)} />}
       {isSessionOpen && <SpaceSessionPanel onClose={() => setIsSessionOpen(false)} />}
       {isSettingsOpen && <SettingsPanel onClose={() => setIsSettingsOpen(false)} />}
     </>

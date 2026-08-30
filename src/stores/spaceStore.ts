@@ -31,6 +31,8 @@ interface SpaceState {
    * widgets — the user is tidying and should stay where they are.
    */
   addSpace: (name: string, activate?: boolean) => string;
+  /** Adds spaces built elsewhere — the Chrome import — and opens the first. */
+  addSpaces: (docs: SpaceDoc[]) => void;
   renameSpace: (id: string, name: string) => void;
   removeSpace: (id: string) => void;
   setActiveSpace: (id: string) => void;
@@ -102,7 +104,8 @@ function inPlay(space: SpaceDoc) {
   return selected.length ? selected.map((id) => space.widgets[id]) : Object.values(space.widgets);
 }
 
-function newSpace(name: string): SpaceDoc {
+/** An empty space doc. Exported for the Chrome import, which fills one in. */
+export function newSpace(name: string): SpaceDoc {
   return {
     id: crypto.randomUUID(),
     schemaVersion: SCHEMA_VERSION,
@@ -228,6 +231,16 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       activeSpaceId: activate ? space.id : state.activeSpaceId,
     }));
     return space.id;
+  },
+
+  addSpaces: (docs) => {
+    if (docs.length === 0) return;
+    for (const doc of docs) void window.spaces?.save(doc);
+    void window.store?.set(ACTIVE_SPACE_KEY, docs[0].id);
+    set((state) => ({
+      spaces: { ...state.spaces, ...Object.fromEntries(docs.map((doc) => [doc.id, doc])) },
+      activeSpaceId: docs[0].id,
+    }));
   },
 
   renameSpace: (id, name) =>

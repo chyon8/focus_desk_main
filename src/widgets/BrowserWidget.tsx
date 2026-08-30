@@ -57,6 +57,34 @@ const NavButton: React.FC<{
 );
 
 /**
+ * What a browser widget shows before its page is loaded.
+ *
+ * An imported Chrome tab starts here rather than mounting a guest: a window of
+ * twelve tabs would otherwise load twelve pages the moment the space opens. The
+ * title and icon come from the tab, so the card names the page it stands for
+ * before anything has been fetched.
+ */
+const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data, onOpen }) => (
+  <button
+    onClick={onOpen}
+    title={`Load ${data.url}`}
+    className="t-ink h-full w-full flex flex-col items-center justify-center gap-2.5 p-3"
+  >
+    {data.favicon ? (
+      <img src={data.favicon} alt="" className="w-8 h-8 rounded-md" />
+    ) : (
+      <span className="glass t-soft w-8 h-8 rounded-md flex items-center justify-center text-sm uppercase">
+        {hostOf(data.url)[0] ?? '?'}
+      </span>
+    )}
+    <span className="text-xs font-medium text-center line-clamp-2 max-w-full">
+      {data.title || hostOf(data.url)}
+    </span>
+    <span className="t-faint text-[10px] truncate max-w-full">{hostOf(data.url)}</span>
+  </button>
+);
+
+/**
  * A real browser inside the widget, as an Electron <webview>.
  *
  * The point of the element over a native WebContentsView: it is part of the page,
@@ -96,6 +124,8 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   const contentsId = useRef<number | null>(null);
 
   const hasPage = !!data.url;
+  // Undefined is loaded, so only a widget created closed shows the card.
+  const closed = hasPage && data.open === false;
 
   useEffect(() => {
     const el = pageBox.current;
@@ -262,6 +292,10 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
     });
     return () => off?.();
   }, [id]);
+
+  // After the effects, so the hooks run either way: they all guard on a ref that
+  // is null until the guest mounts.
+  if (closed) return <BrowserCard data={data} onOpen={() => update({ open: true })} />;
 
   return (
     <div className="h-full w-full flex flex-col">

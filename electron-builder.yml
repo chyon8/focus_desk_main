@@ -13,6 +13,12 @@ extraResources:
 mac:
   # Drawn by build/make_icon.py, so it can be edited as code rather than redrawn.
   icon: build/icon.icns
+  extendInfo:
+    # Shown in the macOS prompt when the app first asks to read Chrome's tabs
+    # (D-096). Without it a signed build is refused rather than asked about.
+    NSAppleEventsUsageDescription: >-
+      Focus Desk reads the addresses and titles of the tabs open in Google Chrome
+      so it can lay them out as spaces. It never closes or moves your tabs.
   # Unsigned/ad-hoc: fine for installing on this machine, but a downloaded copy
   # would be blocked by Gatekeeper until the app is signed and notarised.
   target:

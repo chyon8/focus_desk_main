@@ -98,6 +98,16 @@ contextBridge.exposeInMainWorld('apps', {
   },
 });
 
+// Not `chrome`: Chromium already owns `window.chrome`, and exposing on top of it
+// throws — which aborts the rest of this file and leaves the app with no bridges
+// at all.
+contextBridge.exposeInMainWorld('chromeImport', {
+  /** The windows and tabs open in Chrome. Read-only: nothing is closed or moved. */
+  tabs: () => ipcRenderer.invoke('chrome:tabs'),
+  /** The Automation pane, for when the prompt was refused and will not return. */
+  showAutomationSettings: () => ipcRenderer.invoke('chrome:show-automation-settings'),
+});
+
 contextBridge.exposeInMainWorld('session', {
   /** Which sites this space is signed in on, read from its own cookie jar. */
   summary: (spaceId: string) => ipcRenderer.invoke('session:summary', spaceId),

@@ -83,6 +83,11 @@ declare global {
       setSpaceApps: (appKeys: string[]) => Promise<void>;
       onFrontmost: (handler: (appKey: string | null) => void) => () => void;
     };
+    /** The tabs open in Chrome, for the import that fills a new profile. Read-only. */
+    chromeImport?: {
+      tabs: () => Promise<import('../electron/ipc/chrome').ChromeTabsResult>;
+      showAutomationSettings: () => Promise<void>;
+    };
     /** Per-space cookie jars: the same site, a different account in each space. */
     session?: {
       summary: (spaceId: string) => Promise<{ sites: string[]; total: number }>;

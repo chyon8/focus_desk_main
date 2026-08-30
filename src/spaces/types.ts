@@ -106,6 +106,14 @@ export interface BrowserData {
    */
   title?: string;
   favicon?: string;
+  /**
+   * Whether the page is loaded rather than a card standing for it, like the web
+   * app widget's `open`. Undefined means loaded: widgets made before this existed
+   * keep opening their page, and only a widget created closed — an imported
+   * browser tab — starts as a card. Importing a window of twelve tabs otherwise
+   * loads twelve pages at once.
+   */
+  open?: boolean;
 }
 
 export interface CalendarData {
