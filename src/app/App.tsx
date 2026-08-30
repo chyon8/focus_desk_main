@@ -12,6 +12,7 @@ import { usePrefsStore } from '../stores/prefsStore';
 import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { useWebAppStore } from '../stores/webappStore';
+import { Onboarding } from '../onboarding/Onboarding';
 import { SceneLayer } from '../themes/SceneLayer';
 import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
 import { Launcher } from './Launcher';
@@ -26,8 +27,12 @@ import { UndoToast } from './UndoToast';
 
 export const App: React.FC = () => {
   const isLoaded = useSpaceStore((s) => s.isLoaded);
+  const needsOnboarding = useSpaceStore((s) => s.needsOnboarding);
   const theme = useActiveTheme();
   const [showInsights, setShowInsights] = useState(false);
+  // Seen once, on a profile with nothing in it. To work on it, run the app on a
+  // profile of its own: `FOCUS_DESK_PROFILE=test npm run dev`.
+  const [onboarding, setOnboarding] = useState(false);
 
   useThemeVariables(theme);
   useSpaceTimeTracker();
@@ -54,6 +59,11 @@ export const App: React.FC = () => {
     window.addEventListener('beforeunload', flushSaves);
     return () => window.removeEventListener('beforeunload', flushSaves);
   }, []);
+
+  // The store only knows after the load, so this catches the real first run.
+  useEffect(() => {
+    if (needsOnboarding) setOnboarding(true);
+  }, [needsOnboarding]);
 
   if (!isLoaded) {
     return <div className="w-screen h-screen bg-[#1e1e24]" />;
@@ -83,6 +93,7 @@ export const App: React.FC = () => {
       <NoticeToast />
       <HiddenAppsToast />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
+      {onboarding && <Onboarding onDone={() => setOnboarding(false)} />}
     </div>
   );
 };

@@ -24,6 +24,8 @@ interface SpaceState {
   spaces: Record<string, SpaceDoc>;
   activeSpaceId: string;
   isLoaded: boolean;
+  /** True for one run only: the profile was empty when the app started. */
+  needsOnboarding: boolean;
 
   load: () => Promise<void>;
   /**
@@ -118,30 +120,6 @@ export function newSpace(name: string): SpaceDoc {
   };
 }
 
-function defaultSpace(): SpaceDoc {
-  const space = newSpace('Home');
-  const memo: WidgetDoc = {
-    id: crypto.randomUUID(),
-    type: 'memo',
-    x: 0,
-    y: 0,
-    z: 1,
-    ...WIDGET_DEFS.memo.defaultSize,
-    data: WIDGET_DEFS.memo.createData(),
-  };
-  const timer: WidgetDoc = {
-    id: crypto.randomUUID(),
-    x: 420,
-    y: 0,
-    z: 2,
-    type: 'timer',
-    ...WIDGET_DEFS.timer.defaultSize,
-    data: WIDGET_DEFS.timer.createData(),
-  };
-  space.widgets = { [memo.id]: memo, [timer.id]: timer };
-  return space;
-}
-
 function topZ(space: SpaceDoc) {
   return Object.values(space.widgets).reduce((max, w) => Math.max(max, w.z), 0);
 }
@@ -197,19 +175,40 @@ function updateActive(
   });
 }
 
+/** Guards `load` against the double call React makes in development. */
+let loading = false;
+
 export const useSpaceStore = create<SpaceState>((set, get) => ({
   spaces: {},
   activeSpaceId: '',
   isLoaded: false,
+  needsOnboarding: false,
 
   load: async () => {
+    // React runs effects twice in development, so this is called twice before
+    // the first call has written anything — and two concurrent first runs each
+    // create a default space. One load is enough either way.
+    if (loading) return;
+    loading = true;
+
     let docs: SpaceDoc[] = ((await window.spaces?.list()) ?? []) as SpaceDoc[];
 
+    // Nothing saved and nothing to migrate: this is somebody's first run, and
+    // the onboarding runs over the empty space rather than instead of it. The
+    // space is real from the start, so nothing downstream has to cope with an
+    // app that has no active space (D-097).
+    let needsOnboarding = false;
     if (docs.length === 0) {
       // First run on this machine: adopt the pre-rewrite MVP data if it is there.
       const legacy = await window.store?.get(LEGACY_SPACES_KEY);
       docs = migrateLegacySpaces(legacy);
-      if (docs.length === 0) docs = [defaultSpace()];
+      if (docs.length === 0) {
+        // Empty on a first run: the onboarding puts the widgets in, and the
+        // starter memo and timer would otherwise show through it and then be
+        // left behind next to what the user actually chose.
+        needsOnboarding = true;
+        docs = [newSpace('Home')];
+      }
       for (const doc of docs) void window.spaces?.save(doc);
     }
 
@@ -219,7 +218,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     const savedId = (await window.store?.get(ACTIVE_SPACE_KEY)) as string | undefined;
     const activeSpaceId = savedId && spaces[savedId] ? savedId : docs[0].id;
 
-    set({ spaces, activeSpaceId, isLoaded: true });
+    set({ spaces, activeSpaceId, isLoaded: true, needsOnboarding });
   },
 
   addSpace: (name, activate = true) => {

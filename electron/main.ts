@@ -12,6 +12,19 @@ import { registerSessionIpc } from './ipc/session';
 import { registerSpacesIpc } from './ipc/spaces';
 import { registerWindowModeIpc } from './ipc/window-mode';
 
+// A profile of its own, for working on screens that only a new install sees —
+// the onboarding above all. Everything the app writes goes to this folder
+// instead: spaces, cookies, settings. Delete it and the next run is a first run
+// again, and the real profile is never touched, so this may run alongside it.
+//   FOCUS_DESK_PROFILE=test npm run dev
+// Set before anything reads userData, which is most of the app.
+if (process.env.FOCUS_DESK_PROFILE) {
+  app.setPath(
+    'userData',
+    path.join(app.getPath('appData'), `focus-desk-${process.env.FOCUS_DESK_PROFILE}`)
+  );
+}
+
 // Privileged schemes must be declared before the app is ready.
 registerImageProtocolScheme();
 
