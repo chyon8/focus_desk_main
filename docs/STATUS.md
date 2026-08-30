@@ -10,23 +10,11 @@
 |---|---|---|---|
 | 1 | ✅ 데이터 백업 | 중간 | 스냅샷이 실제로 생기고, 내보낸 걸 빈 프로필에 가져와 공간이 그대로 선다 |
 | 2 | ✅ 앱 위젯 기본 끔 | 작음 | 빈 프로필 첫 실행에 접근성 프롬프트 없음. 스위치를 켜면 뜬다 |
-| 3 | **세션 패널 필터 ← 지금 여기** | 작음 | `doubleclick.net` 안 뜸, `naver.co.kr` 안 뭉개짐 |
-| 4 | 온보딩 | 큼 | 임포트 / 웹앱 고르기 / 건너뛰기 세 갈래가 다 끝까지 간다 |
+| 3 | ✅ 세션 패널 필터 | 작음 | `doubleclick.net` 안 뜸, `naver.co.kr` 안 뭉개짐 |
+| 4 | **온보딩 ← 지금 여기** | 큼 | 임포트 / 웹앱 고르기 / 건너뛰기 세 갈래가 다 끝까지 간다 |
 | 5 | 서명·공증 | — | **사용자만 가능.** 하드 블로커 |
 
 ---
-
-## 3. 세션 패널 필터
-열쇠(🔑) 패널이 쿠키가 있는 **모든** 도메인을 "로그인"으로 보여준다 — `doubleclick.net`·`t.co`·`notionusercontent.com`이 섞인다. 그리고 `naver.co.kr`이 `co.kr`로 뭉개진다.
-
-**고칠 곳은 [session.ts](../electron/ipc/session.ts) 하나.**
-- `siteOf()` — 뒤 두 라벨만 자른다. `co.kr`·`co.jp`·`com.au` 같은 2단계 국가 도메인은 세 라벨을 남겨야 한다
-- `session:summary` — 쿠키를 도메인별로 세기만 하고 거르지 않는다. **로그인 쿠키만 세는 조건을 여기 넣는다**: `httpOnly`이고 세션 쿠키가 아닌 것(`expirationDate`가 있고 충분히 먼 것) 정도. 광고·추적 쿠키는 대개 `httpOnly`가 아니다
-- `session:clear-site`는 `endsWith('.' + site)`로 지우니까 `siteOf`를 고치면 같이 맞는다 — **둘을 같은 함수로 유지할 것**
-
-**테스트가 붙는다**: `siteOf`와 필터 조건은 순수 함수로 빼서 `session.test.ts`. Electron import 없이 되게. (`electron/ipc/backup.test.ts`가 `vi.mock('electron')`으로 하는 방식이 있다)
-
-**하지 않을 것** — 계정 이름 표시. 쿠키는 불투명 토큰이라 못 읽는다. 하려면 사용자가 직접 라벨(`notion.so — 회사`).
 
 ## 4. 온보딩
 
@@ -121,15 +109,19 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 - **웹뷰 우클릭** — 링크 위(새 탭으로 열기·주소 복사) / 이미지 위 / 글 선택 후. 네이티브 메뉴라 CDP로 못 띄운다. **손으로만 된다**
 - **빈 프로필 가져오기** (1번 끝난 기준). `mv ~/Library/Application\ Support/focus-desk{,.real}` → 앱 켜기 → ⚙ Import → `Added N spaces` → **Show them** → 공간·위젯·사진이 다 서는지. 끝나면 되돌린다. 코드·테스트는 통과했지만 실기로는 안 해봤다
 - **빈 프로필 첫 실행에 접근성 프롬프트 없음** (2번 끝난 기준). 같은 빈 프로필에서 앱 위젯을 만들어 클릭. 스위치를 켜면 그때 뜨는지도
+- **세션 패널의 로그아웃 버튼** (3번). 목록 거르는 조건은 실제 쿠키 저장소 3개로 확인했지만, `session:clear-site`가 `siteOf`로 묶이게 바뀐 건 손으로 눌러봐야 한다 — 실제 로그인이 지워지므로 아무 사이트에서나 하면 안 된다
+- **UA 수정 후 Google 검색**. 위젯 UA에 `Electron`이 없는 건 확인했지만, "비정상적인 트래픽"·reCAPTCHA가 실제로 줄어드는지는 며칠 써봐야 안다
 - **패키징본 실사용 QA** (2026-08-23 빌드, `release/mac-arm64`). 접근성 권한을 새로 줘야 하고, dev 인스턴스를 같이 띄우면 안 된다 — 팝업·링크 / 앱 숨김 알림(늦게 돌아오는 앱이 있다) / 앱·웹앱 위젯 / 공간별 로그인
 
-## 코드 위치 (1·2번에서 생긴 것)
+## 코드 위치 (1~3번에서 생긴 것)
 
 - **설정 패널** = [SettingsPanel.tsx](../src/app/SettingsPanel.tsx). 사이드바 맨 아래 톱니(⚙). 지금 `APPS`(앱 창 붙이기 스위치)와 `DATA`(폴더 열기·내보내기·가져오기) 두 섹션. **앱 전체 동작 설정은 여기로**
 - **팔레트**([ThemePicker.tsx](../src/app/ThemePicker.tsx))는 외양. 맨 위 `ALL SPACES`(Paper·웹 다크)만 앱 전역이고 나머지는 이 공간 것
 - **백업** = [backup.ts](../electron/ipc/backup.ts). 하루 1회 스냅샷(최근 5개, `userData/backups/<날짜>/`), 내보내기·가져오기. **가져오기는 id가 같으면 건너뛴다** — 같은 프로필에 되가져오면 "Nothing new"가 정상이다. 쿠키는 백업에 없다
 - **앱 창 붙이기** = `prefsStore.attachApps`, 기본 `false`. 접근성 프롬프트는 헬퍼의 `place`·`windows` 두 곳에서만 뜬다([FocusDeskHelper.swift:391](../electron/helper/macos/FocusDeskHelper.swift#L391), [:518](../electron/helper/macos/FocusDeskHelper.swift#L518))
 - **정렬 순서** = `z` 내림차순(최근 쓴 것부터). `arrange()`는 받은 순서대로 깐다 — 안에서 다시 정렬하지 않는다
+- **세션 패널 필터**(3번) = [session.ts](../electron/ipc/session.ts)의 `isLoginCookie`, `siteOf`는 [browserAddress.ts](../src/widgets/browserAddress.ts)(main·렌더러 양쪽이 쓴다). 광고 도메인을 거르는 건 `SameSite=None` 조건이다 — `httpOnly`만으로는 204개가 60개로 줄 뿐 `doubleclick.net`이 남는다. 목록은 엄밀히 로그인이 아니라 **이 공간에서 실제로 연 사이트**에 가깝다 — 쿠키만 봐서는 로그인만 남길 수 없다
+- **브라우저 위젯 UA** = [main.ts](../electron/main.ts)에서 `Electron/<버전>` 토큰을 지운다. 안 지우면 Google이 자동화 트래픽으로 보고 "비정상적인 트래픽"으로 막는다. `navigator.userAgentData.brands`는 여전히 `Chromium`이라 reCAPTCHA가 완전히 없어지진 않는다
 
 ## 규칙
 

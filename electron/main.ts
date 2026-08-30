@@ -14,6 +14,13 @@ import { registerWindowModeIpc } from './ipc/window-mode';
 // Privileged schemes must be declared before the app is ready.
 registerImageProtocolScheme();
 
+// The default user agent is Chrome's with ` Electron/<version>` inserted, and
+// Google treats that token as automated traffic: a search in a browser widget
+// answers with "unusual traffic from your network" and a reCAPTCHA. Removing it
+// leaves the Chrome version the widget really runs. Set before the app is ready
+// so every session and <webview> gets it.
+app.userAgentFallback = app.userAgentFallback.replace(/ Electron\/[\d.]+/, '');
+
 process.env.DIST = path.join(__dirname, '../dist');
 process.env.VITE_PUBLIC = app.isPackaged
   ? process.env.DIST

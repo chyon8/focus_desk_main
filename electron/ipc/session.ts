@@ -1,4 +1,5 @@
 import { ipcMain, session } from 'electron';
+import { siteOf } from '../../src/widgets/browserAddress';
 
 /**
  * Per-space web sessions (D-074).
@@ -16,15 +17,34 @@ export function partitionFor(spaceId: string) {
 /** More sites than this in one space is a list nobody reads to the end. */
 const MAX_SITES = 40;
 
+/** Shorter than this and the cookie is not carrying a sign-in worth listing. */
+const MIN_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
 /**
- * `www.figma.com` and `figma.com` are one sign-in to a person, so the list is
- * grouped by the last two labels. Not a public-suffix implementation: this is a
- * label in a panel, and getting `co.uk` slightly wrong costs nothing.
+ * Whether a cookie is evidence of a sign-in.
+ *
+ * Every site with an ad or an analytics tag leaves cookies, so counting all of
+ * them lists `doubleclick.net` next to `figma.com` — 204 domains in a jar with
+ * seven sites in it. Three conditions cut that to the seven:
+ *
+ * - `httpOnly`. Ad and tracking cookies are read by script, so they are not.
+ * - an expiry some way off. A sign-in survives a restart; a session cookie does
+ *   not, and neither does a one-page ad token.
+ * - not `SameSite=None`. This is the one that does the work. A cookie is only
+ *   sent from a page on another site if it says `None`, which is exactly what
+ *   an ad network needs and a sign-in does not.
+ *
+ * A sign-in behind an embedded SSO frame can set `None` and would be missed. A
+ * missing row costs less than sixty ad domains listed as logins.
  */
-function siteOf(domain: string) {
-  const host = domain.replace(/^\./, '');
-  const parts = host.split('.');
-  return parts.length > 2 ? parts.slice(-2).join('.') : host;
+export function isLoginCookie(
+  cookie: { httpOnly?: boolean; expirationDate?: number; sameSite?: string },
+  now = Date.now(),
+) {
+  if (!cookie.httpOnly) return false;
+  if (cookie.sameSite === 'no_restriction') return false;
+  if (!cookie.expirationDate) return false;
+  return cookie.expirationDate * 1000 - now >= MIN_LIFETIME_MS;
 }
 
 export function registerSessionIpc() {
@@ -39,6 +59,7 @@ export function registerSessionIpc() {
     const cookies = await session.fromPartition(partitionFor(spaceId)).cookies.get({});
     const counts = new Map<string, number>();
     for (const cookie of cookies) {
+      if (!isLoginCookie(cookie)) continue;
       const site = siteOf(cookie.domain ?? '');
       if (!site) continue;
       counts.set(site, (counts.get(site) ?? 0) + 1);
@@ -55,8 +76,10 @@ export function registerSessionIpc() {
     const jar = session.fromPartition(partitionFor(spaceId)).cookies;
     const cookies = await jar.get({});
     for (const cookie of cookies) {
-      const domain = (cookie.domain ?? '').replace(/^\./, '');
-      if (domain !== site && !domain.endsWith(`.${site}`)) continue;
+      const domain = (cookie.domain ?? '').replace(/^\./, '').toLowerCase();
+      // Grouped by the same rule the panel lists them with, so clearing
+      // `naver.co.kr` cannot reach into another site under `co.kr`.
+      if (siteOf(domain) !== site) continue;
       // `remove` wants the URL the cookie would be sent to, which has to be
       // rebuilt: a secure cookie is not removed through http.
       const url = `${cookie.secure ? 'https' : 'http'}://${domain}${cookie.path ?? '/'}`;
