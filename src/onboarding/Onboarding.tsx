@@ -62,26 +62,74 @@ const WORK_KEY = 'work-v1';
 const LAND_MS = 110;
 
 /**
- * Walking into the room, in the order the eye can follow it.
+ * Walking into the room.
  *
- *   0ms     the picked card starts growing; the others begin to fade
- *   440ms   the others are gone, so nothing is left sitting over the room
- *   980ms   the card has filled the screen
- *   1080ms  the next question fades in
- *   1500ms  the cover fades out, the real backdrop already settled behind it
+ *   0ms    the picked card's rectangle brightens to the room's settled look and
+ *          starts opening outwards
+ *   140ms  the rooms not picked and the question are gone
+ *   290ms  the next question starts fading in
+ *   520ms  the opening has reached the edges
+ *   760ms  the opened copy has faded into the room under it, which by then is
+ *          the same picture at the same brightness
  *
- * Slower than it was on purpose. At 620ms the whole thing was over before it
- * read as anything, which is the worst length for a transition: long enough to
- * notice, too short to follow.
+ * The room is already on screen when the click happens — hovering a card puts it
+ * there full-bleed — so nothing is loaded, moved or resized here. What opens is
+ * a window in the dark layer over it, from the card's rectangle outwards. The
+ * picture behind that window never changes size or crop, which is what lets this
+ * run at 460ms instead of a second.
+ *
+ * It was 980ms with an ease that spent its first 150ms almost still: measured,
+ * the card was 321px wide at the click and 343px 128ms later. That reads as the
+ * app not having heard the click. The ease here does most of the distance in the
+ * first third.
  */
-const ROOM_GROWS_MS = 980;
-const CARD_GROWS_MS = 1080;
+const REVEAL_MS = 520;
+const CARDS_LEAVE_MS = 140;
+
+/** The next question. Early, over a room that is still opening. */
+const NEXT_STEP_MS = 150;
+
+/** The opened copy fading into the settled room beneath it. */
+const REVEAL_FADE_MS = 240;
 
 /**
- * When the real backdrop has finished changing to the picked room. `SceneLayer`
- * crossfades over 900ms, so the cover has to outlast that.
+ * How heavy the dark layer is while the rooms are being browsed, and once one is
+ * picked. Browsing keeps the thumbnails the brightest thing on screen; picking
+ * lifts it, because the room is what the choice was for.
  */
-const SCENE_SETTLES_MS = 1500;
+const SCRIM_BROWSING = 0.84;
+const SCRIM_SETTLED = 0.4;
+
+/** Every room is one gradient at different strengths, so it can be tweened. */
+const SCRIM =
+  'linear-gradient(to bottom, rgba(6,5,10,0.86), rgba(6,5,10,0.6) 45%, rgba(6,5,10,0.9))';
+
+/**
+ * A pool of shade where the words are.
+ *
+ * Once a room is picked the layer over it lifts almost all the way — the room is
+ * the point — so the contrast the text needs is put under the text rather than
+ * over the whole picture. Without it the sub-line and the quiet link disappear
+ * into a bright sky.
+ */
+const POOL =
+  'radial-gradient(ellipse 78% 58% at 46% 50%, rgba(6,5,10,0.7) 0%, rgba(6,5,10,0.42) 46%, transparent 78%)';
+
+/**
+ * What a room looks like once it has been walked into: the dark layer most of
+ * the way up, and the shade under the words.
+ *
+ * The window that opens on a pick carries this, so it opens straight onto the
+ * finished screen. Opening onto a bare photograph instead — which it did —
+ * means the shade has to arrive afterwards, and the room dims by a third the
+ * moment it is finished arriving.
+ */
+const Settled: React.FC = () => (
+  <>
+    <div className="absolute inset-0" style={{ backgroundImage: SCRIM, opacity: SCRIM_SETTLED }} />
+    <div className="absolute inset-0" style={{ background: POOL }} />
+  </>
+);
 
 /** The answer goes into a document, so it must not be able to be markup. */
 function escapeHtml(text: string) {
@@ -265,7 +313,7 @@ const Title: React.FC<{ children: React.ReactNode; sub?: React.ReactNode }> = ({
     {sub && (
       <p
         className="mt-2.5 text-[13.5px] leading-relaxed"
-        style={{ color: 'rgba(255,255,255,0.55)' }}
+        style={{ color: 'rgba(255,255,255,0.72)' }}
       >
         {sub}
       </p>
@@ -317,9 +365,18 @@ const Quiet: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
  * The same component draws a card and the full-bleed preview behind the grid, so
  * hovering a card really is a look into that room rather than a different
  * picture of it. `drift` is the slow push a still photograph needs to stop
- * reading as a screenshot.
+ * reading as a screenshot — cards only. The full-bleed one is still, because the
+ * app's own `SceneLayer` is still: a drifting copy is at some other scale than
+ * the real backdrop, and handing over between them jumps.
+ *
+ * `weather` is off for the copy that opens on a pick, which sits directly over
+ * another copy of the same room that already has it.
  */
-const RoomScene: React.FC<{ room: Room; drift?: boolean }> = ({ room, drift }) => {
+const RoomScene: React.FC<{ room: Room; drift?: boolean; weather?: boolean }> = ({
+  room,
+  drift,
+  weather = true,
+}) => {
   const { scene, atmosphere, particles } = room.theme;
   const wallpaper = room.background ?? (scene.kind === 'image' ? scene.src : null);
   const background: React.CSSProperties = wallpaper
@@ -354,7 +411,7 @@ const RoomScene: React.FC<{ room: Room; drift?: boolean }> = ({ room, drift }) =
       )}
       {/* The weather goes over the photograph too. Without it four of the six
           rooms are stills, and a grid of stills is a wallpaper picker. */}
-      {particles && (
+      {particles && weather && (
         <div className="absolute inset-0">
           <ParticleLayer kind={particles.kind} density={particles.density} />
         </div>
@@ -371,40 +428,41 @@ const RoomCard: React.FC<{
   wide?: boolean;
   /**
    * Another room has been picked, so this one leaves. Without it the rest of the
-   * grid sits on top of the room the user has just walked into for most of a
-   * second — the picked card grows to fill the screen and four thumbnails of the
-   * rooms not chosen are still floating over it.
+   * grid sits on top of the room the user has just walked into — four thumbnails
+   * of rooms not chosen floating over it.
    */
   leaving?: boolean;
   /** This is the one that was picked: the full-screen copy is already over it. */
   picked?: boolean;
   onPick: (from: DOMRect) => void;
-  onHover: (room: Room | null) => void;
+  onHover: (room: Room) => void;
 }> = ({ room, delay, wide, leaving, picked, onPick, onHover }) => {
   // One room is a light one, where a white label on a white scrim disappears.
   const light = room.theme.mood === 'light';
   return (
     <motion.button
       onClick={(e) => onPick(e.currentTarget.getBoundingClientRect())}
+      // No matching leave. Moving from one card to the next fires the leave before
+      // the enter, so clearing the backdrop there flashed the empty screen
+      // between every pair of rooms. The last room looked into stays.
       onHoverStart={() => onHover(room)}
-      onHoverEnd={() => onHover(null)}
       initial={{ opacity: 0, y: 16 }}
       animate={
         picked
           ? { opacity: 0 }
           : leaving
-            ? { opacity: 0, scale: 0.96, y: 10 }
+            ? { opacity: 0, scale: 0.96 }
             : { opacity: 1, y: 0, scale: 1 }
       }
       transition={
         picked
-          ? // No fade: the copy that is growing starts on exactly this rectangle,
-            // so anything left underneath is a second image of the same card.
+          ? // No fade: the window that opens starts on exactly this rectangle, so
+            // anything left underneath is a second image of the same card.
             { duration: 0 }
           : leaving
-            ? // Staggered by the same step that brought them in, so they leave in
-              // the order they arrived rather than all at once.
-              { duration: 0.42, delay: delay * 0.7, ease: [0.4, 0, 0.8, 1] }
+            ? // All at once, and quickly. Staggering them held the grid on screen
+              // for most of a second over a room the user had already chosen.
+              { duration: CARDS_LEAVE_MS / 1000, ease: 'easeIn' }
             : { delay, duration: 0.45, ease: 'easeOut' }
       }
       whileHover={leaving || picked ? undefined : { y: -6 }}
@@ -501,10 +559,21 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const [answer, setAnswer] = useState('');
   const [reading, setReading] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  /**
+   * The room shown full-bleed while browsing. It is not cleared when the pointer
+   * leaves a card: moving from one card to the next fires the leave before the
+   * enter, and clearing it there flashed the empty backdrop between every pair
+   * of rooms.
+   */
   const [peek, setPeek] = useState<Room | null>(null);
-  /** The room being walked into, and the card's rectangle it grows out of. */
+  /** The room being walked into, and the card's rectangle the window opens from. */
   const [entering, setEntering] = useState<{ room: Room; from: DOMRect } | null>(null);
+  /** Flipped a frame after `entering`, so the closed rectangle is painted first. */
+  const [opened, setOpened] = useState(false);
   const [cursor, setCursor] = useState({ x: 0.5, y: 0.4 });
+
+  /** The room behind everything: the one picked, or the one under the pointer. */
+  const shown = room ?? peek;
 
   /**
    * Picking a room sets the real theme, so the scene behind the next question is
@@ -515,8 +584,10 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
    * one — so a hover preview would be silent every time it mattered.
    */
   const takeRoom = (chosen: Room, from: DOMRect) => {
-    setPeek(null);
+    // The peek is left alone: it is already this room, full-bleed, and it is what
+    // the opening window opens onto.
     setEntering({ room: chosen, from });
+    requestAnimationFrame(() => requestAnimationFrame(() => setOpened(true)));
     useSpaceStore
       .getState()
       .setRoom(
@@ -525,13 +596,11 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         chosen.ambience
       );
     setRoom(chosen);
-    // Long enough for the card to finish growing into the screen.
-    setTimeout(() => setStep('work'), CARD_GROWS_MS);
-    // The card's picture covers the real backdrop until that backdrop has
-    // finished crossfading to the same thing, then fades out over it. Taking it
-    // away at the same moment as the step changes — which it did — uncovers a
-    // scene half way through a fade, which is the flicker.
-    setTimeout(() => setEntering(null), SCENE_SETTLES_MS);
+    // While the window is still opening. The question is what the user came for;
+    // waiting for the animation to finish before asking it is the animation
+    // charging rent.
+    setTimeout(() => setStep('work'), NEXT_STEP_MS);
+    setTimeout(() => setEntering(null), REVEAL_MS + REVEAL_FADE_MS);
   };
 
   const takeWork = (chosen: Work) => {
@@ -680,33 +749,56 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         setCursor({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight })
       }
     >
-      {/* Behind everything: the room under the pointer, full-bleed. Hovering a
-          card is a look into that room, not a bigger thumbnail of it. */}
-      <AnimatePresence>
-        {peek && !entering && (
-          <motion.div
-            key={peek.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.45 }}
-            className="absolute inset-0 overflow-hidden"
-          >
-            <RoomScene room={peek} drift />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-
+      {/* Before any room has been looked at. */}
       <div
         className="absolute inset-0"
         style={{
-          background: room
-            ? 'linear-gradient(to bottom, rgba(6,5,10,0.9), rgba(6,5,10,0.72) 45%, rgba(6,5,10,0.86))'
-            : peek || entering
-              ? 'linear-gradient(to bottom, rgba(6,5,10,0.72), rgba(6,5,10,0.52) 45%, rgba(6,5,10,0.8))'
-              : 'radial-gradient(ellipse 90% 70% at 50% 0%, #16131f 0%, #0b0910 55%, #070609 100%)',
-          transition: 'background 600ms ease',
+          background:
+            'radial-gradient(ellipse 90% 70% at 50% 0%, #16131f 0%, #0b0910 55%, #070609 100%)',
+        }}
+      />
+
+      {/* Every room, mounted from the start, one of them visible.
+          Mounted rather than swapped in on hover for two reasons. The wallpapers
+          decode once, at the size they are shown, so the first hover is not the
+          slow one. And switching is one opacity each way instead of a mount, so
+          there is no moment where two photographs are half visible over each
+          other — which is what 450ms of crossfade between rooms looked like:
+          measured 0.64 of one over 0.36 of the other for half a second. */}
+      {rooms.map((r) => (
+        <div
+          key={r.id}
+          className="absolute inset-0 overflow-hidden"
+          style={{
+            opacity: shown?.id === r.id ? 1 : 0,
+            transition: 'opacity 170ms linear',
+          }}
+        >
+          <RoomScene room={r} weather={shown?.id === r.id} />
+        </div>
+      ))}
+
+      {/* The dark layer the words are read against. It lifts most of the way once
+          a room is picked: the room is the reward for picking it, and at the
+          weight this carried while browsing the picked room came out darker than
+          the grid of thumbnails it replaced. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: SCRIM,
+          opacity: room ? SCRIM_SETTLED : shown ? SCRIM_BROWSING : 0,
+          transition: `opacity ${room ? REVEAL_MS : 170}ms ease-out`,
+        }}
+      />
+
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: POOL,
+          opacity: room ? 1 : 0,
+          // The same length as the window opening, so the two agree at the end
+          // of it and handing over between them changes nothing.
+          transition: `opacity ${REVEAL_MS}ms ease-out`,
         }}
       />
 
@@ -722,56 +814,62 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         }}
       />
 
-      {/* The picked card, growing out of where it was clicked until it is the
-          screen — so picking a room reads as walking into it.
+      {/* Picking a room opens a window in the dark layer, from the rectangle of
+          the card that was clicked out to the edges of the screen.
 
-          Its own element with its own rectangle rather than a `layoutId` shared
-          with the card in the grid. Two mounted elements claiming one layoutId
-          is not a handover, it is two of the same card on screen at once, and
-          what that looks like is a flicker.
+          A window rather than a card that grows. The room behind it is already
+          full-bleed and already the right one, so this copy is the same picture
+          at the same size and crop from the first frame to the last — only the
+          shape it is seen through changes. Nothing is resized, so the picture
+          never re-crops or slides, and nothing is laid out again per frame.
 
-          Over the cards, not under them: while it grows, the rooms not chosen
-          are fading out around it, and the ones it has already covered must
-          stay covered. */}
+          The previous version animated top, left, width and height on a
+          screen-sized element with a `cover` background: every frame was a fresh
+          layout and a fresh crop of a 730KB photograph, and the picture slid
+          about inside the growing rectangle.
+
+          Over the cards, so the rooms not chosen cannot show through the part of
+          the window that has already opened. */}
       <AnimatePresence>
         {entering && (
           <motion.div
             key={entering.room.id}
-            className="fixed z-[205] overflow-hidden"
-            initial={{
-              top: entering.from.top,
-              left: entering.from.left,
-              width: entering.from.width,
-              height: entering.from.height,
-              borderRadius: 18,
-              opacity: 1,
+            className="fixed inset-0 z-[203] overflow-hidden pointer-events-none"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: REVEAL_FADE_MS / 1000 } }}
+            style={{
+              clipPath: opened
+                ? 'inset(0px 0px 0px 0px round 0px)'
+                : `inset(${entering.from.top}px ${window.innerWidth - entering.from.right}px ${
+                    window.innerHeight - entering.from.bottom
+                  }px ${entering.from.left}px round 18px)`,
+              // Moves on the first frame and keeps moving. An ease that spends its
+              // last two thirds almost still is the same complaint as one that
+              // spends its first two thirds almost still, arriving from the other
+              // side: the motion is over in 150ms and the rest is a wait.
+              transition: `clip-path ${REVEAL_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`,
+              willChange: 'clip-path',
             }}
-            animate={{
-              top: 0,
-              left: 0,
-              width: window.innerWidth,
-              height: window.innerHeight,
-              borderRadius: 0,
-            }}
-            // Eased both ends rather than snapping away from the click: the card
-            // carries the eye into the room, and an ease that is all over in the
-            // first third arrives before the eye does.
-            transition={{ duration: ROOM_GROWS_MS / 1000, ease: [0.5, 0, 0.2, 1] }}
-            exit={{ opacity: 0, transition: { duration: 0.7, ease: 'easeInOut' } }}
           >
-            <RoomScene room={entering.room} />
+            <RoomScene room={entering.room} weather={false} />
+            <Settled />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="relative min-h-full flex items-center justify-center px-10 py-16">
+      {/* Above the opening window, so the next question is readable while the
+          room is still opening behind it. */}
+      <div className="relative z-[204] min-h-full flex items-center justify-center px-10 py-16">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
+            // `mode="wait"` runs these one after the other, so the exit is what
+            // the next question waits on. Short for that reason.
+            exit={{ opacity: 0, y: -10, transition: { duration: 0.14 } }}
+            transition={{ duration: 0.28 }}
             className="w-full max-w-[62rem]"
           >
             {step === 'room' && (
@@ -780,7 +878,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     card is clicked, and reading it over the room is odd. */}
                 <motion.div
                   animate={{ opacity: entering ? 0 : 1, y: entering ? -8 : 0 }}
-                  transition={{ duration: 0.32, ease: 'easeIn' }}
+                  transition={{ duration: CARDS_LEAVE_MS / 1000, ease: 'easeIn' }}
                 >
                   <Title sub="A space is somewhere you are. This one is yours — change it any time.">
                     {greetingForHour(hour)} Where do you want to work?

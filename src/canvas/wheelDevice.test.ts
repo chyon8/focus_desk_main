@@ -35,4 +35,18 @@ describe('looksLikeMouse', () => {
     expect(looksLikeMouse({ deltaX: 0, wheelDeltaY: 0 })).toBe(false);
     expect(looksLikeMouse({ deltaX: 0 })).toBe(false);
   });
+
+  // Recorded from a real trackpad pinch on 2026-09-01. deltaX is always 0 and
+  // wheelDeltaY is always exactly ±120 whatever the fingers did, so this test
+  // cannot tell a pinch from a wheel — 133 of 142 events passed it. The caller
+  // keeps ctrl events away from it for that reason; this is here so the shape of
+  // a pinch is on the record rather than rediscovered.
+  it('cannot tell a pinch from a wheel, which is why the caller must', () => {
+    const PINCH = [
+      { deltaX: 0, deltaY: 3.21, wheelDeltaY: -120 },
+      { deltaX: 0, deltaY: -13.05, wheelDeltaY: 120 },
+      { deltaX: 0, deltaY: 22.61, wheelDeltaY: -120 },
+    ];
+    for (const e of PINCH) expect(looksLikeMouse(e)).toBe(true);
+  });
 });

@@ -18,6 +18,11 @@ const BURST_GAP_MS = 200;
  * `deltaX` in 87 of 92 events and hit a multiple of 120 three times. So the test
  * never misreads a mouse, and the few trackpad events it could misread are ruled
  * out by deciding once per scroll rather than per event.
+ *
+ * A pinch is the exception, and it is not decided here — the caller keeps ctrl
+ * events out of this test. macOS reports a pinch as ctrl+wheel with `deltaX` of
+ * exactly 0 and `wheelDeltaY` of exactly ±120, which is this signature exactly.
+ * Measured 2026-09-01: 133 of 142 pinch events passed it.
  */
 export function looksLikeMouse(e: Pick<WheelEvent, 'deltaX'> & { wheelDeltaY?: number }) {
   const notches = e.wheelDeltaY ?? 0;
@@ -52,7 +57,13 @@ export function useCameraControls(ref: React.RefObject<HTMLElement | null>) {
       const rect = el.getBoundingClientRect();
       const cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
-      if (e.timeStamp - lastWheelAt > BURST_GAP_MS) isMouse = looksLikeMouse(e);
+      // A pinch is never allowed to decide the device. It matches the mouse
+      // signature exactly, and the `wheelDeltaY` it matches on is a constant
+      // ±120 that says nothing about how far the fingers moved — so reading a
+      // pinch as a wheel zoomed a flat 10% per event whether the fingers went
+      // 3px or 22px, which is a staircase with no fine adjustment in it.
+      const isPinch = e.ctrlKey || e.metaKey;
+      if (!isPinch && e.timeStamp - lastWheelAt > BURST_GAP_MS) isMouse = looksLikeMouse(e);
       lastWheelAt = e.timeStamp;
 
       // ⇧ turns the wheel back into scrolling, on whichever axis the browser put
@@ -62,10 +73,11 @@ export function useCameraControls(ref: React.RefObject<HTMLElement | null>) {
         return;
       }
 
-      if (isMouse || e.ctrlKey || e.metaKey) {
-        // A wheel's own deltaY is far too large for the trackpad's formula — one
+      if (isMouse || isPinch) {
+        // A wheel's own deltaY is far too large for the distance formula — one
         // notch reads as 120 and a fast spin as 681, which would black out the
         // canvas in a single event. Notches are what a wheel actually reports.
+        // Fingers report a distance, and that is what a pinch zooms by.
         const notches = (e as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY ?? 0;
         const nextZoom = isMouse
           ? camera.zoom * Math.pow(NOTCH_ZOOM, notches / 120)

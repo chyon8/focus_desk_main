@@ -28,12 +28,21 @@ if (process.env.FOCUS_DESK_PROFILE) {
 // Privileged schemes must be declared before the app is ready.
 registerImageProtocolScheme();
 
-// The default user agent is Chrome's with ` Electron/<version>` inserted, and
-// Google treats that token as automated traffic: a search in a browser widget
-// answers with "unusual traffic from your network" and a reCAPTCHA. Removing it
-// leaves the Chrome version the widget really runs. Set before the app is ready
-// so every session and <webview> gets it.
-app.userAgentFallback = app.userAgentFallback.replace(/ Electron\/[\d.]+/, '');
+// Electron's default user agent is Chrome's with two tokens Chrome never sends:
+// the app's own `<name>/<version>` and ` Electron/<version>`. Real Chrome has
+// nothing between `(KHTML, like Gecko)` and `Chrome/`, and reduces its version to
+// `<major>.0.0.0`. Set before the app is ready so every session and <webview>
+// gets it.
+//
+// This does not stop Google's "unusual traffic" page. Measured 2026-09-01: the
+// widget was served `/sorry/index`, and on a retry the same untouched agent went
+// straight through — that page is decided on the address the request comes from,
+// not on this string. What is here is only the part of the request the app is
+// responsible for.
+app.userAgentFallback = app.userAgentFallback
+  .replace(/ Electron\/[\d.]+/, '')
+  .replace(` ${app.getName()}/${app.getVersion()}`, '')
+  .replace(/Chrome\/(\d+)[\d.]*/, 'Chrome/$1.0.0.0');
 
 process.env.DIST = path.join(__dirname, '../dist');
 process.env.VITE_PUBLIC = app.isPackaged
