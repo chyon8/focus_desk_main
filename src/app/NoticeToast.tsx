@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import { useUiStore } from '../stores/uiStore';
 
 /** Long enough to read a line and reach the button. */
@@ -16,11 +17,13 @@ export const NoticeToast: React.FC = () => {
   const notice = useUiStore((s) => s.notice);
   const id = notice?.id;
 
+  const sticky = notice?.sticky;
+
   useEffect(() => {
-    if (id === undefined) return;
+    if (id === undefined || sticky) return;
     const timer = setTimeout(() => useUiStore.getState().dismissNotice(), VISIBLE_MS);
     return () => clearTimeout(timer);
-  }, [id]);
+  }, [id, sticky]);
 
   return (
     <AnimatePresence>
@@ -42,6 +45,15 @@ export const NoticeToast: React.FC = () => {
               className="chrome-button-on px-3 h-7 rounded-lg text-[11px] font-medium"
             >
               {notice.action.label}
+            </button>
+          )}
+          {notice.sticky && (
+            <button
+              onClick={() => useUiStore.getState().dismissNotice()}
+              title="Dismiss"
+              className="t-faint hover:t-ink w-7 h-7 flex items-center justify-center rounded-lg"
+            >
+              <X size={12} />
             </button>
           )}
         </motion.div>

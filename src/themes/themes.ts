@@ -1,50 +1,8 @@
 import type { Theme } from './types';
 
-export const DEFAULT_THEME_ID = 'lofi-room';
+export const DEFAULT_THEME_ID = 'golden-hour';
 
 export const THEMES: Theme[] = [
-  {
-    id: 'lofi-room',
-    name: 'Lofi Room',
-    mood: 'dark',
-    scene: { kind: 'image', src: '/wallpapers/lofi_cat.jpeg' },
-    atmosphere: {
-      scrim: 0.4,
-      scrimTint: '26, 16, 10',
-      glow: { color: 'rgba(255, 196, 128, 0.20)', x: 0.5, y: 0.18, radius: 0.95 },
-    },
-    particles: { kind: 'dust', density: 0.35 },
-    tokens: {
-      ink: '#f7ece0',
-      inkSoft: 'rgba(247, 236, 224, 0.55)',
-      panel: 'rgba(38, 27, 22, 0.5)',
-      surface: '#241a15',
-      panelBorder: 'rgba(255, 224, 196, 0.13)',
-      accent: '#e8a87c',
-      font: 'sans',
-    },
-  },
-  {
-    id: 'fireplace',
-    name: 'Fireplace',
-    mood: 'dark',
-    scene: { kind: 'image', src: '/wallpapers/lofi_fireplace.jpeg' },
-    atmosphere: {
-      scrim: 0.44,
-      scrimTint: '34, 14, 6',
-      glow: { color: 'rgba(255, 138, 48, 0.26)', x: 0.5, y: 0.72, radius: 0.85, flicker: true },
-    },
-    particles: { kind: 'embers', density: 0.3 },
-    tokens: {
-      ink: '#fbeade',
-      inkSoft: 'rgba(251, 234, 222, 0.55)',
-      panel: 'rgba(44, 22, 14, 0.52)',
-      surface: '#2a170f',
-      panelBorder: 'rgba(255, 186, 126, 0.15)',
-      accent: '#ff9d5c',
-      font: 'sans',
-    },
-  },
   {
     id: 'golden-hour',
     name: 'Golden Hour',

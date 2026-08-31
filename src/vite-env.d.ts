@@ -122,6 +122,13 @@ declare global {
       wallpapers: () => Promise<string[]>;
       /** Downloads a picture through a space's session and files it. Null if it could not be had. */
       fromUrl: (url: string, partition: string) => Promise<string | null>;
+      /**
+       * One icon per host, downloaded from the sites themselves, with the average
+       * colour of its pixels as `r, g, b`. Null for a host that has none.
+       */
+      favicons: (
+        hosts: string[]
+      ) => Promise<Record<string, { url: string; color: string } | null>>;
     };
     windowMode?: {
       toggleFullscreen: () => Promise<boolean>;

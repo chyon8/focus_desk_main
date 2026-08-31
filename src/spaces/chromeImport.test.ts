@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_TABS_PER_SPACE,
+  OPEN_TABS,
   isImportable,
   nameForWindow,
   spacesFrom,
@@ -8,7 +9,7 @@ import {
 } from './chromeImport';
 import type { SpaceDoc } from './types';
 
-const AREA = { width: 1440, height: 816 };
+const AREA = { width: 1400, height: 816 };
 const tab = (url: string, title = url) => ({ url, title });
 /** Stands in for the store's `newSpace`, which needs neither store nor DOM here. */
 const blank = (name: string) => ({ id: `id-${name}`, name, widgets: {} }) as unknown as SpaceDoc;
@@ -87,14 +88,24 @@ describe('spacesFrom', () => {
     expect(Object.keys(spaces[1].widgets)).toHaveLength(1);
   });
 
-  it('creates every widget closed, so opening the space loads no pages', () => {
+  it('loads the leading tabs and leaves the rest as cards', () => {
     const choices = windowChoices([
       { id: '1', tabs: Array.from({ length: 8 }, (_, i) => tab(`https://a.com/${i}`)) },
     ]);
     const [space] = spacesFrom(choices, blank, AREA);
-    const widgets = Object.values(space.widgets);
+    const widgets = Object.values(space.widgets).sort((a, b) => b.z - a.z);
     expect(widgets).toHaveLength(8);
-    expect(widgets.every((w) => (w.data as { open?: boolean }).open === false)).toBe(true);
+    expect(widgets.map((w) => (w.data as { open: boolean }).open)).toEqual([
+      ...Array(OPEN_TABS).fill(true),
+      ...Array(8 - OPEN_TABS).fill(false),
+    ]);
+  });
+
+  it('leaves the icon to the card, which fetches its own', () => {
+    const choices = windowChoices([{ id: '1', tabs: [tab('https://www.figma.com/file/x')] }]);
+    const [space] = spacesFrom(choices, blank, AREA);
+    const [widget] = Object.values(space.widgets);
+    expect((widget.data as { favicon?: string }).favicon).toBeUndefined();
   });
 
   it('carries the tab title over, so a card has a name before it loads', () => {
@@ -120,5 +131,29 @@ describe('spacesFrom', () => {
     const [space] = spacesFrom(choices, blank, AREA);
     const byZ = Object.values(space.widgets).sort((a, b) => b.z - a.z);
     expect((byZ[0].data as { url: string }).url).toBe('https://first.com');
+  });
+});
+
+describe('spacesFrom layout', () => {
+  it('fits the widgets to the screen rather than the camera to the widgets', () => {
+    const choices = windowChoices([
+      { id: '1', tabs: Array.from({ length: 12 }, (_, i) => tab(`https://a.com/${i}`)) },
+    ]);
+    const [space] = spacesFrom(choices, blank, AREA);
+    const widgets = Object.values(space.widgets);
+    const right = Math.max(...widgets.map((w) => w.x + w.width));
+    const bottom = Math.max(...widgets.map((w) => w.y + w.height));
+    expect(right).toBeLessThanOrEqual(AREA.width);
+    expect(bottom).toBeLessThanOrEqual(AREA.height);
+  });
+
+  it('gives the two tabs the user was reading a bigger box', () => {
+    const choices = windowChoices([
+      { id: '1', tabs: Array.from({ length: 8 }, (_, i) => tab(`https://a.com/${i}`)) },
+    ]);
+    const [space] = spacesFrom(choices, blank, AREA);
+    const byZ = Object.values(space.widgets).sort((a, b) => b.z - a.z);
+    expect(byZ[0].width).toBeGreaterThan(byZ[2].width);
+    expect(byZ[1].width).toBeGreaterThan(byZ[2].width);
   });
 });

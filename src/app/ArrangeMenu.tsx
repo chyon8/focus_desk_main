@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Layers, LayoutGrid } from 'lucide-react';
+import { Layers, LayoutGrid, PanelTop } from 'lucide-react';
 import { autoColumns } from '../canvas/layout';
 import { useSpaceStore } from '../stores/spaceStore';
 import { canvasArea } from '../stores/uiStore';
@@ -26,6 +26,11 @@ export const ArrangeMenu: React.FC = () => {
   });
   const runGrid = (columns?: number) => {
     arrangeWidgets('grid', columns);
+    setIsOpen(false);
+  };
+
+  const runFocus = () => {
+    arrangeWidgets('focus');
     setIsOpen(false);
   };
 
@@ -83,6 +88,15 @@ export const ArrangeMenu: React.FC = () => {
               </div>
 
               <div className="bg-hair my-1 h-px" />
+
+              <button
+                onClick={runFocus}
+                className="row w-full flex items-center gap-3 px-2 py-2 rounded-xl"
+              >
+                <PanelTop size={15} />
+                <span className="flex-1 text-left text-xs font-medium">Focus</span>
+                <span className="t-faint text-[10px]">Last two big</span>
+              </button>
 
               <button
                 onClick={runCascade}

@@ -17,7 +17,7 @@ export interface Placement {
 }
 
 // A column count covers rows (1) and a single row (n), so those need no own mode.
-export type ArrangeMode = 'grid' | 'cascade';
+export type ArrangeMode = 'grid' | 'cascade' | 'focus';
 
 export const ARRANGE_GAP = 32;
 const CASCADE_STEP = 36;
@@ -63,8 +63,7 @@ function covered(boxes: Box[], cell: Area) {
  * tall one wants columns, and the boxes' own shapes tip the balance too — so try
  * every count and keep the one that covers the most.
  */
-export function autoColumns(boxes: Box[], area: Area): number {
-  const inner = innerArea(area);
+function bestColumns(boxes: Box[], inner: Area): number {
   let best = 1;
   let bestCover = -1;
   for (let cols = 1; cols <= boxes.length; cols++) {
@@ -77,14 +76,21 @@ export function autoColumns(boxes: Box[], area: Area): number {
   return best;
 }
 
+export function autoColumns(boxes: Box[], area: Area): number {
+  return bestColumns(boxes, innerArea(area));
+}
+
 /**
  * A grid that fills the area rather than one that merely tidies: the cells are as
  * big as the space allows, and every box grows (or shrinks) into its own cell.
  * Each box keeps its aspect ratio, so it is centred in whatever the cell leaves over.
  */
-function fillGrid(boxes: Box[], area: Area, columns?: number): Record<string, Placement> {
-  const inner = innerArea(area);
-  const cols = Math.max(1, Math.min(boxes.length, columns ?? autoColumns(boxes, area)));
+function fillInto(
+  boxes: Box[],
+  inner: Area,
+  cols: number,
+  top: number
+): Record<string, Placement> {
   const cell = cellSize(boxes.length, cols, inner);
 
   const placements: Record<string, Placement> = {};
@@ -99,7 +105,121 @@ function fillGrid(boxes: Box[], area: Area, columns?: number): Record<string, Pl
     const height = Math.round(box.height * scale);
     placements[box.id] = {
       x: Math.round(rowInset + col * (cell.width + ARRANGE_GAP) + (cell.width - width) / 2),
-      y: Math.round(row * (cell.height + ARRANGE_GAP) + (cell.height - height) / 2),
+      y: Math.round(top + row * (cell.height + ARRANGE_GAP) + (cell.height - height) / 2),
+      width,
+      height,
+    };
+  });
+  return placements;
+}
+
+function fillGrid(boxes: Box[], area: Area, columns?: number): Record<string, Placement> {
+  const inner = innerArea(area);
+  const cols = Math.max(1, Math.min(boxes.length, columns ?? bestColumns(boxes, inner)));
+  return fillInto(boxes, inner, cols, 0);
+}
+
+/** How many boxes get the bigger tile, and how many cells across one of those is. */
+const FOCUS_COUNT = 2;
+const LEAD_SPAN = 2;
+
+/**
+ * Where each tile sits on a `cols`-wide cell grid, and how many rows that took.
+ *
+ * Plain row-scan packing: each tile goes in the first place it fits, reading
+ * order. That is what keeps the result looking deliberate — every tile, big or
+ * small, lands on the same column rhythm, so the edges line up down the whole
+ * layout instead of each band having its own spacing.
+ */
+function packTiles(spans: number[], cols: number) {
+  const taken: boolean[][] = [];
+  const isTaken = (row: number, col: number) => taken[row]?.[col] ?? false;
+  const fits = (row: number, col: number, span: number) => {
+    if (col + span > cols) return false;
+    for (let r = 0; r < span; r++) {
+      for (let c = 0; c < span; c++) if (isTaken(row + r, col + c)) return false;
+    }
+    return true;
+  };
+
+  const cells: { row: number; col: number }[] = [];
+  let rows = 0;
+  for (const span of spans) {
+    let row = 0;
+    for (;;) {
+      const col = [...Array(cols).keys()].find((c) => fits(row, c, span));
+      if (col === undefined) {
+        row++;
+        continue;
+      }
+      for (let r = 0; r < span; r++) {
+        for (let c = 0; c < span; c++) (taken[row + r] ??= [])[col + c] = true;
+      }
+      cells.push({ row, col });
+      rows = Math.max(rows, row + span);
+      break;
+    }
+  }
+  return { cells, rows };
+}
+
+/**
+ * A mosaic: the first boxes get a tile twice as wide and twice as tall, the rest
+ * get one cell each, and everything sits on one grid.
+ *
+ * The caller decides what "first" means — `arrangeWidgets` hands them over most
+ * recently used first, so what the user was last working on comes back big. An
+ * even grid says everything on the desk matters the same, which is never true of
+ * a desk somebody has been working at.
+ *
+ * The big tile is exactly two cells, not a share of the height. Sizing the front
+ * row as a fraction — which is what this did first — left the bands unrelated to
+ * each other: two enormous tiles over a strip of small ones, at whatever ratio
+ * the numbers happened to give. A whole multiple of the same cell keeps the
+ * difference readable and the layout tidy.
+ *
+ * The column count is the one whose cells the boxes fill best, so a row of
+ * landscape browser widgets does not get packed into tall thin cells.
+ *
+ * With two or fewer boxes there is no mosaic to make, so it is an even grid.
+ */
+function focusGrid(boxes: Box[], area: Area): Record<string, Placement> {
+  if (boxes.length <= FOCUS_COUNT) return fillGrid(boxes, area);
+
+  const inner = innerArea(area);
+  const spans = boxes.map((_, i) => (i < FOCUS_COUNT ? LEAD_SPAN : 1));
+  const tileSize = (cell: Area, span: number) => ({
+    width: cell.width * span + ARRANGE_GAP * (span - 1),
+    height: cell.height * span + ARRANGE_GAP * (span - 1),
+  });
+
+  let best: { cells: { row: number; col: number }[]; cell: Area; covers: number } | null = null;
+  for (let cols = LEAD_SPAN + 1; cols <= boxes.length; cols++) {
+    const { cells, rows } = packTiles(spans, cols);
+    const cell = {
+      width: (inner.width - ARRANGE_GAP * (cols - 1)) / cols,
+      height: (inner.height - ARRANGE_GAP * (rows - 1)) / rows,
+    };
+    if (cell.width < 1 || cell.height < 1) continue;
+    const covers = boxes.reduce((sum, box, i) => {
+      const tile = tileSize(cell, spans[i]);
+      const scale = Math.min(tile.width / box.width, tile.height / box.height);
+      return sum + box.width * box.height * scale * scale;
+    }, 0);
+    if (!best || covers > best.covers) best = { cells, cell, covers };
+  }
+  if (!best) return fillGrid(boxes, area);
+
+  const placements: Record<string, Placement> = {};
+  boxes.forEach((box, i) => {
+    const { row, col } = best.cells[i];
+    const tile = tileSize(best.cell, spans[i]);
+    const scale = Math.min(tile.width / box.width, tile.height / box.height);
+    const width = Math.round(box.width * scale);
+    const height = Math.round(box.height * scale);
+    placements[box.id] = {
+      x: Math.round(col * (best.cell.width + ARRANGE_GAP) + (tile.width - width) / 2),
+      y: Math.round(row * (best.cell.height + ARRANGE_GAP) + (tile.height - height) / 2),
       width,
       height,
     };
@@ -112,6 +232,7 @@ function fillGrid(boxes: Box[], area: Area, columns?: number): Record<string, Pl
  * the first box takes the first cell. The caller decides what that order means.
  * - grid: fills `area` — `columns` per row, or the count that wastes the least
  *   space when omitted. Boxes are resized to their cells (aspect kept).
+ * - focus: a mosaic — the first two get a tile twice the size, on the same grid.
  * - cascade: overlapping stagger, like a deck of windows. Sizes are left alone.
  */
 export function arrange(
@@ -135,6 +256,8 @@ export function arrange(
     });
     return placements;
   }
+
+  if (mode === 'focus') return focusGrid(ordered, area);
 
   return fillGrid(ordered, area, columns);
 }

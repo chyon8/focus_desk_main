@@ -136,6 +136,8 @@ contextBridge.exposeInMainWorld('images', {
   // given session so a login-only image still arrives.
   fromUrl: (url: string, partition: string) =>
     ipcRenderer.invoke('images:from-url', url, partition),
+  // Real icons, with a tint, for sites the app has never loaded.
+  favicons: (hosts: string[]) => ipcRenderer.invoke('images:favicons', hosts),
 });
 
 contextBridge.exposeInMainWorld('backup', {

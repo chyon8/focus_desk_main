@@ -42,6 +42,12 @@ interface SpaceState {
   setCamera: (camera: Camera) => void;
   setTheme: (themeId: string) => void;
   setBackground: (background: SpaceDoc['background']) => void;
+  /** Theme, wallpaper and sound in one write. See the implementation for why. */
+  setRoom: (
+    themeId: string,
+    background: SpaceDoc['background'],
+    ambience: AmbienceLevels
+  ) => void;
   setAmbience: (ambience: AmbienceLevels) => void;
   /** Null hands the weather back to the theme. */
   setParticles: (particles: ParticlesChoice | null) => void;
@@ -58,6 +64,8 @@ interface SpaceState {
   ) => string;
   /** Copies widgets, contents and all, offset so the copy is visible on top. */
   duplicateWidgets: (ids: string[]) => void;
+  /** Sets the stacking order from a list given most recently used first. */
+  orderWidgets: (ids: string[]) => void;
   bringToFront: (id: string) => void;
   moveWidget: (id: string, x: number, y: number) => void;
   /** Moves a whole selection by one delta, so the group keeps its shape. */
@@ -309,6 +317,18 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   setBackground: (background) => updateActive(set, (space) => ({ ...space, background })),
 
+  /**
+   * One write, because `SceneLayer` crossfades whenever the scene changes and
+   * three writes are three scenes.
+   *
+   * Setting them one at a time — which is what the onboarding did — starts a
+   * fade towards the theme's own wallpaper (`setTheme` clears the override),
+   * then interrupts it with a fade towards the real one. What the user sees
+   * while picking a room is half of a scene nobody chose.
+   */
+  setRoom: (themeId, background, ambience) =>
+    updateActive(set, (space) => ({ ...space, themeId, background, particles: null, ambience })),
+
   setAmbience: (ambience) => updateActive(set, (space) => ({ ...space, ambience })),
 
   setParticles: (particles) => updateActive(set, (space) => ({ ...space, particles })),
@@ -409,6 +429,23 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       if (useUiStore.getState().selectedIds.length > 1) {
         useUiStore.getState().setSelection(copies);
       }
+      return { ...space, widgets };
+    }),
+
+  /**
+   * Rewrites the stacking order, most recently used first.
+   *
+   * `z` is what "recently used" means here — `arrangeWidgets` sorts by it, so it
+   * decides which widgets a `focus` arrange makes big. Widgets created in a
+   * batch would otherwise rank by the order they were added, which put an empty
+   * memo above the tabs the user had just been reading.
+   */
+  orderWidgets: (ids) =>
+    updateActive(set, (space) => {
+      const widgets = { ...space.widgets };
+      ids.forEach((id, i) => {
+        if (widgets[id]) widgets[id] = { ...widgets[id], z: ids.length - i };
+      });
       return { ...space, widgets };
     }),
 

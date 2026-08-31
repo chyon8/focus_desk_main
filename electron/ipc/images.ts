@@ -1,4 +1,4 @@
-import { app, ipcMain, net, protocol, session } from 'electron';
+import { app, ipcMain, nativeImage, net, protocol, session } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -28,6 +28,8 @@ const EXT_FOR_TYPE: Record<string, string> = {
   'image/avif': '.avif',
   'image/gif': '.gif',
   'image/svg+xml': '.svg',
+  'image/x-icon': '.ico',
+  'image/vnd.microsoft.icon': '.ico',
 };
 
 /** Writes an image into the images directory under its content hash. */
@@ -37,6 +39,178 @@ function store(data: Buffer, ext: string) {
   const target = path.join(imagesDir(), name);
   if (!fs.existsSync(target)) fs.writeFileSync(target, data);
   return `${IMAGE_SCHEME}://local/${name}`;
+}
+
+/** A favicon fetch that cannot hold a card waiting. */
+const FAVICON_TIMEOUT_MS = 4000;
+
+/** An icon and the colour to tint its card with. */
+export interface Favicon {
+  url: string;
+  /** `r, g, b` — the average of the icon's opaque pixels, ready for `rgb()`. */
+  color: string;
+}
+
+/**
+ * The colour a card takes from its icon.
+ *
+ * Not a plain average: a logo drawn on a dark rounded square averages to that
+ * square, and Figma — whose mark is four bright colours on near-black — came out
+ * the colour of the background it was meant to stand out from. Each pixel is
+ * weighted by how colourful it is, so the marks win over their backing.
+ *
+ * A logo with no colour in it at all — GitHub's is one flat black shape — has
+ * nothing to weight, so it falls back to the flat average and gets the grey it
+ * honestly is.
+ *
+ * Transparent pixels never count, or every logo on a clear background drifts
+ * towards the same grey. Decoded here rather than in the page because the icon
+ * is served over a custom scheme, which taints a canvas and makes the pixels
+ * unreadable there.
+ */
+function averageColour(data: Buffer): string | null {
+  const image = nativeImage.createFromBuffer(data);
+  if (image.isEmpty()) return null;
+  // BGRA, one row after another.
+  const pixels = image.toBitmap();
+
+  let flatR = 0;
+  let flatG = 0;
+  let flatB = 0;
+  let seen = 0;
+  let keenR = 0;
+  let keenG = 0;
+  let keenB = 0;
+  let keenness = 0;
+
+  // Every fourth pixel: a 512-square icon is a quarter of a million of them, and
+  // an average does not get truer for looking at all of them.
+  for (let i = 0; i < pixels.length; i += 16) {
+    if (pixels[i + 3] < 128) continue;
+    const b = pixels[i];
+    const g = pixels[i + 1];
+    const r = pixels[i + 2];
+    flatR += r;
+    flatG += g;
+    flatB += b;
+    seen++;
+    // How far this pixel is from grey, which is what "colourful" means here.
+    const colour = Math.max(r, g, b) - Math.min(r, g, b);
+    keenR += r * colour;
+    keenG += g * colour;
+    keenB += b * colour;
+    keenness += colour;
+  }
+  if (seen === 0) return null;
+
+  // A whole icon this close to grey has no colour to find; the flat average is
+  // the truthful answer rather than whatever the few odd pixels say.
+  if (keenness > seen * 12) {
+    return `${Math.round(keenR / keenness)}, ${Math.round(keenG / keenness)}, ${Math.round(
+      keenB / keenness
+    )}`;
+  }
+  return `${Math.round(flatR / seen)}, ${Math.round(flatG / seen)}, ${Math.round(flatB / seen)}`;
+}
+
+async function fetchImage(url: string): Promise<Favicon | null> {
+  const response = await net.fetch(url, { signal: AbortSignal.timeout(FAVICON_TIMEOUT_MS) });
+  if (!response.ok) return null;
+  const type = (response.headers.get('content-type') ?? '').split(';')[0].trim();
+  if (!type.startsWith('image/')) return null;
+  const data = Buffer.from(await response.arrayBuffer());
+  if (data.length === 0) return null;
+  const colour = averageColour(data);
+  // No decodable pixels means no image, whatever the header said.
+  if (!colour) return null;
+  return { url: store(data, EXT_FOR_TYPE[type] ?? '.png'), color: colour };
+}
+
+/** The largest square a `sizes` attribute claims, or 0 when it claims none. */
+function sizeOf(tag: string): number {
+  const sizes = tag.match(/sizes\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+  return Math.max(0, ...[...sizes.matchAll(/(\d+)x\d+/gi)].map((m) => Number(m[1])));
+}
+
+/**
+ * The icons a page declares, largest first, as absolute URLs.
+ *
+ * Preferred over `/favicon.ico` because that file is usually 32 pixels across
+ * and a card draws its logo at 64 on a display with two device pixels to each
+ * one, where an upscaled icon is the sort of blur the download was to avoid. An
+ * apple-touch-icon counts: it carries no `sizes` but is 180 by convention.
+ *
+ * Only the head is read — the markup is scanned with a regular expression, and
+ * a `rel="icon"` never appears below it.
+ */
+function declaredIcons(html: string, origin: string): string[] {
+  const found: { url: string; size: number }[] = [];
+  for (const tag of html.slice(0, 60_000).match(/<link\b[^>]*>/gi) ?? []) {
+    const rel = tag.match(/rel\s*=\s*["']([^"']*)["']/i)?.[1] ?? '';
+    const touch = /\bapple-touch-icon\b/i.test(rel);
+    if (!touch && !/\bicon\b/i.test(rel)) continue;
+    const href = tag.match(/href\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (!href) continue;
+    try {
+      found.push({ url: new URL(href, origin).href, size: sizeOf(tag) || (touch ? 180 : 0) });
+    } catch {
+      // A relative href that will not resolve: try the next link.
+    }
+  }
+  return found.sort((a, b) => b.size - a.size).map((icon) => icon.url);
+}
+
+/**
+ * The real icon for a site, downloaded once and kept.
+ *
+ * Chrome's tab list comes over AppleScript, which cannot report favicons, so an
+ * imported tab that has never been loaded has nothing to show but its first
+ * letter — a whole space of grey boxes. These are fetched from the sites
+ * themselves rather than through an icon service: the list of sites somebody has
+ * open is the last thing this app should be handing to a third party.
+ */
+async function download(host: string): Promise<Favicon | null> {
+  const origin = `https://${host}`;
+  try {
+    const page = await net.fetch(origin, { signal: AbortSignal.timeout(FAVICON_TIMEOUT_MS) });
+    if (page.ok) {
+      // Two at most: a page can declare a dozen, and the rest are the same
+      // picture at sizes no card needs.
+      for (const url of declaredIcons(await page.text(), origin).slice(0, 2)) {
+        const icon = await fetchImage(url);
+        if (icon) return icon;
+      }
+    }
+  } catch {
+    // Unreachable, or not HTML. The conventional path may still hold an icon.
+  }
+  try {
+    return await fetchImage(`${origin}/favicon.ico`);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One download per host for as long as the app runs.
+ *
+ * Every closed card asks for its own icon, and a space of twelve YouTube tabs is
+ * twelve cards on one host. The promise is cached rather than the result, so the
+ * twelve that mount together share one request. A host that came back with
+ * nothing is dropped again: it may have been offline, and the next card to ask
+ * should find out rather than inherit the answer.
+ */
+const inFlight = new Map<string, Promise<Favicon | null>>();
+
+function faviconFor(host: string): Promise<Favicon | null> {
+  const known = inFlight.get(host);
+  if (known) return known;
+  const wanted = download(host).then((icon) => {
+    if (!icon) inFlight.delete(host);
+    return icon;
+  });
+  inFlight.set(host, wanted);
+  return wanted;
 }
 
 export function registerImagesIpc() {
@@ -50,6 +224,14 @@ export function registerImagesIpc() {
       .filter((name) => WALLPAPER_EXTS.has(path.extname(name).toLowerCase()))
       .sort()
       .map((name) => `/wallpapers/${name}`);
+  });
+
+  // Hosts, not URLs: one icon per site, so twelve tabs on one site cost one
+  // fetch. A host with no icon comes back null and its card keeps its letter.
+  ipcMain.handle('images:favicons', async (_event, hosts: string[]) => {
+    const unique = [...new Set(hosts)].filter((host) => /^[a-z0-9.-]+$/i.test(host));
+    const found = await Promise.all(unique.map((host) => faviconFor(host)));
+    return Object.fromEntries(unique.map((host, i) => [host, found[i]]));
   });
 
   protocol.handle(IMAGE_SCHEME, (request) => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRightLeft, Copy, LayoutGrid, Layers, Plus, Trash2, X } from 'lucide-react';
+import { ArrowRightLeft, Copy, LayoutGrid, Layers, PanelTop, Plus, Trash2, X } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 
@@ -131,6 +131,12 @@ export const SelectionBar: React.FC = () => {
             label="Grid"
             title="Lay them out in a grid (G)"
             onClick={() => useSpaceStore.getState().arrangeWidgets('grid')}
+          />
+          <Action
+            icon={<PanelTop size={13} />}
+            label="Focus"
+            title="The two used last go big, the rest share the grid"
+            onClick={() => useSpaceStore.getState().arrangeWidgets('focus')}
           />
           <Action
             icon={<Layers size={13} />}

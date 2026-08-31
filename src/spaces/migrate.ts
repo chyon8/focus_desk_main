@@ -57,6 +57,14 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     doc.schemaVersion = 5;
   }
 
+  if (doc.schemaVersion < 6) {
+    // v6 dropped the two themes whose wallpapers had no licence anybody could
+    // check. `getTheme` already falls back, but the stored id has to change too
+    // or the picker shows nothing selected.
+    if (!THEMES.some((t) => t.id === doc.themeId)) doc.themeId = DEFAULT_THEME_ID;
+    doc.schemaVersion = 6;
+  }
+
   doc.schemaVersion = SCHEMA_VERSION;
   return doc;
 }

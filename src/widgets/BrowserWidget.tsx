@@ -64,25 +64,52 @@ const NavButton: React.FC<{
  * title and icon come from the tab, so the card names the page it stands for
  * before anything has been fetched.
  */
-const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data, onOpen }) => (
-  <button
-    onClick={onOpen}
-    title={`Load ${data.url}`}
-    className="t-ink h-full w-full flex flex-col items-center justify-center gap-2.5 p-3"
-  >
-    {data.favicon ? (
-      <img src={data.favicon} alt="" className="w-8 h-8 rounded-md" />
-    ) : (
-      <span className="glass t-soft w-8 h-8 rounded-md flex items-center justify-center text-sm uppercase">
-        {hostOf(data.url)[0] ?? '?'}
+/**
+ * A tab that has not been loaded: its logo, its title, and the site's own colour
+ * behind both.
+ *
+ * The colour is what makes a wall of these readable. Twelve cards that differ
+ * only by a 32-pixel icon are a list of links — the space they are in has to
+ * look like somebody's desk at a glance, from far enough out that no title can
+ * be read, and colour is the only thing that carries that far.
+ */
+const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data, onOpen }) => {
+  const tint = data.faviconColor;
+  return (
+    <button
+      onClick={onOpen}
+      title={`Load ${data.url}`}
+      className="t-ink relative h-full w-full flex flex-col items-center justify-center gap-3 p-4 overflow-hidden"
+      style={
+        tint
+          ? {
+              // Strong enough to tell two sites apart across the canvas, faint
+              // enough that the title stays the thing being read.
+              background: `linear-gradient(160deg, rgba(${tint}, 0.30), rgba(${tint}, 0.10))`,
+              boxShadow: `inset 0 0 0 1px rgba(${tint}, 0.35)`,
+            }
+          : undefined
+      }
+    >
+      {data.favicon ? (
+        <img
+          src={data.favicon}
+          alt=""
+          className="w-16 h-16 rounded-xl object-contain"
+          style={tint ? { filter: `drop-shadow(0 6px 14px rgba(${tint}, 0.55))` } : undefined}
+        />
+      ) : (
+        <span className="glass t-soft w-16 h-16 rounded-xl flex items-center justify-center text-xl uppercase">
+          {hostOf(data.url)[0] ?? '?'}
+        </span>
+      )}
+      <span className="text-[13px] font-medium text-center leading-snug line-clamp-2 max-w-full">
+        {data.title || hostOf(data.url)}
       </span>
-    )}
-    <span className="text-xs font-medium text-center line-clamp-2 max-w-full">
-      {data.title || hostOf(data.url)}
-    </span>
-    <span className="t-faint text-[10px] truncate max-w-full">{hostOf(data.url)}</span>
-  </button>
-);
+      <span className="t-faint text-[10px] truncate max-w-full">{hostOf(data.url)}</span>
+    </button>
+  );
+};
 
 /**
  * A real browser inside the widget, as an Electron <webview>.
@@ -126,6 +153,36 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   const hasPage = !!data.url;
   // Undefined is loaded, so only a widget created closed shows the card.
   const closed = hasPage && data.open === false;
+
+  /**
+   * A card with no icon fetches its own.
+   *
+   * An imported tab arrives without one — Chrome's tab list comes over
+   * AppleScript, which cannot report favicons — and the page it would come from
+   * is the page this card exists to avoid loading. Asked for here rather than at
+   * import time so there is no race with the user pressing the button, and so a
+   * card made any other way is filled in too. The main process keeps one request
+   * per host, so a window of twelve tabs on one site costs one.
+   */
+  useEffect(() => {
+    if (!closed || data.favicon) return;
+    let host: string;
+    try {
+      host = new URL(data.url).hostname;
+    } catch {
+      return;
+    }
+    let wanted = true;
+    void window.images?.favicons([host]).then((found) => {
+      const icon = found[host];
+      if (wanted && icon) update({ favicon: icon.url, faviconColor: icon.color });
+    });
+    return () => {
+      wanted = false;
+    };
+    // `update` is stable for the widget's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closed, data.url, data.favicon]);
 
   useEffect(() => {
     const el = pageBox.current;

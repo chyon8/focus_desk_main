@@ -90,6 +90,64 @@ describe('arrange', () => {
   });
 });
 
+describe('arrange focus', () => {
+  const many: Box[] = Array.from({ length: 8 }, (_, i) => ({
+    id: String(i),
+    x: 0,
+    y: 0,
+    width: 300,
+    height: 200,
+  }));
+
+  it('makes the first two about twice the size, not many times it', () => {
+    const places = arrange(many, area, 'focus');
+    const ratio = places['0'].width / places['2'].width;
+    expect(ratio).toBeGreaterThan(1.6);
+    expect(ratio).toBeLessThan(2.5);
+    // The same multiple both ways, so a big tile is the small one scaled up.
+    expect(places['0'].width / places['0'].height).toBeCloseTo(
+      places['2'].width / places['2'].height,
+      1
+    );
+  });
+
+  it('lines every tile up on one grid', () => {
+    const places = arrange(many, area, 'focus');
+    // Tiles share edges when they share a column, which is what stops the layout
+    // reading as unrelated bands stacked on each other.
+    const lefts = new Set(Object.values(places).map((p) => Math.round(p.x)));
+    expect(lefts.size).toBeLessThan(many.length);
+  });
+
+  it('never overlaps two tiles', () => {
+    const places = Object.values(arrange(many, area, 'focus'));
+    for (let i = 0; i < places.length; i++) {
+      for (let j = i + 1; j < places.length; j++) {
+        const a = places[i];
+        const b = places[j];
+        const apart =
+          a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+        expect(apart).toBe(true);
+      }
+    }
+  });
+
+  it('keeps everything inside the area it was given', () => {
+    const places = arrange(many, area, 'focus');
+    for (const place of Object.values(places)) {
+      expect(place.x).toBeGreaterThanOrEqual(0);
+      expect(place.y).toBeGreaterThanOrEqual(0);
+      expect(place.x + place.width).toBeLessThanOrEqual(area.width);
+      expect(place.y + place.height).toBeLessThanOrEqual(area.height);
+    }
+  });
+
+  it('is an even grid when there is no front row to make', () => {
+    const two = many.slice(0, 2);
+    expect(arrange(two, area, 'focus')).toEqual(arrange(two, area, 'grid'));
+  });
+});
+
 describe('fitCamera', () => {
   const area = { y: 0, width: 1400, height: 900 };
 

@@ -10,8 +10,8 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     items: [
       ['K', 'Open anything — search'],
       ['N', 'Add a widget'],
-      ['G', 'Arrange'],
-      ['F', 'Fit'],
+      ['G', 'Tidy up — move and resize the widgets'],
+      ['F', 'Fit on screen — move the camera only'],
       ['M', 'Fullscreen'],
       ['Double-click', 'Add one right here'],
       ['?', 'This sheet'],

@@ -21,6 +21,11 @@ export interface Notice {
   id: number;
   label: string;
   action?: { label: string; run: () => void };
+  /**
+   * Stays up until the user closes it. For a line that teaches a shortcut: one
+   * that times out is one the reader has to have been looking at.
+   */
+  sticky?: boolean;
 }
 
 interface UiState {
@@ -88,7 +93,7 @@ interface UiState {
   toggleLauncher: () => void;
   closeLauncher: () => void;
   toggleShortcuts: () => void;
-  showNotice: (label: string, action?: Notice['action']) => void;
+  showNotice: (label: string, action?: Notice['action'], sticky?: boolean) => void;
   dismissNotice: () => void;
   toggleFullscreen: () => void;
   setStaged: (staged: boolean) => void;
@@ -150,7 +155,8 @@ export const useUiStore = create<UiState>((set) => ({
   closeLauncher: () => set({ isLauncherOpen: false }),
   toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
 
-  showNotice: (label, action) => set((s) => ({ notice: { id: (s.notice?.id ?? 0) + 1, label, action } })),
+  showNotice: (label, action, sticky) =>
+    set((s) => ({ notice: { id: (s.notice?.id ?? 0) + 1, label, action, sticky } })),
   dismissNotice: () => set({ notice: null }),
 
   // The main process owns the real state and hands it back; the flag here is only

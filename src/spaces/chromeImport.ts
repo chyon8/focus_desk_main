@@ -1,4 +1,4 @@
-import { arrange, type Area, type Box } from '../canvas/layout';
+import { arrange, type Area, type Box, type Placement } from '../canvas/layout';
 import { siteOf } from '../widgets/browserAddress';
 import { WIDGET_DEFS } from '../widgets/defs';
 import type { SpaceDoc, WidgetDoc } from './types';
@@ -76,44 +76,79 @@ export function windowChoices(windows: ImportWindow[]): WindowChoice[] {
 }
 
 /**
- * The widgets for one window, laid out in a grid and closed.
+ * How many of a window's tabs come in loaded rather than as a card.
  *
- * Closed matters: a window of twelve tabs would otherwise load twelve pages the
- * moment the space is opened. The title comes from the tab, so each card names
- * its page before anything is fetched.
+ * A space of nothing but cards is a list of links, and the leading tabs are the
+ * ones the user was last looking at — so those are the ones worth the load.
+ *
+ * Four, and no more: the canvas mounts every widget in the active space, so an
+ * opened tab is a Chromium renderer process held for as long as that space is
+ * open, not just while it is being looked at. Ten would make the space the user
+ * liked the most the one their machine likes the least.
  */
-function widgetsFor(
-  tabs: { url: string; title: string }[],
-  area: Area
-): Record<string, WidgetDoc> {
-  const size = WIDGET_DEFS.browser.defaultSize;
-  const boxes: Box[] = tabs.map((_tab, i) => ({ id: String(i), x: 0, y: 0, ...size }));
-  const places = arrange(boxes, area, 'grid');
+export const OPEN_TABS = 4;
 
+/**
+ * Where an imported window's widgets go: the `focus` arrange, which is the same
+ * mosaic the tidy-up produces.
+ *
+ * Laying them out at their real sizes instead — 900 by 620 a page, twelve of
+ * them — makes a desk far bigger than the screen, so the camera has to pull back
+ * to about half to show it and every widget lands smaller than it used to be.
+ * Fitting the widgets to the screen rather than the camera to the widgets is
+ * what the app did before, and the arrange already does exactly that.
+ */
+export function importLayout(tabs: Box[], area: Area, extras: Box[] = []): Placement[] {
+  const boxes = [...tabs, ...extras];
+  const places = arrange(boxes, area, 'focus');
+  return boxes.map((box) => places[box.id]);
+}
+
+/**
+ * What one imported tab becomes. The title comes from Chrome, so a card names
+ * its page before anything is fetched; the icon is left empty and the card
+ * fetches its own, which AppleScript could not have reported anyway.
+ */
+export function tabWidget(
+  tab: { url: string; title: string },
+  index: number,
+  total: number,
+  place: Placement
+): WidgetDoc {
+  const id = crypto.randomUUID();
+  return {
+    id,
+    type: 'browser',
+    x: place.x,
+    y: place.y,
+    width: place.width,
+    height: place.height,
+    // Reverse order, so the leftmost tab ends up on top — the sidebar sorts by
+    // z and Chrome's first tab is the one the user thinks of as first.
+    z: total - index,
+    data: { url: tab.url, title: tab.title, open: index < OPEN_TABS },
+  };
+}
+
+/** The widgets for one window. */
+function widgetsFor(tabs: { url: string; title: string }[], area: Area): Record<string, WidgetDoc> {
+  const size = WIDGET_DEFS.browser.defaultSize;
+  const boxes = tabs.map((_tab, i) => ({ id: String(i), x: 0, y: 0, ...size }));
+  const places = importLayout(boxes, area);
   const widgets: Record<string, WidgetDoc> = {};
   tabs.forEach((tab, i) => {
-    const place = places[String(i)] ?? { x: 0, y: 0, ...size };
-    const id = crypto.randomUUID();
-    widgets[id] = {
-      id,
-      type: 'browser',
-      x: place.x,
-      y: place.y,
-      width: place.width,
-      height: place.height,
-      // Reverse order, so the leftmost tab ends up on top — the sidebar sorts by
-      // z and Chrome's first tab is the one the user thinks of as first.
-      z: tabs.length - i,
-      data: { url: tab.url, title: tab.title, open: false },
-    };
+    const widget = tabWidget(tab, i, tabs.length, places[i]);
+    widgets[widget.id] = widget;
   });
   return widgets;
 }
 
 /**
  * The spaces the ticked windows would become, ready to save. `blank` makes an
- * empty space doc and `area` is the canvas the grid fills — both passed in so
- * this module stays free of the store and the DOM, and testable without either.
+ * empty space doc — passed in so this module stays free of the store and the
+ * DOM, and testable without either — and it is what carries the room the user
+ * picked, so an imported space looks like the one they chose rather than the
+ * default. `area` is the canvas the widgets are fitted to.
  */
 export function spacesFrom(
   choices: WindowChoice[],

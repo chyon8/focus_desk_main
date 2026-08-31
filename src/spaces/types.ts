@@ -3,7 +3,7 @@ import type { Camera } from '../canvas/camera';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export type WidgetType =
   | 'todo'
@@ -106,6 +106,13 @@ export interface BrowserData {
    */
   title?: string;
   favicon?: string;
+  /**
+   * `r, g, b` averaged from the favicon, for the card to tint itself with. Only
+   * a card uses it, and only one that has never loaded its page: a wall of grey
+   * tiles names nothing, and a site's own colour is the thing people pick out of
+   * a grid before they have read a word of it.
+   */
+  faviconColor?: string;
   /**
    * Whether the page is loaded rather than a card standing for it, like the web
    * app widget's `open`. Undefined means loaded: widgets made before this existed

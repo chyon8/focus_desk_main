@@ -2,8 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, ExternalLink, X } from 'lucide-react';
 import { spacesFrom, windowChoices, type WindowChoice } from '../spaces/chromeImport';
-import { newSpace, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea } from '../stores/uiStore';
+import { newSpace, useSpaceStore } from '../stores/spaceStore';
 import { hostOf } from '../widgets/browserAddress';
 
 /**

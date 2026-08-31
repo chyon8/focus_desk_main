@@ -2,10 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Check, Chrome, LayoutGrid, Plus } from 'lucide-react';
 import type { Camera } from '../canvas/camera';
-import { arrange, fitCamera, type Box } from '../canvas/layout';
+import { arrange, fitCamera, type ArrangeMode, type Box } from '../canvas/layout';
 import { WIDGET_DEFS } from '../widgets/defs';
 import { assetUrl } from '../spaces/backgrounds';
-import { spacesFrom, windowChoices, type WindowChoice } from '../spaces/chromeImport';
+import { OPEN_TABS, spacesFrom, windowChoices, type WindowChoice } from '../spaces/chromeImport';
 import { newSpace, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
 import { useWebAppStore } from '../stores/webappStore';
@@ -60,6 +60,28 @@ const WORK_KEY = 'work-v1';
 
 /** Milliseconds between one widget landing and the next. */
 const LAND_MS = 110;
+
+/**
+ * Walking into the room, in the order the eye can follow it.
+ *
+ *   0ms     the picked card starts growing; the others begin to fade
+ *   440ms   the others are gone, so nothing is left sitting over the room
+ *   980ms   the card has filled the screen
+ *   1080ms  the next question fades in
+ *   1500ms  the cover fades out, the real backdrop already settled behind it
+ *
+ * Slower than it was on purpose. At 620ms the whole thing was over before it
+ * read as anything, which is the worst length for a transition: long enough to
+ * notice, too short to follow.
+ */
+const ROOM_GROWS_MS = 980;
+const CARD_GROWS_MS = 1080;
+
+/**
+ * When the real backdrop has finished changing to the picked room. `SceneLayer`
+ * crossfades over 900ms, so the cover has to outlast that.
+ */
+const SCENE_SETTLES_MS = 1500;
 
 /** The answer goes into a document, so it must not be able to be markup. */
 function escapeHtml(text: string) {
@@ -117,7 +139,7 @@ function firstNote(name: string, work: Work | null) {
 
 /** What a widget will be, before it exists: enough to lay the grid out first. */
 interface Planned {
-  type: 'webapp' | 'memo' | 'todo';
+  type: 'webapp' | 'memo' | 'todo' | 'browser';
   data: Record<string, unknown>;
 }
 
@@ -130,8 +152,11 @@ interface Planned {
  * down and moves the camera with them, so the desk twitches instead of filling
  * up. Nothing moves twice here: each widget appears where it belongs, and the
  * only motion left is the slow push out at the end.
+ *
+ * `mode` is `focus` for the Chrome path: an even grid would make the tabs the
+ * user was reading the same size as the ones they were not.
  */
-function layOut(planned: Planned[], spaceName: string) {
+function layOut(planned: Planned[], spaceName: string, mode: ArrangeMode = 'grid') {
   const store = useSpaceStore.getState();
   const area = canvasArea();
 
@@ -141,8 +166,10 @@ function layOut(planned: Planned[], spaceName: string) {
     y: 0,
     ...WIDGET_DEFS[item.type].defaultSize,
   }));
-  const places = arrange(boxes, area, 'grid');
-  const laid = boxes.map((box) => places[box.id] ?? { x: box.x, y: box.y, width: box.width, height: box.height });
+  const places = arrange(boxes, area, mode);
+  const laid = boxes.map(
+    (box) => places[box.id] ?? { x: box.x, y: box.y, width: box.width, height: box.height }
+  );
 
   // Framed from the start, a little closer than the finish, so the pull-out at
   // the end is a breath rather than a journey.
@@ -156,6 +183,7 @@ function layOut(planned: Planned[], spaceName: string) {
   }
 
   let i = 0;
+  const made: string[] = [];
   const next = () => {
     if (i < planned.length) {
       const item = planned[i];
@@ -164,9 +192,15 @@ function layOut(planned: Planned[], spaceName: string) {
       const id = useSpaceStore.getState().addWidget(item.type, item.data);
       useSpaceStore.getState().moveWidget(id, place.x, place.y);
       useSpaceStore.getState().resizeWidget(id, place.width, place.height);
+      made.push(id);
       setTimeout(next, LAND_MS);
       return;
     }
+    // In the order planned rather than the order added: the tabs the user was
+    // reading come first, the memo and the todo they have never touched come
+    // last. Without this the memo is the newest widget in the space, so a focus
+    // arrange hands the biggest tile to an empty note.
+    useSpaceStore.getState().orderWidgets(made);
     if (fit) pullOut(fit, spaceName);
   };
   setTimeout(next, 380);
@@ -195,9 +229,23 @@ function pullOut(target: Camera, spaceName: string) {
     });
     if (t < 1) requestAnimationFrame(step);
     else
+      /**
+       * The desk is theirs, and here are the two keys.
+       *
+       * Not a tour: a tour makes somebody click through moves they have no
+       * reason for yet. This says the desk is ready and names the keys beside
+       * one they can already see. It does not time out — a line teaching a
+       * shortcut that disappears after six seconds only reaches whoever happened
+       * to be looking at it — and it goes the moment they tidy up, because by
+       * then it has said everything it had to say.
+       */
       useUiStore
         .getState()
-        .showNotice(`“${spaceName}” is yours. Pinch, or ⌘ and scroll, to see all of it.`);
+        .showNotice(
+          `“${spaceName}” is yours — make yourself at home. G tidies up, F fits it on screen.`,
+          undefined,
+          true
+        );
   };
   requestAnimationFrame(step);
 }
@@ -321,21 +369,45 @@ const RoomCard: React.FC<{
   delay: number;
   /** The room that suits the hour takes two cells, which also fills the grid. */
   wide?: boolean;
-  onPick: () => void;
+  /**
+   * Another room has been picked, so this one leaves. Without it the rest of the
+   * grid sits on top of the room the user has just walked into for most of a
+   * second — the picked card grows to fill the screen and four thumbnails of the
+   * rooms not chosen are still floating over it.
+   */
+  leaving?: boolean;
+  /** This is the one that was picked: the full-screen copy is already over it. */
+  picked?: boolean;
+  onPick: (from: DOMRect) => void;
   onHover: (room: Room | null) => void;
-}> = ({ room, delay, wide, onPick, onHover }) => {
+}> = ({ room, delay, wide, leaving, picked, onPick, onHover }) => {
   // One room is a light one, where a white label on a white scrim disappears.
   const light = room.theme.mood === 'light';
   return (
     <motion.button
-      layoutId={`room-${room.id}`}
-      onClick={onPick}
+      onClick={(e) => onPick(e.currentTarget.getBoundingClientRect())}
       onHoverStart={() => onHover(room)}
       onHoverEnd={() => onHover(null)}
       initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.45, ease: 'easeOut' }}
-      whileHover={{ y: -6 }}
+      animate={
+        picked
+          ? { opacity: 0 }
+          : leaving
+            ? { opacity: 0, scale: 0.96, y: 10 }
+            : { opacity: 1, y: 0, scale: 1 }
+      }
+      transition={
+        picked
+          ? // No fade: the copy that is growing starts on exactly this rectangle,
+            // so anything left underneath is a second image of the same card.
+            { duration: 0 }
+          : leaving
+            ? // Staggered by the same step that brought them in, so they leave in
+              // the order they arrived rather than all at once.
+              { duration: 0.42, delay: delay * 0.7, ease: [0.4, 0, 0.8, 1] }
+            : { delay, duration: 0.45, ease: 'easeOut' }
+      }
+      whileHover={leaving || picked ? undefined : { y: -6 }}
       whileTap={{ scale: 0.985 }}
       className={`group relative overflow-hidden rounded-[18px] text-left ${
         wide ? 'col-span-2 aspect-[8/3]' : 'aspect-[4/3]'
@@ -430,7 +502,8 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const [reading, setReading] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [peek, setPeek] = useState<Room | null>(null);
-  const [entering, setEntering] = useState<Room | null>(null);
+  /** The room being walked into, and the card's rectangle it grows out of. */
+  const [entering, setEntering] = useState<{ room: Room; from: DOMRect } | null>(null);
   const [cursor, setCursor] = useState({ x: 0.5, y: 0.4 });
 
   /**
@@ -441,20 +514,24 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
    * until the page has been clicked, and on this screen the first click is this
    * one — so a hover preview would be silent every time it mattered.
    */
-  const takeRoom = (chosen: Room) => {
+  const takeRoom = (chosen: Room, from: DOMRect) => {
     setPeek(null);
-    setEntering(chosen);
-    const store = useSpaceStore.getState();
-    store.setTheme(chosen.theme.id);
-    // setTheme clears any wallpaper, so the room's own goes on after it.
-    if (chosen.background) store.setBackground({ type: 'IMAGE', value: chosen.background });
-    store.setAmbience(chosen.ambience);
+    setEntering({ room: chosen, from });
+    useSpaceStore
+      .getState()
+      .setRoom(
+        chosen.theme.id,
+        chosen.background ? { type: 'IMAGE', value: chosen.background } : null,
+        chosen.ambience
+      );
     setRoom(chosen);
     // Long enough for the card to finish growing into the screen.
-    setTimeout(() => {
-      setEntering(null);
-      setStep('work');
-    }, 620);
+    setTimeout(() => setStep('work'), CARD_GROWS_MS);
+    // The card's picture covers the real backdrop until that backdrop has
+    // finished crossfading to the same thing, then fades out over it. Taking it
+    // away at the same moment as the step changes — which it did — uncovers a
+    // scene half way through a fade, which is the flicker.
+    setTimeout(() => setEntering(null), SCENE_SETTLES_MS);
   };
 
   const takeWork = (chosen: Work) => {
@@ -538,9 +615,59 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     layOut(planned, name || space.name);
   };
 
+  /** A new space wearing the room the user picked, rather than the default one. */
+  const roomSpace = (name: string) => {
+    const doc = newSpace(name);
+    if (!room) return doc;
+    return {
+      ...doc,
+      themeId: room.theme.id,
+      background: room.background ? { type: 'IMAGE' as const, value: room.background } : null,
+      ambience: room.ambience,
+    };
+  };
+
+  /**
+   * Finishes the Chrome path.
+   *
+   * The blank space the onboarding started in becomes the first window's space
+   * rather than being left beside the imported ones with nothing in it. Only
+   * that first space is laid out a widget at a time, since it is the one on
+   * screen; the others are saved whole.
+   */
   const takeChrome = () => {
-    useSpaceStore.getState().addSpaces(spacesFrom(chosen, newSpace, canvasArea()));
-    finish();
+    const store = useSpaceStore.getState();
+    const space = store.spaces[store.activeSpaceId];
+    const [first, ...rest] = chosen;
+    if (!space || !first) {
+      finish();
+      return;
+    }
+
+    store.renameSpace(space.id, first.name);
+    if (rest.length > 0) {
+      store.addSpaces(spacesFrom(rest, roomSpace, canvasArea()));
+      // addSpaces makes its first document active; the user is watching this one.
+      store.setActiveSpace(space.id);
+    }
+    onDone();
+
+    const extras: Planned[] = [
+      // No space name: on this path it is a domain, and "youtube.com" is not
+      // what anybody would write at the top of a page.
+      { type: 'memo', data: { content: firstNote('', work) } },
+      { type: 'todo', data: { items: firstTasks(work), theme: 'LIGHT' } },
+    ];
+    const planned: Planned[] = [
+      ...first.tabs.map((tab, i) => ({
+        type: 'browser' as const,
+        data: { url: tab.url, title: tab.title, open: i < OPEN_TABS },
+      })),
+      ...extras,
+    ];
+    // The mosaic, so the two tabs the user was reading come back big and the
+    // whole desk still fits the screen.
+    layOut(planned, first.name, 'focus');
   };
 
   return (
@@ -570,17 +697,6 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         )}
       </AnimatePresence>
 
-      {/* The card grows into the screen on the way in, so picking a room reads
-          as walking into it. */}
-      {entering && (
-        <motion.div
-          layoutId={`room-${entering.id}`}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute inset-0 overflow-hidden"
-        >
-          <RoomScene room={entering} />
-        </motion.div>
-      )}
 
       <div
         className="absolute inset-0"
@@ -606,6 +722,48 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         }}
       />
 
+      {/* The picked card, growing out of where it was clicked until it is the
+          screen — so picking a room reads as walking into it.
+
+          Its own element with its own rectangle rather than a `layoutId` shared
+          with the card in the grid. Two mounted elements claiming one layoutId
+          is not a handover, it is two of the same card on screen at once, and
+          what that looks like is a flicker.
+
+          Over the cards, not under them: while it grows, the rooms not chosen
+          are fading out around it, and the ones it has already covered must
+          stay covered. */}
+      <AnimatePresence>
+        {entering && (
+          <motion.div
+            key={entering.room.id}
+            className="fixed z-[205] overflow-hidden"
+            initial={{
+              top: entering.from.top,
+              left: entering.from.left,
+              width: entering.from.width,
+              height: entering.from.height,
+              borderRadius: 18,
+              opacity: 1,
+            }}
+            animate={{
+              top: 0,
+              left: 0,
+              width: window.innerWidth,
+              height: window.innerHeight,
+              borderRadius: 0,
+            }}
+            // Eased both ends rather than snapping away from the click: the card
+            // carries the eye into the room, and an ease that is all over in the
+            // first third arrives before the eye does.
+            transition={{ duration: ROOM_GROWS_MS / 1000, ease: [0.5, 0, 0.2, 1] }}
+            exit={{ opacity: 0, transition: { duration: 0.7, ease: 'easeInOut' } }}
+          >
+            <RoomScene room={entering.room} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="relative min-h-full flex items-center justify-center px-10 py-16">
         <AnimatePresence mode="wait">
           <motion.div
@@ -618,9 +776,16 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           >
             {step === 'room' && (
               <>
-                <Title sub="A space is somewhere you are. This one is yours — change it any time.">
-                  {greetingForHour(hour)} Where do you want to work?
-                </Title>
+                {/* The question goes with the grid: it is answered the moment a
+                    card is clicked, and reading it over the room is odd. */}
+                <motion.div
+                  animate={{ opacity: entering ? 0 : 1, y: entering ? -8 : 0 }}
+                  transition={{ duration: 0.32, ease: 'easeIn' }}
+                >
+                  <Title sub="A space is somewhere you are. This one is yours — change it any time.">
+                    {greetingForHour(hour)} Where do you want to work?
+                  </Title>
+                </motion.div>
                 <div className="grid grid-cols-3 gap-3.5">
                   {rooms.map((r, i) => (
                     <RoomCard
@@ -628,7 +793,9 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                       room={r}
                       wide={i === 0}
                       delay={0.05 * i}
-                      onPick={() => takeRoom(r)}
+                      leaving={!!entering && entering.room.id !== r.id}
+                      picked={entering?.room.id === r.id}
+                      onPick={(from) => takeRoom(r, from)}
                       onHover={setPeek}
                     />
                   ))}

@@ -17,7 +17,14 @@ function runShortcut(code: string) {
   const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
   if (code === 'KeyK') useUiStore.getState().toggleLauncher();
   else if (code === 'KeyN') openQuickAddAtCentre();
-  else if (code === 'KeyG') arrangeWidgets();
+  // G moves the widgets, F only moves the camera. Two keys that sound alike and
+  // do very different things, so they are labelled as the difference in the
+  // shortcut sheet rather than as "Arrange" and "Fit".
+  else if (code === 'KeyG') {
+    arrangeWidgets();
+    // The welcome line teaches this key; once it has been used it is in the way.
+    useUiStore.getState().dismissNotice();
+  }
   else if (code === 'KeyF') fitToWidgets();
   else if (code === 'KeyM') useUiStore.getState().toggleFullscreen();
   else return false;
