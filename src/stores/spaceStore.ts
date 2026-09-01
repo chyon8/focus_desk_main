@@ -3,11 +3,19 @@ import type { AmbienceLevels } from '../ambience/engine';
 import { SILENT_AMBIENCE } from '../ambience/engine';
 import { MIN_ZOOM, type Camera } from '../canvas/camera';
 import { arrange, ArrangeMode, clampCamera, fitCamera, minZoomFor } from '../canvas/layout';
+import { COLUMN_CARD_HEIGHT, columnAt, dropIndex, layOutColumn } from '../canvas/columns';
 import { useAppTimeStore } from './appTimeStore';
 import { useSpaceTimeStore } from './spaceTimeStore';
 import { canvasArea, useUiStore } from './uiStore';
 import { migrateLegacySpaces, migrateSpace } from '../spaces/migrate';
-import { ParticlesChoice, SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from '../spaces/types';
+import {
+  ColumnData,
+  ParticlesChoice,
+  SCHEMA_VERSION,
+  SpaceDoc,
+  WidgetDoc,
+  WidgetType,
+} from '../spaces/types';
 import { DEFAULT_THEME_ID } from '../themes/themes';
 import { WIDGET_DEFS } from '../widgets/defs';
 
@@ -75,6 +83,12 @@ interface SpaceState {
   removeWidget: (id: string) => void;
   /** Closes a whole selection at once, so one undo brings all of it back. */
   removeWidgets: (ids: string[]) => void;
+  /** Puts widgets into a new column, in the order they are read down the canvas. */
+  groupIntoColumn: (ids: string[]) => void;
+  /** Drops a widget into the column under `at`, or out of the one it was in. Hands back whether it landed in a column. */
+  dropIntoColumn: (id: string, at: { x: number; y: number }) => boolean;
+  /** Takes a widget out of its column so a drag can carry it away. Does not reopen it — that waits for where it lands. */
+  detachFromColumn: (id: string) => void;
   /** Sends widgets to another space, keeping the shape of the group. */
   moveWidgetsToSpace: (ids: string[], targetSpaceId: string) => void;
   /** The widgets sent away by the last move, kept so the toast can bring them back. */
@@ -111,7 +125,13 @@ function isSelection(space: SpaceDoc) {
 /** The widgets an arrange or a fit acts on: the selection, or everything. */
 function inPlay(space: SpaceDoc) {
   const selected = useUiStore.getState().selectedIds.filter((id) => space.widgets[id]);
-  return selected.length ? selected.map((id) => space.widgets[id]) : Object.values(space.widgets);
+  const boxes = selected.length
+    ? selected.map((id) => space.widgets[id])
+    : Object.values(space.widgets);
+  // A column's children are placed by their column. An arrange that moved them
+  // would be undone by the next `applyColumn`, and a fit already covers them —
+  // they are inside the column's own box.
+  return boxes.filter((widget) => !ownerOf(space.widgets, widget.id));
 }
 
 /** An empty space doc. Exported for the Chrome import, which fills one in. */
@@ -128,9 +148,99 @@ export function newSpace(name: string): SpaceDoc {
   };
 }
 
+/** A column's own data, for the many places that have a `WidgetDoc` and want its list. */
+function columnData(widget: WidgetDoc): ColumnData {
+  return widget.data as unknown as ColumnData;
+}
+
+/** The column holding this widget, if any. */
+function ownerOf(widgets: Record<string, WidgetDoc>, id: string): WidgetDoc | undefined {
+  return Object.values(widgets).find(
+    (w) => w.type === 'column' && columnData(w).children.includes(id)
+  );
+}
+
+/**
+ * The one place a column's children are positioned. Every column operation ends
+ * here: it stacks the children down the column, resizes the column to whatever
+ * they come to, and lifts them above it. Children that no longer exist drop out
+ * of the list on the way through, so nothing else has to remember to tidy up.
+ */
+function applyColumn(
+  widgets: Record<string, WidgetDoc>,
+  columnId: string
+): Record<string, WidgetDoc> {
+  const column = widgets[columnId];
+  if (!column || column.type !== 'column') return widgets;
+
+  const children = columnData(column).children.filter((id) => widgets[id]);
+  const { placements, height } = layOutColumn(
+    column,
+    children.map((id) => ({ id, height: widgets[id].height }))
+  );
+
+  const next = { ...widgets };
+  next[columnId] = {
+    ...column,
+    height,
+    data: { ...columnData(column), children } as unknown as WidgetDoc['data'],
+  };
+  children.forEach((id, i) => {
+    const place = placements[id];
+    next[id] = { ...next[id], x: place.x, y: place.y, width: place.width, z: column.z + 1 + i };
+  });
+  return next;
+}
+
+/** Re-runs the layout of every column, for changes that could have touched any of them. */
+function applyColumns(widgets: Record<string, WidgetDoc>): Record<string, WidgetDoc> {
+  return Object.values(widgets)
+    .filter((w) => w.type === 'column')
+    .reduce((acc, column) => applyColumn(acc, column.id), widgets);
+}
+
+/**
+ * What a widget becomes on the way into a column: a card, at the card height.
+ * A page kept live in a column would give back the space but not the Chromium
+ * renderer holding it, and a live page a card's height tall is unreadable
+ * anyway.
+ */
+function asCard(widget: WidgetDoc): WidgetDoc {
+  if (widget.type !== 'browser' && widget.type !== 'webapp') return widget;
+  return {
+    ...widget,
+    height: COLUMN_CARD_HEIGHT,
+    data: { ...widget.data, open: false },
+  };
+}
+
+/** And what it becomes on the way out: its page again, at the size it would have been made. */
+function asPage(widget: WidgetDoc): WidgetDoc {
+  if (widget.type !== 'browser' && widget.type !== 'webapp') return widget;
+  const size = WIDGET_DEFS[widget.type].defaultSize;
+  return { ...widget, ...size, data: { ...widget.data, open: true } };
+}
+
+/** The widgets a column holds, and the column itself — what an operation on a column really acts on. */
+function withChildren(space: SpaceDoc, ids: string[]): string[] {
+  const all = new Set(ids);
+  for (const id of ids) {
+    const widget = space.widgets[id];
+    if (widget?.type === 'column') for (const child of columnData(widget).children) all.add(child);
+  }
+  return [...all];
+}
+
 function topZ(space: SpaceDoc) {
   return Object.values(space.widgets).reduce((max, w) => Math.max(max, w.z), 0);
 }
+
+/**
+ * The widget the drag now in progress took out of a column. Only the drop needs
+ * it — a card let go in the open opens its page again, while a card that was
+ * never in a column (an imported tab) is left as it is.
+ */
+let detachedFromColumn: string | null = null;
 
 const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -364,8 +474,11 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
           height: place.height,
         };
       }
-      const camera = fitCamera(inPlay({ ...space, widgets }), area);
-      return { ...space, widgets, camera: camera ?? space.camera };
+      // A column that the grid moved or widened has to restack what it holds:
+      // its children are not in the arrange, so nothing else would move them.
+      const laid = applyColumns(widgets);
+      const camera = fitCamera(inPlay({ ...space, widgets: laid }), area);
+      return { ...space, widgets: laid, camera: camera ?? space.camera };
     }),
 
   fitToWidgets: () =>
@@ -405,11 +518,15 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   duplicateWidgets: (ids) =>
     updateActive(set, (space) => {
-      const widgets = { ...space.widgets };
+      let widgets = { ...space.widgets };
       let z = topZ(space);
       const copies: string[] = [];
+      /** Old id → new id, so a copied column can point at the copied cards. */
+      const newIdOf: Record<string, string> = {};
 
-      for (const id of ids) {
+      // A column is copied with its children — two columns pointing at the same
+      // cards would fight over where those cards sit.
+      for (const id of withChildren(space, ids)) {
         const source = space.widgets[id];
         if (!source) continue;
         z += 1;
@@ -426,7 +543,27 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         if (copy.type === 'app') delete (copy.data as { windowTitle?: string }).windowTitle;
         widgets[copy.id] = copy;
         copies.push(copy.id);
+        newIdOf[id] = copy.id;
       }
+
+      // Point each copied column at its own copies, then stack them.
+      let laid = widgets;
+      for (const id of copies) {
+        if (laid[id].type !== 'column') continue;
+        const data = columnData(laid[id]);
+        laid = {
+          ...laid,
+          [id]: {
+            ...laid[id],
+            data: {
+              ...data,
+              children: data.children.map((child) => newIdOf[child]).filter(Boolean),
+            } as unknown as WidgetDoc['data'],
+          },
+        };
+        laid = applyColumn(laid, id);
+      }
+      widgets = laid;
 
       // Copying a group leaves the group picked out — otherwise the next drag
       // moves the originals, which is not what was just asked for.
@@ -457,37 +594,47 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     updateActive(set, (space) => {
       const widget = space.widgets[id];
       if (!widget || widget.z === topZ(space)) return space;
-      return { ...space, widgets: { ...space.widgets, [id]: { ...widget, z: topZ(space) + 1 } } };
+      const raised = { ...space.widgets, [id]: { ...widget, z: topZ(space) + 1 } };
+      // A column that came forward has to bring its children, or it covers them.
+      return { ...space, widgets: applyColumn(raised, id) };
     }),
 
+  // Moving a column does not move its children here: `applyColumn` puts them
+  // back under it wherever it has gone, which is the same thing and cannot drift.
   moveWidget: (id, x, y) =>
     updateActive(set, (space) => ({
       ...space,
-      widgets: { ...space.widgets, [id]: { ...space.widgets[id], x, y } },
+      widgets: applyColumn({ ...space.widgets, [id]: { ...space.widgets[id], x, y } }, id),
     })),
 
   moveWidgets: (ids, dx, dy) =>
     updateActive(set, (space) => {
-      const widgets = { ...space.widgets };
+      let widgets = { ...space.widgets };
       for (const id of ids) {
         const widget = widgets[id];
         if (widget) widgets[id] = { ...widget, x: widget.x + dx, y: widget.y + dy };
       }
+      for (const id of ids) widgets = applyColumn(widgets, id);
       return { ...space, widgets };
     }),
 
   resizeWidget: (id, width, height) =>
-    updateActive(set, (space) => ({
-      ...space,
-      widgets: {
+    updateActive(set, (space) => {
+      const widget = space.widgets[id];
+      const widgets = {
         ...space.widgets,
         [id]: {
-          ...space.widgets[id],
+          ...widget,
           width: Math.max(MIN_WIDGET_SIZE, width),
-          height: Math.max(MIN_WIDGET_SIZE, height),
+          // A column is as tall as what it holds, so the drag only sets its width.
+          height: widget.type === 'column' ? widget.height : Math.max(MIN_WIDGET_SIZE, height),
         },
-      },
-    })),
+      };
+      // Either the column itself was dragged, or a card in one grew and the rest
+      // have to move down.
+      const owner = ownerOf(space.widgets, id);
+      return { ...space, widgets: applyColumn(widgets, owner ? owner.id : id) };
+    }),
 
   updateWidgetData: (id, patch) =>
     updateActive(set, (space) => ({
@@ -500,20 +647,120 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   removeWidget: (id) => get().removeWidgets([id]),
 
-  removeWidgets: (ids) => {
+  removeWidgets: (rawIds) => {
     const ui = useUiStore.getState();
-    ui.setSelection(ui.selectedIds.filter((selected) => !ids.includes(selected)));
     const { spaces, activeSpaceId } = get();
+    const space = spaces[activeSpaceId];
+    if (!space) return;
+    // Closing a column closes what is in it — and one undo brings all of it back,
+    // since the toast restores whatever this list held.
+    const ids = withChildren(space, rawIds);
+
+    ui.setSelection(ui.selectedIds.filter((selected) => !ids.includes(selected)));
     const closed = ids
-      .map((id) => spaces[activeSpaceId]?.widgets[id])
+      .map((id) => space.widgets[id])
       .filter((widget): widget is WidgetDoc => !!widget);
     if (closed.length === 0) return;
     set({ lastRemoved: { spaceId: activeSpaceId, widgets: closed } });
-    updateActive(set, (space) => {
-      const widgets = { ...space.widgets };
+    updateActive(set, (current) => {
+      const widgets = { ...current.widgets };
       for (const id of ids) delete widgets[id];
-      return { ...space, widgets };
+      // A card closed out of a column leaves a gap the column has to close up.
+      return { ...current, widgets: applyColumns(widgets) };
     });
+  },
+
+  groupIntoColumn: (ids) =>
+    updateActive(set, (space) => {
+      // A column inside a column is not a thing yet, and a card already in one is
+      // already where it is going.
+      const members = ids
+        .map((id) => space.widgets[id])
+        .filter((w): w is WidgetDoc => !!w && w.type !== 'column' && !ownerOf(space.widgets, w.id))
+        .sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
+      if (members.length === 0) return space;
+
+      const column: WidgetDoc = {
+        id: crypto.randomUUID(),
+        type: 'column',
+        x: Math.min(...members.map((w) => w.x)),
+        y: Math.min(...members.map((w) => w.y)),
+        ...WIDGET_DEFS.column.defaultSize,
+        z: topZ(space) + 1,
+        data: { title: '', children: members.map((w) => w.id) },
+      };
+
+      const widgets = { ...space.widgets, [column.id]: column };
+      for (const member of members) widgets[member.id] = asCard(member);
+      useUiStore.getState().setSelection([column.id]);
+      return { ...space, widgets: applyColumn(widgets, column.id) };
+    }),
+
+  detachFromColumn: (id) => {
+    const { spaces, activeSpaceId } = get();
+    const owner = ownerOf(spaces[activeSpaceId]?.widgets ?? {}, id);
+    if (!owner) return;
+    detachedFromColumn = id;
+    updateActive(set, (space) => {
+      const data = columnData(space.widgets[owner.id]);
+      const widgets = {
+        ...space.widgets,
+        [owner.id]: {
+          ...space.widgets[owner.id],
+          data: {
+            ...data,
+            children: data.children.filter((child) => child !== id),
+          } as unknown as WidgetDoc['data'],
+        },
+      };
+      return { ...space, widgets: applyColumn(widgets, owner.id) };
+    });
+  },
+
+  dropIntoColumn: (id, at) => {
+    const { spaces, activeSpaceId } = get();
+    const space = spaces[activeSpaceId];
+    if (!space) return false;
+
+    const columns = Object.values(space.widgets).filter((w) => w.type === 'column');
+    const target = columnAt(
+      [...columns].sort((a, b) => a.z - b.z),
+      at,
+      [id]
+    );
+    const wasInColumn = detachedFromColumn === id;
+    detachedFromColumn = null;
+
+    if (!target) {
+      // Dragged out into the open: a card that was in a column becomes its page
+      // again. A card that was never in one — an imported tab — is left alone.
+      if (wasInColumn) {
+        updateActive(set, (current) => ({
+          ...current,
+          widgets: { ...current.widgets, [id]: asPage(current.widgets[id]) },
+        }));
+      }
+      return false;
+    }
+
+    updateActive(set, (current) => {
+      const data = columnData(current.widgets[target]);
+      const siblings = data.children.map((child) => current.widgets[child]).filter(Boolean);
+      const index = dropIndex(siblings, at.y);
+      const children = [...data.children.filter((child) => child !== id)];
+      children.splice(index, 0, id);
+
+      const widgets = {
+        ...current.widgets,
+        [id]: asCard(current.widgets[id]),
+        [target]: {
+          ...current.widgets[target],
+          data: { ...data, children } as unknown as WidgetDoc['data'],
+        },
+      };
+      return { ...current, widgets: applyColumn(widgets, target) };
+    });
+    return true;
   },
 
   moveWidgetsToSpace: (ids, targetSpaceId) => {
@@ -522,7 +769,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     const target = spaces[targetSpaceId];
     if (!source || !target || targetSpaceId === activeSpaceId) return;
 
-    const moving = ids
+    // A column arrives in the new space with what it was holding.
+    const moving = withChildren(source, ids)
       .map((id) => source.widgets[id])
       .filter((widget): widget is WidgetDoc => !!widget);
     if (moving.length === 0) return;

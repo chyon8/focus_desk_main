@@ -2,6 +2,7 @@ import React from 'react';
 import {
   AppWindow,
   CalendarDays,
+  Columns3,
   CheckSquare,
   Clock,
   Globe,
@@ -28,6 +29,7 @@ import { PhotoWidget } from './PhotoWidget';
 import { CanvasWidget } from './CanvasWidget';
 import { AppWidget } from './AppWidget';
 import { WebAppWidget } from './WebAppWidget';
+import { ColumnWidget } from './ColumnWidget';
 
 export interface WidgetEntry extends WidgetDef {
   icon: LucideIcon;
@@ -47,6 +49,7 @@ const PARTS: Record<WidgetType, { icon: LucideIcon; Component: React.FC<{ id: st
   sketch: { icon: PenLine, Component: CanvasWidget },
   app: { icon: AppWindow, Component: AppWidget },
   webapp: { icon: LayoutGrid, Component: WebAppWidget },
+  column: { icon: Columns3, Component: ColumnWidget },
 };
 
 export const WIDGET_REGISTRY = Object.fromEntries(

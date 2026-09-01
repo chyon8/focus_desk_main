@@ -3,7 +3,7 @@ import type { Camera } from '../canvas/camera';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export type WidgetType =
   | 'todo'
@@ -17,7 +17,8 @@ export type WidgetType =
   | 'photo'
   | 'sketch'
   | 'app'
-  | 'webapp';
+  | 'webapp'
+  | 'column';
 
 export interface WidgetDoc<D = Record<string, unknown>> {
   id: string;
@@ -28,6 +29,19 @@ export interface WidgetDoc<D = Record<string, unknown>> {
   height: number;
   z: number; // stacking order; higher is nearer the viewer
   data: D;
+}
+
+/**
+ * A column holding other widgets (D-099). The children stay ordinary widgets in
+ * `space.widgets` — the column only owns their order and, through that, where
+ * they sit and how tall it is. Nesting them inside this document instead would
+ * have taken every path that touches a widget — saving, selection, undo, the
+ * launcher index — off its one code path.
+ */
+export interface ColumnData {
+  title: string;
+  /** Child widget ids, top to bottom. */
+  children: string[];
 }
 
 /** Weather the user picked for a space, overriding whatever the theme brings. */

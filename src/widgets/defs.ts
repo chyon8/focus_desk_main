@@ -68,6 +68,14 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     defaultSize: { width: 280, height: 320 },
     createData: () => ({ appKey: '', name: '', icon: null }),
   },
+  column: {
+    label: 'Column',
+    // As wide as a note and no wider: a column is read down, and a page dropped
+    // into one becomes a card rather than keeping its own width. The height is
+    // never this — a column is always as tall as what it holds.
+    defaultSize: { width: 340, height: 204 },
+    createData: () => ({ title: '', children: [] }),
+  },
   webapp: {
     label: 'Web app',
     // A page, so it needs page room — narrower than the browser widget, but the

@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRightLeft, Copy, LayoutGrid, Layers, PanelTop, Plus, Trash2, X } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Columns3,
+  Copy,
+  LayoutGrid,
+  Layers,
+  PanelTop,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 
@@ -160,6 +170,12 @@ export const SelectionBar: React.FC = () => {
               {isMoveMenuOpen && <MoveMenu selectedIds={selectedIds} />}
             </AnimatePresence>
           </div>
+          <Action
+            icon={<Columns3 size={13} />}
+            label="Column"
+            title="Put them in a column — pages become cards"
+            onClick={() => useSpaceStore.getState().groupIntoColumn(selectedIds)}
+          />
           <Action
             icon={<Copy size={13} />}
             label="Duplicate"

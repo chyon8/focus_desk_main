@@ -75,7 +75,7 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
 // The MVP's freeform canvas stored shapes, text and images, not strokes, so it
 // has no faithful counterpart here and is left out rather than half-converted.
 // Neither app nor web app widgets existed then.
-type LegacyMappedType = Exclude<WidgetType, 'sketch' | 'app' | 'webapp'>;
+type LegacyMappedType = Exclude<WidgetType, 'sketch' | 'app' | 'webapp' | 'column'>;
 
 const LEGACY_TYPE_MAP: Record<string, LegacyMappedType> = {
   TODO: 'todo',

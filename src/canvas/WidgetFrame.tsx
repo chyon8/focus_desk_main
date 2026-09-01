@@ -2,8 +2,9 @@ import React, { useRef } from 'react';
 import { Copy, LogOut, Palette, PanelLeft, Volume2, X } from 'lucide-react';
 import { hostOf } from '../widgets/browserAddress';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
-import type { BrowserData } from '../spaces/types';
-import { Rect, useUiStore } from '../stores/uiStore';
+import { screenToWorld } from './camera';
+import type { BrowserData, ColumnData } from '../spaces/types';
+import { canvasArea, Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 
 export const HEADER_HEIGHT = 40;
@@ -76,7 +77,10 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   // A browser widget's header shows the page it is on. Open three of them and the
   // registry's fixed "Browser" label with a globe makes all three look the same.
   const page = widget.type === 'browser' ? (widget.data as Partial<BrowserData>) : null;
-  const label = (page && (page.title || (page.url && hostOf(page.url)))) || entry.label;
+  const columnTitle =
+    widget.type === 'column' ? (widget.data as Partial<ColumnData>).title : undefined;
+  const label =
+    columnTitle || (page && (page.title || (page.url && hostOf(page.url)))) || entry.label;
 
   const box = fullRect ?? widget;
   const bodyHeight = box.height - HEADER_HEIGHT;
@@ -96,6 +100,9 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
     if (e.shiftKey) return; // ⇧-drag is the canvas drawing a selection band.
     e.stopPropagation();
     e.preventDefault();
+    // A card has to leave its column before it can be dragged: while it is still
+    // a child, every move is undone by the column putting it back in its slot.
+    if (mode === 'move') useSpaceStore.getState().detachFromColumn(id);
     drag.current = { pointerId: e.pointerId, lastX: e.clientX, lastY: e.clientY, mode };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -141,7 +148,17 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
     const el = e.currentTarget as HTMLElement;
     // Releasing a capture that is already gone throws.
     if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    const wasMove = drag.current.mode === 'move';
     drag.current = null;
+
+    // Where it was let go decides whether it joins a column. The world container
+    // starts at the canvas area's left edge and at the top of the window, so
+    // that is what the pointer is measured from.
+    if (wasMove && widget.type !== 'column') {
+      const area = canvasArea();
+      const at = screenToWorld(getCamera(), { x: e.clientX - area.x, y: e.clientY });
+      useSpaceStore.getState().dropIntoColumn(id, at);
+    }
   };
 
   /** Capture taken away — by a guest page, or by the window losing focus. */
