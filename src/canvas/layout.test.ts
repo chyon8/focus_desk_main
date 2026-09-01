@@ -3,12 +3,14 @@ import {
   arrange,
   autoColumns,
   centreCamera,
+  clampCamera,
   fitCamera,
+  minZoomFor,
   inReadingOrder,
   isFullyVisible,
   Box,
 } from './layout';
-import { worldToScreen } from './camera';
+import { MIN_ZOOM, worldToScreen } from './camera';
 
 const boxes: Box[] = [
   { id: 'b', x: 900, y: 0, width: 200, height: 100 },
@@ -214,5 +216,80 @@ describe('isFullyVisible', () => {
   it('is false for a box hidden under the top chrome', () => {
     const box: Box = { id: 'a', x: 100, y: 40, width: 200, height: 200 };
     expect(isFullyVisible({ x: 0, y: 0, zoom: 1 }, box, inset)).toBe(false);
+  });
+});
+
+describe('minZoomFor', () => {
+  const area = { y: 84, width: 1400, height: 816 };
+
+  it('lets the space shrink well past the point where it all fits', () => {
+    const fit = fitCamera(boxes, area)!.zoom;
+    const floor = minZoomFor(boxes, area);
+    expect(floor).toBeLessThan(fit / 2);
+    expect(floor).toBeGreaterThan(fit / 4);
+  });
+
+  it('gives a space smaller than the screen the same room to zoom out', () => {
+    const one: Box[] = [{ id: 'a', x: 0, y: 0, width: 200, height: 100 }];
+    // Not locked at 1 by its own size: the floor is read off a screenful, not off
+    // the one widget.
+    expect(minZoomFor(one, area)).toBeLessThan(0.5);
+    expect(minZoomFor(one, area)).toBeGreaterThan(0.2);
+  });
+
+  it('keeps the old floor for a space far too big to fit', () => {
+    const huge: Box[] = [{ id: 'a', x: 0, y: 0, width: 100000, height: 100000 }];
+    expect(minZoomFor(huge, area)).toBe(MIN_ZOOM);
+  });
+
+  it('has no floor to read off an empty space', () => {
+    expect(minZoomFor([], area)).toBe(MIN_ZOOM);
+  });
+});
+
+describe('clampCamera', () => {
+  const area = { y: 84, width: 1400, height: 816 };
+  // `boxes` spans 1100x800, so the bounds are widened to the 1400x816 screen and
+  // sit centred on the widgets: x -150..1250, y -8..808.
+
+  it('will not zoom out past the floor', () => {
+    const floor = minZoomFor(boxes, area);
+    expect(clampCamera({ x: 0, y: 0, zoom: 0.01 }, boxes, area).zoom).toBeCloseTo(floor);
+  });
+
+  it('leaves a camera that is already inside the limits alone', () => {
+    const fit = fitCamera(boxes, area)!;
+    const held = clampCamera(fit, boxes, area);
+    expect(held.zoom).toBeCloseTo(fit.zoom);
+    expect(held.x).toBeCloseTo(fit.x);
+    expect(held.y).toBeCloseTo(fit.y);
+  });
+
+  it('lets a pan run until the edge of the bounds reaches the middle of the screen', () => {
+    const right = clampCamera({ x: 90000, y: 0, zoom: 1 }, boxes, area);
+    expect(worldToScreen(right, { x: 1250, y: 0 }).x).toBeCloseTo(area.width / 2);
+
+    const down = clampCamera({ x: 0, y: 90000, zoom: 1 }, boxes, area);
+    expect(worldToScreen(down, { x: 0, y: 808 }).y).toBeCloseTo(area.y + area.height / 2);
+  });
+
+  it('keeps the space in view when it is pushed the other way', () => {
+    const left = clampCamera({ x: -90000, y: 0, zoom: 1 }, boxes, area);
+    expect(worldToScreen(left, { x: -150, y: 0 }).x).toBeCloseTo(area.width / 2);
+  });
+
+  it('holds the space near the middle at the zoom floor', () => {
+    const floor = minZoomFor(boxes, area);
+    const pushed = clampCamera({ x: 90000, y: 90000, zoom: floor }, boxes, area);
+    const centre = worldToScreen(pushed, { x: 550, y: 400 }); // widget bbox centre
+    expect(centre.x).toBeGreaterThan(0);
+    expect(centre.x).toBeLessThan(area.width);
+    expect(centre.y).toBeGreaterThan(area.y);
+    expect(centre.y).toBeLessThan(area.y + area.height);
+  });
+
+  it('has nothing to hold an empty space to', () => {
+    const cam = { x: 9000, y: 9000, zoom: 0.02 };
+    expect(clampCamera(cam, [], area)).toBe(cam);
   });
 });

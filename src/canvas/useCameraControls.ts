@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getCamera, useSpaceStore } from '../stores/spaceStore';
+import { getCamera, getMinZoom, useSpaceStore } from '../stores/spaceStore';
 import { panCamera, zoomCameraAt } from './camera';
 
 const ZOOM_SENSITIVITY = 0.01;
@@ -82,7 +82,10 @@ export function useCameraControls(ref: React.RefObject<HTMLElement | null>) {
         const nextZoom = isMouse
           ? camera.zoom * Math.pow(NOTCH_ZOOM, notches / 120)
           : camera.zoom * Math.exp(-e.deltaY * ZOOM_SENSITIVITY);
-        setCamera(zoomCameraAt(camera, cursor, nextZoom));
+        // Held at the floor here rather than in the store: `zoomCameraAt` keeps
+        // the cursor fixed for the zoom it is given, so a zoom the store then
+        // raises back would have left the space sliding under the cursor.
+        setCamera(zoomCameraAt(camera, cursor, Math.max(getMinZoom(), nextZoom)));
       } else {
         setCamera(panCamera(camera, -e.deltaX, -e.deltaY));
       }

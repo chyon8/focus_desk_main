@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import type { AmbienceLevels } from '../ambience/engine';
 import { SILENT_AMBIENCE } from '../ambience/engine';
-import type { Camera } from '../canvas/camera';
-import { arrange, ArrangeMode, fitCamera } from '../canvas/layout';
+import { MIN_ZOOM, type Camera } from '../canvas/camera';
+import { arrange, ArrangeMode, clampCamera, fitCamera, minZoomFor } from '../canvas/layout';
 import { useAppTimeStore } from './appTimeStore';
 import { useSpaceTimeStore } from './spaceTimeStore';
 import { canvasArea, useUiStore } from './uiStore';
@@ -307,7 +307,11 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     set({ activeSpaceId: id });
   },
 
-  setCamera: (camera) => updateActive(set, (space) => ({ ...space, camera })),
+  setCamera: (camera) =>
+    updateActive(set, (space) => ({
+      ...space,
+      camera: clampCamera(camera, Object.values(space.widgets), canvasArea()),
+    })),
 
   // Choosing a theme drops what the user had layered on top of the old one — the
   // wallpaper would keep the new scene hidden, and the weather would keep raining
@@ -623,6 +627,13 @@ export const useWidget = (id: string) =>
   useSpaceStore((s) => s.spaces[s.activeSpaceId]?.widgets[id]);
 
 /** Reads the active space's camera outside of React (event handlers, rAF). */
+/** How far out the active space may be zoomed. The wheel needs it before it anchors a zoom, or the anchor is worked out for a zoom that never happens. */
+export function getMinZoom(): number {
+  const state = useSpaceStore.getState();
+  const space = state.spaces[state.activeSpaceId];
+  return space ? minZoomFor(Object.values(space.widgets), canvasArea()) : MIN_ZOOM;
+}
+
 export function getCamera(): Camera {
   const state = useSpaceStore.getState();
   return state.spaces[state.activeSpaceId]?.camera ?? { x: 0, y: 0, zoom: 1 };

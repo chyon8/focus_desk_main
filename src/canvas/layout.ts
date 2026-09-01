@@ -302,6 +302,78 @@ export function fitCamera(
 }
 
 /**
+ * How far out the space may be drawn before there is nothing left to look at:
+ * two fifths of a screen across. Smaller than that the widgets are specks and
+ * the screen is mostly empty, which is what the limit exists to stop. The fit
+ * itself is not the floor — a space is worked on from further out than that,
+ * to see where things sit and to have somewhere to put the next one.
+ */
+const MAX_SHRINK = 2.5;
+
+/**
+ * The rect the camera is held to: the widgets' bounding box, never smaller than
+ * one screenful. The floor is what keeps a space holding a single small widget
+ * from freezing the canvas — the box would be a few hundred pixels across, and
+ * both limits below are read off it, so there would be nowhere to zoom out to
+ * and nowhere to pan to before the next widget goes down.
+ */
+function spaceBounds(boxes: Box[], area: Area): Box | null {
+  if (boxes.length === 0) return null;
+
+  const minX = Math.min(...boxes.map((b) => b.x));
+  const minY = Math.min(...boxes.map((b) => b.y));
+  const maxX = Math.max(...boxes.map((b) => b.x + b.width));
+  const maxY = Math.max(...boxes.map((b) => b.y + b.height));
+
+  const width = Math.max(maxX - minX, area.width);
+  const height = Math.max(maxY - minY, area.height);
+  return {
+    id: 'bounds',
+    x: (minX + maxX) / 2 - width / 2,
+    y: (minY + maxY) / 2 - height / 2,
+    width,
+    height,
+  };
+}
+
+/** How far out this space may be zoomed: `MAX_SHRINK` past the point where it fills the screen, and never past the old `MIN_ZOOM` floor. */
+export function minZoomFor(boxes: Box[], area: { y: number; width: number; height: number }) {
+  const bounds = spaceBounds(boxes, area);
+  if (!bounds) return MIN_ZOOM;
+  return Math.max(MIN_ZOOM, fitCamera([bounds], area)!.zoom / MAX_SHRINK);
+}
+
+/**
+ * Holds the camera on the space: no further out than `minZoomFor`, and never
+ * so far across that the middle of the screen leaves `spaceBounds`.
+ *
+ * The pan limit is on the middle of the view rather than its edge so that one
+ * rule holds at every zoom — an edge limit has to swap round once the view
+ * grows wider than the space, and the middle does not.
+ */
+export function clampCamera(
+  cam: Camera,
+  boxes: Box[],
+  area: { y: number; width: number; height: number }
+): Camera {
+  const bounds = spaceBounds(boxes, area);
+  if (!bounds) return cam;
+
+  const zoom = Math.min(MAX_ZOOM, Math.max(minZoomFor(boxes, area), cam.zoom));
+  const halfW = area.width / (2 * zoom);
+  // `cam.y` is the world at the top of the window, and the canvas area starts
+  // below the top chrome — so the middle being held is that area's, not the
+  // window's.
+  const offsetY = (area.y + area.height / 2) / zoom;
+
+  return {
+    zoom,
+    x: Math.min(Math.max(cam.x + halfW, bounds.x), bounds.x + bounds.width) - halfW,
+    y: Math.min(Math.max(cam.y + offsetY, bounds.y), bounds.y + bounds.height) - offsetY,
+  };
+}
+
+/**
  * Camera that puts one box in the middle of the area, at the zoom already in
  * use. Unlike `fitCamera` this does not change how far in the user is — it is
  * for going to look at something, not for reframing the whole space.
