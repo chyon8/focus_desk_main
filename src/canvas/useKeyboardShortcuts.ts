@@ -50,6 +50,7 @@ export function useKeyboardShortcuts() {
         else if (ui.isMoveMenuOpen) ui.closeMoveMenu();
         else if (ui.quickAdd) ui.closeQuickAdd();
         else if (ui.isShortcutsOpen) ui.toggleShortcuts();
+        else if (ui.openDock) ui.closeDock();
         else if (ui.maximizedWidgetId) ui.clearMaximized();
         else if (ui.selectedIds.length) ui.clearSelection();
         return;

@@ -152,6 +152,7 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
   const addSpace = useSpaceStore((s) => s.addSpace);
   const fitToWidgets = useSpaceStore((s) => s.fitToWidgets);
   const zoom = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera.zoom ?? 1);
+  const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
   const isFullscreen = useUiStore((s) => s.isFullscreen);
   const toggleFullscreen = useUiStore((s) => s.toggleFullscreen);
   const today = useToday();
@@ -169,7 +170,7 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
   return (
     <>
       <AnimatePresence>
-        {!isOpen && (
+        {!isOpen && !isMaximized && (
           <motion.button
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}

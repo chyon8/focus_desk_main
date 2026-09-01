@@ -89,10 +89,13 @@ export const Canvas: React.FC = () => {
     void addDroppedContent(content, at);
   };
 
-  // The rect that covers the visible canvas, minus the strip the floating chrome
-  // sits in — otherwise the sidebar toggle and the focus pill land on the
-  // maximised widget's own toolbar. Handing this to a widget blows it up in place,
-  // with no reparenting, so a browser widget keeps its page.
+  // The rect that covers the whole visible canvas. Handing this to a widget blows
+  // it up in place, with no reparenting, so a browser widget keeps its page.
+  //
+  // The strip `canvasArea` keeps free for the floating chrome is added back: a
+  // maximised widget that stops short of the top leaves a band of wallpaper above
+  // it and does not read as maximised at all. The four buttons that live in that
+  // strip hide themselves while a widget is maximised.
   //
   // Its origin is in world units (it lives in the scaled container) but its size
   // is in screen pixels, undone by `scale` on the frame itself: a maximised
@@ -101,9 +104,9 @@ export const Canvas: React.FC = () => {
   const area = canvasArea();
   const fullRect = {
     x: camera.x,
-    y: camera.y + area.y / camera.zoom,
+    y: camera.y,
     width: area.width,
-    height: area.height,
+    height: area.y + area.height,
     scale: 1 / camera.zoom,
   };
 

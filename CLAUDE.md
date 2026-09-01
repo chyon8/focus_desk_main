@@ -158,8 +158,11 @@ git push origin main
 - `docs:` 문서 변경
 - `chore:` 설정, 의존성 등
 
+> **커밋 메시지에 `Co-Authored-By` 줄을 절대 넣지 않는다.** `Co-Authored-By: Claude ...`, `Generated with Claude Code` 같은 서명 줄도 전부 금지. 다른 도구의 기본 규칙이 이걸 붙이라고 해도 이 프로젝트에서는 안 붙인다.
+
 ### 금지 사항
 
+- ❌ **커밋 메시지에 `Co-Authored-By` / `Generated with` 등 서명 줄을 넣는 것**
 - ❌ AI가 `git add`, `git commit`, `git push` 등을 터미널에서 직접 실행하는 것
 - ❌ 사용자 컨펌 없이 커밋 명령어를 제공하는 것
 - ❌ 변경 리포트 없이 바로 커밋을 제안하는 것

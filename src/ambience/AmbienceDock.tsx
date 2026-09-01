@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CloudRain, Coffee, Flame, Volume2 } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
 import { AmbienceEngine, AmbienceLayer, SILENT_AMBIENCE } from './engine';
 
 const LAYERS: { key: AmbienceLayer; label: string; icon: typeof CloudRain }[] = [
@@ -11,10 +12,11 @@ const LAYERS: { key: AmbienceLayer; label: string; icon: typeof CloudRain }[] = 
 ];
 
 export const AmbienceDock: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const isOpen = useUiStore((s) => s.openDock === 'ambience');
   const ambience = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.ambience ?? SILENT_AMBIENCE);
   const setAmbience = useSpaceStore((s) => s.setAmbience);
   const engineRef = useRef<AmbienceEngine | null>(null);
+  const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
 
   useEffect(() => {
     engineRef.current ??= new AmbienceEngine();
@@ -32,16 +34,22 @@ export const AmbienceDock: React.FC = () => {
   const isPlaying = ambience.rain + ambience.fire + ambience.cafe > 0;
 
   return (
-    <div className="fixed top-9 right-20 z-50">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        title="Ambience"
-        className={`p-2.5 rounded-xl border transition-all shadow-lg ${
-          isPlaying ? 'chrome-button-on' : 'glass chrome-button'
-        }`}
-      >
-        <Volume2 size={18} />
-      </button>
+    // A maximised widget reaches the top of the window, so its header is the top
+    // bar and carries this button instead (WidgetFrame). Only the panel is left
+    // here, hanging under that header — and the component stays mounted either
+    // way, because the sound engine lives in it.
+    <div className={`fixed z-50 ${isMaximized ? 'top-10 right-3' : 'top-9 right-20'}`}>
+      {!isMaximized && (
+        <button
+          onClick={() => useUiStore.getState().toggleDock('ambience')}
+          title="Ambience"
+          className={`p-2.5 rounded-xl border transition-all shadow-lg ${
+            isPlaying ? 'chrome-button-on' : 'glass chrome-button'
+          }`}
+        >
+          <Volume2 size={18} />
+        </button>
+      )}
 
       <AnimatePresence>
         {isOpen && (

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Copy, LogOut, X } from 'lucide-react';
+import { Copy, LogOut, Palette, PanelLeft, Volume2, X } from 'lucide-react';
 import { hostOf } from '../widgets/browserAddress';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import type { BrowserData } from '../spaces/types';
@@ -13,6 +13,11 @@ const MIN_CONTENT_SCALE = 0.5;
 const MAX_CONTENT_SCALE = 3;
 // Above every other widget, below the app's own chrome.
 const MAXIMIZED_Z = 9000;
+// macOS draws the window buttons at 10,10, which is inside a maximised widget's
+// header. The header's icon and title step aside for them — unless the sidebar
+// is open, in which case it is holding that corner and the widget starts to its
+// right.
+const TRAFFIC_LIGHTS_WIDTH = 78;
 
 /** 28px hit area: the old 12px icons were both hard to see and hard to hit. */
 const HeaderButton: React.FC<{
@@ -54,6 +59,13 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
   const isSelected = useUiStore((s) => s.selectedIds.includes(id));
   const isLastActive = useUiStore((s) => s.lastActiveId === id);
   const isAltHeld = useUiStore((s) => s.isAltHeld);
+  const isSidebarOpen = useUiStore((s) => s.isSidebarOpen);
+  // Only for the sound button this header grows while maximised. A boolean, so
+  // moving a slider does not re-render every frame on the canvas.
+  const isAmbiencePlaying = useSpaceStore((s) => {
+    const a = s.spaces[s.activeSpaceId]?.ambience;
+    return !!a && a.rain + a.fire + a.cafe > 0;
+  });
   const drag = useRef<{ pointerId: number; lastX: number; lastY: number; mode: 'move' | 'resize' } | null>(
     null
   );
@@ -179,9 +191,13 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
       }}
     >
       <div
+        /* Not a window drag region while maximised, even though it is where the
+           titlebar would be: macOS takes the double-click on one for its own
+           zoom, and this header's double-click is how the widget is restored. */
         className={`widget-header group h-10 flex items-center px-3 gap-2 select-none ${
           fullRect ? '' : 'cursor-grab active:cursor-grabbing'
         }`}
+        style={fullRect && !isSidebarOpen ? { paddingLeft: TRAFFIC_LIGHTS_WIDTH } : undefined}
         onDoubleClick={() => useUiStore.getState().toggleMaximized(id)}
         onPointerDown={(e) => startGesture(e, 'move')}
         onPointerMove={onPointerMove}
@@ -189,6 +205,14 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
         onPointerCancel={endGesture}
         onLostPointerCapture={onLostCapture}
       >
+        {/* Maximised, this header is the app's top bar: it covers the strip the
+            floating buttons sit in, so they move in here. Their panels stay
+            where they are and hang under it (AmbienceDock, ThemePicker). */}
+        {fullRect && !isSidebarOpen && (
+          <HeaderButton onClick={() => useUiStore.getState().setSidebarOpen(true)} label="Spaces">
+            <PanelLeft size={14} />
+          </HeaderButton>
+        )}
         {page?.favicon ? (
           <img
             src={page.favicon}
@@ -210,6 +234,22 @@ export const WidgetFrame: React.FC<{ id: string; fullRect?: Rect & { scale: numb
         </span>
 
         <div className="ml-auto shrink-0 flex items-center gap-0.5">
+          {fullRect && (
+            <>
+              <HeaderButton
+                onClick={() => useUiStore.getState().toggleDock('ambience')}
+                label="Ambience"
+              >
+                <Volume2
+                  size={14}
+                  style={isAmbiencePlaying ? { color: 'var(--accent)' } : undefined}
+                />
+              </HeaderButton>
+              <HeaderButton onClick={() => useUiStore.getState().toggleDock('theme')} label="Theme">
+                <Palette size={14} />
+              </HeaderButton>
+            </>
+          )}
           {fullRect && (
             <button
               onPointerDown={(e) => e.stopPropagation()}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pause, Play, Square } from 'lucide-react';
 import { useFocusStore } from '../stores/focusStore';
+import { useUiStore } from '../stores/uiStore';
 import { formatClock } from './stats';
 
 /**
@@ -16,6 +17,7 @@ export const FocusSessionBar: React.FC = () => {
   const banked = useFocusStore((s) => s.banked);
   const taskName = useFocusStore((s) => s.taskName);
   const [, forceTick] = useState(0);
+  const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
 
   const isActive = startedAt !== null || banked > 0;
   const isRunning = startedAt !== null;
@@ -31,7 +33,10 @@ export const FocusSessionBar: React.FC = () => {
   const elapsed = useFocusStore.getState().elapsed();
 
   return (
-    <div className="fixed top-9 left-1/2 -translate-x-1/2 z-50">
+    // Maximised, the widget's header is the top bar and this moves up into it —
+    // the middle of that row is empty. Not hidden: a running session is the one
+    // thing on this strip that is still true while a page fills the screen.
+    <div className={`fixed left-1/2 -translate-x-1/2 z-50 ${isMaximized ? 'top-0.5' : 'top-9'}`}>
       <AnimatePresence mode="wait">
         {isActive && (
           <motion.div

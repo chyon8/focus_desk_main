@@ -52,6 +52,12 @@ interface UiState {
    * coordinates, `world` is where the chosen widget lands. Null when closed.
    */
   quickAdd: { screen: Point; world: Point } | null;
+  /**
+   * Which of the two top-bar panels is open, if either. In the store because the
+   * button that opens one is not always in the same component as the panel: a
+   * maximised widget's header takes over the top bar and puts its own there.
+   */
+  openDock: 'ambience' | 'theme' | null;
   /** Search across everything openable (K). */
   isLauncherOpen: boolean;
   /** The keyboard cheatsheet. */
@@ -88,6 +94,8 @@ interface UiState {
   closeMoveMenu: () => void;
   toggleMaximized: (widgetId: string) => void;
   clearMaximized: () => void;
+  toggleDock: (dock: 'ambience' | 'theme') => void;
+  closeDock: () => void;
   openQuickAdd: (screen: Point, world: Point) => void;
   closeQuickAdd: () => void;
   toggleLauncher: () => void;
@@ -110,6 +118,7 @@ export const useUiStore = create<UiState>((set) => ({
   lastActiveId: null,
   isMoveMenuOpen: false,
   quickAdd: null,
+  openDock: null,
   isLauncherOpen: false,
   isShortcutsOpen: false,
   notice: null,
@@ -145,7 +154,10 @@ export const useUiStore = create<UiState>((set) => ({
   toggleMaximized: (widgetId) =>
     set((s) => ({ maximizedWidgetId: s.maximizedWidgetId === widgetId ? null : widgetId })),
 
-  clearMaximized: () => set({ maximizedWidgetId: null }),
+  clearMaximized: () => set({ maximizedWidgetId: null, openDock: null }),
+
+  toggleDock: (dock) => set((s) => ({ openDock: s.openDock === dock ? null : dock })),
+  closeDock: () => set({ openDock: null }),
 
   openQuickAdd: (screen, world) => set({ quickAdd: { screen, world } }),
 

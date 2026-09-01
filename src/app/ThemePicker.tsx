@@ -5,6 +5,7 @@ import { assetUrl, SOLID_COLORS } from '../spaces/backgrounds';
 import type { ParticlesChoice } from '../spaces/types';
 import { usePrefsStore } from '../stores/prefsStore';
 import { useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
 import { getTheme, THEMES } from '../themes/themes';
 import type { SceneSpec } from '../themes/types';
 
@@ -40,7 +41,7 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 export const ThemePicker: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const isOpen = useUiStore((s) => s.openDock === 'theme');
   const setTheme = useSpaceStore((s) => s.setTheme);
   const setBackground = useSpaceStore((s) => s.setBackground);
   const setParticles = useSpaceStore((s) => s.setParticles);
@@ -51,6 +52,7 @@ export const ThemePicker: React.FC = () => {
   const webDark = usePrefsStore((s) => s.webDark);
   const fileInput = useRef<HTMLInputElement>(null);
   const [wallpapers, setWallpapers] = useState<string[]>([]);
+  const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
 
   // Re-read the folder every time the panel opens, so a picture dropped in
   // while the app is running is there the moment you look for it.
@@ -73,14 +75,18 @@ export const ThemePicker: React.FC = () => {
     selected ? { boxShadow: '0 0 0 2px var(--accent)' } : undefined;
 
   return (
-    <div className="fixed top-9 right-6 z-50">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        title="Theme"
-        className="glass chrome-button p-2.5 rounded-xl shadow-lg"
-      >
-        <Palette size={18} />
-      </button>
+    // Maximised, the button for this is in the widget's header; only the panel
+    // stays here, hanging under it. Same as the ambience dock.
+    <div className={`fixed z-50 ${isMaximized ? 'top-10 right-3' : 'top-9 right-6'}`}>
+      {!isMaximized && (
+        <button
+          onClick={() => useUiStore.getState().toggleDock('theme')}
+          title="Theme"
+          className="glass chrome-button p-2.5 rounded-xl shadow-lg"
+        >
+          <Palette size={18} />
+        </button>
+      )}
 
       <AnimatePresence>
         {isOpen && (
