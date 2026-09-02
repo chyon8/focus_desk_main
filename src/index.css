@@ -339,6 +339,22 @@ body {
   border-bottom-color: color-mix(in srgb, var(--mark) 75%, transparent);
 }
 
+/* A swatch in the colour picker: a widget in miniature, painted with the very
+   paint a marked one wears — the header band across the top, the body tint under
+   it, the marked border around both. A round chip of the raw hue promised a
+   colour the glass then washed out, so what was picked and what landed never
+   matched. `--mark` is set on the element. */
+.mark-swatch {
+  background:
+    linear-gradient(
+        color-mix(in srgb, var(--mark) 58%, transparent),
+        color-mix(in srgb, var(--mark) 40%, transparent)
+      )
+      top / 100% 40% no-repeat,
+    color-mix(in srgb, var(--mark) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mark) 60%, transparent);
+}
+
 /* Electron frameless window drag region */
 .titlebar-drag-region {
   -webkit-app-region: drag;

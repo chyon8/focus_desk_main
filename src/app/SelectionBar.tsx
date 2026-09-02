@@ -148,8 +148,8 @@ const ColorMenu: React.FC<{ selectedIds: string[]; onDone: () => void }> = ({
               key={name}
               onClick={() => set(name)}
               title={name}
-              className="w-6 h-6 rounded-full active:scale-90 transition-transform"
-              style={{ background: WIDGET_COLORS[name] }}
+              className="mark-swatch w-7 h-7 rounded-lg active:scale-90 transition-transform"
+              style={{ '--mark': WIDGET_COLORS[name] } as React.CSSProperties}
             />
           ))}
           <span className="border-hair mx-1 h-5 border-l" />
