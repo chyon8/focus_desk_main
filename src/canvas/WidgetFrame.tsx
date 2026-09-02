@@ -6,6 +6,7 @@ import { screenToWorld } from './camera';
 import type { BrowserData, ColumnData } from '../spaces/types';
 import { canvasArea, Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
+import { colorOf } from '../widgets/widgetColors';
 
 export const HEADER_HEIGHT = 40;
 // How far a widget's content may be magnified by dragging the frame. Below 1 it
@@ -105,6 +106,9 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
 
   const entry = WIDGET_REGISTRY[widget.type];
   const Body = entry.Component;
+
+  const mark = colorOf(widget.color);
+  const isMarked = !!mark && !isFull;
 
   // A browser widget's header shows the page it is on. Open three of them and the
   // registry's fixed "Browser" label with a globe makes all three look the same.
@@ -213,13 +217,15 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
       /* no-drag: a widget sitting under the window's top drag strip must move
          itself when its header is dragged, not the whole window (App.tsx). */
       className={`widget-glass no-drag absolute rounded-2xl overflow-hidden ${
-        isAltHeld ? 'alt-pick' : ''
-      } ${isSelected ? 'widget-selected' : ''} ${
+        isMarked ? 'widget-marked' : ''
+      } ${isAltHeld ? 'alt-pick' : ''} ${isSelected ? 'widget-selected' : ''} ${
         isDropTarget ? 'widget-drop-target' : ''
       } ${isOverColumn ? 'opacity-40' : ''} ${
         isLastActive && !overlay ? 'widget-last-active' : ''
       }`}
       style={{
+        // On the frame, so the header inside it reads the same value.
+        ...(isMarked && ({ '--mark': mark } as React.CSSProperties)),
         left: box.x,
         top: box.y,
         width: box.width,
@@ -259,8 +265,8 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
            titlebar would be: macOS takes the double-click on one for its own
            zoom, and this header's double-click is how the widget is restored. */
         className={`widget-header group h-10 flex items-center px-3 gap-2 select-none ${
-          overlay ? '' : 'cursor-grab active:cursor-grabbing'
-        }`}
+          isMarked ? 'widget-header-marked' : ''
+        } ${overlay ? '' : 'cursor-grab active:cursor-grabbing'}`}
         style={isFull && !isSidebarOpen ? { paddingLeft: TRAFFIC_LIGHTS_WIDTH } : undefined}
         /* A column has nothing a full screen would show more of — it is a list
            of cards, and a screen-wide list of 300px cards is the same list with

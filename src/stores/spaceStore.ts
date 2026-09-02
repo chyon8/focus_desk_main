@@ -101,6 +101,8 @@ interface SpaceState {
   removeWidget: (id: string) => void;
   /** Closes a whole selection at once, so one undo brings all of it back. */
   removeWidgets: (ids: string[]) => void;
+  /** Marks widgets with a colour, or clears the mark with null. */
+  colorWidgets: (ids: string[], color: string | null) => void;
   /** Puts widgets into a new column, in the order they are read down the canvas. */
   groupIntoColumn: (ids: string[]) => void;
   /** Which column and slot a world point would drop into, or null out in the open. */
@@ -745,6 +747,17 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       return { ...current, widgets: applyColumns(widgets) };
     });
   },
+
+  colorWidgets: (ids, color) =>
+    updateActive(set, (space) => {
+      const widgets = { ...space.widgets };
+      for (const id of ids) {
+        const widget = widgets[id];
+        if (!widget) continue;
+        widgets[id] = color ? { ...widget, color } : { ...widget, color: undefined };
+      }
+      return { ...space, widgets };
+    }),
 
   groupIntoColumn: (ids) =>
     updateActive(set, (space) => {

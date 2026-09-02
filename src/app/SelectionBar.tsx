@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRightLeft,
+  Circle,
   Columns3,
   Copy,
   LayoutGrid,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
+import { WIDGET_COLORS, WIDGET_COLOR_NAMES } from '../widgets/widgetColors';
 
 const Action: React.FC<{
   icon: React.ReactNode;
@@ -117,12 +119,61 @@ const MoveMenu: React.FC<{ selectedIds: string[] }> = ({ selectedIds }) => {
 };
 
 /**
+ * The colour mark, on the selection rather than on one widget's header: a mark
+ * says which widgets are one job, so it is set on the several at once that make
+ * up that job. The header would have to carry a menu of its own for a thing that
+ * is only ever used a few times a space.
+ */
+const ColorMenu: React.FC<{ selectedIds: string[]; onDone: () => void }> = ({
+  selectedIds,
+  onDone,
+}) => {
+  const set = (color: string | null) => {
+    useSpaceStore.getState().colorWidgets(selectedIds, color);
+    onDone();
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[97]" onClick={onDone} />
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 8 }}
+        className="glass-panel absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[98] p-2 rounded-2xl shadow-2xl"
+      >
+        <div className="flex items-center gap-1">
+          {WIDGET_COLOR_NAMES.map((name) => (
+            <button
+              key={name}
+              onClick={() => set(name)}
+              title={name}
+              className="w-6 h-6 rounded-full active:scale-90 transition-transform"
+              style={{ background: WIDGET_COLORS[name] }}
+            />
+          ))}
+          <span className="border-hair mx-1 h-5 border-l" />
+          <button
+            onClick={() => set(null)}
+            title="No colour"
+            className="chrome-button w-6 h-6 flex items-center justify-center rounded-full"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      </motion.div>
+    </>
+  );
+};
+
+/**
  * What can be done to the widgets that are picked out, without knowing the
  * shortcuts. Only up while something is picked (D-087).
  */
 export const SelectionBar: React.FC = () => {
   const selectedIds = useUiStore((s) => s.selectedIds);
   const isMoveMenuOpen = useUiStore((s) => s.isMoveMenuOpen);
+  const [isColorOpen, setIsColorOpen] = useState(false);
   const count = selectedIds.length;
 
   return (
@@ -176,6 +227,20 @@ export const SelectionBar: React.FC = () => {
             title="Put them in a column — pages become cards"
             onClick={() => useSpaceStore.getState().groupIntoColumn(selectedIds)}
           />
+          <div className="relative">
+            <Action
+              icon={<Circle size={13} />}
+              label="Colour"
+              title="Mark them — a colour says which widgets are one job"
+              on={isColorOpen}
+              onClick={() => setIsColorOpen((open) => !open)}
+            />
+            <AnimatePresence>
+              {isColorOpen && (
+                <ColorMenu selectedIds={selectedIds} onDone={() => setIsColorOpen(false)} />
+              )}
+            </AnimatePresence>
+          </div>
           <Action
             icon={<Copy size={13} />}
             label="Duplicate"

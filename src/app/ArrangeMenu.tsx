@@ -44,11 +44,12 @@ export const ArrangeMenu: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Arrange (G, or ⌥G inside a page)"
-        className={`chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95 ${
+        className={`row w-full flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg active:scale-95 ${
           isOpen ? 'row-on' : ''
         }`}
       >
         <LayoutGrid size={18} />
+        <span className="text-[9px] leading-none tracking-wide">Arrange</span>
       </button>
 
       <AnimatePresence>

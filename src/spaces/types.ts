@@ -27,6 +27,12 @@ export interface WidgetDoc<D = Record<string, unknown>> {
   width: number;
   height: number;
   z: number; // stacking order; higher is nearer the viewer
+  /**
+   * A colour mark, keyed into `WIDGET_COLORS`. Says which widgets are one job —
+   * a space with twenty widgets in it has no other way of saying so. Absent on
+   * everything until someone marks it.
+   */
+  color?: string;
   data: D;
 }
 

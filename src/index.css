@@ -149,6 +149,18 @@ body {
   border-color: color-mix(in srgb, var(--ink) 20%, transparent);
 }
 
+/* A marked card takes its colour through the whole tile. A card has no header to
+   put it in and is a fifth the size of a widget, so the tile is the unit.
+   `--mark` is set on the element. */
+.card-tile-marked {
+  background: color-mix(in srgb, var(--mark) 13%, transparent);
+  border-color: color-mix(in srgb, var(--mark) 40%, transparent);
+}
+.card-tile-marked:hover {
+  background: color-mix(in srgb, var(--mark) 20%, transparent);
+  border-color: color-mix(in srgb, var(--mark) 60%, transparent);
+}
+
 /* A row in a list: hoverable, and selectable. */
 .row {
   color: var(--ink-soft);
@@ -228,6 +240,21 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
 
+/* A marked widget, painted the way a marked card is: the edge, the surface and
+   the bar across the top. `--mark` is set on the element.
+
+   It has to carry at a glance and from far out — the point of a mark is picking
+   one job out of a space holding four of them, often zoomed out. A tint too
+   polite to see is the same as no mark. The tint is laid over the panel colour
+   as an image so the glass underneath still shows the room through it. */
+.widget-marked {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--mark) 18%, transparent),
+    color-mix(in srgb, var(--mark) 18%, transparent)
+  );
+  border-color: color-mix(in srgb, var(--mark) 60%, transparent);
+}
+
 /* While ⌥ is down, hovering a widget shows the rim it would be picked with, so a
    selection can be built without guessing what the next click hits. */
 .alt-pick:hover {
@@ -299,6 +326,17 @@ body {
 .widget-header {
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015));
   border-bottom: 1px solid var(--panel-border);
+}
+
+/* The bar across the top of a marked widget, the part that is read. It has to
+   sit after `.widget-header` — the two carry the same weight, so the one written
+   last is the one that paints, and from above this the mark did nothing. */
+.widget-header-marked {
+  background: linear-gradient(
+    color-mix(in srgb, var(--mark) 58%, transparent),
+    color-mix(in srgb, var(--mark) 40%, transparent)
+  );
+  border-bottom-color: color-mix(in srgb, var(--mark) 75%, transparent);
 }
 
 /* Electron frameless window drag region */

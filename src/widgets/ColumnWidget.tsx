@@ -14,15 +14,18 @@ import type { BrowserData, ColumnData, WidgetDoc } from '../spaces/types';
 import { hostOf } from './browserAddress';
 import { cardSummary } from './cardSummary';
 import { WIDGET_REGISTRY } from './registry';
+import { colorOf } from './widgetColors';
 import { useWidgetData } from './useWidgetData';
 
 /** Pages already asked about this run, so a page that offers no picture is not asked once per render. */
 const askedFor = new Set<string>();
 
 /** A page in a column is a link preview: its picture, its address, its name, its own line. */
-const PagePreview: React.FC<{ widget: WidgetDoc }> = ({ widget }) => {
+const PagePreview: React.FC<{ widget: WidgetDoc; mark: string | null }> = ({ widget, mark }) => {
   const card = cardSummary(widget);
   const Icon = WIDGET_REGISTRY[widget.type].icon;
+  // A page with no picture of its own shows a block of colour. A mark wins over
+  // the site's own tint: the mark was chosen, the tint was averaged off a favicon.
 
   return (
     <div className="h-full w-full flex flex-col text-left">
@@ -39,9 +42,11 @@ const PagePreview: React.FC<{ widget: WidgetDoc }> = ({ widget }) => {
           className="flex w-full shrink-0 items-center justify-center"
           style={{
             height: COLUMN_CARD_IMAGE,
-            background: card.tint
-              ? `linear-gradient(160deg, rgba(${card.tint}, 0.30), rgba(${card.tint}, 0.10))`
-              : 'color-mix(in srgb, var(--ink) 5%, transparent)',
+            background: mark
+              ? `linear-gradient(160deg, color-mix(in srgb, ${mark} 38%, transparent), color-mix(in srgb, ${mark} 12%, transparent))`
+              : card.tint
+                ? `linear-gradient(160deg, rgba(${card.tint}, 0.30), rgba(${card.tint}, 0.10))`
+                : 'color-mix(in srgb, var(--ink) 5%, transparent)',
           }}
         >
           {card.icon ? (
@@ -111,7 +116,11 @@ function clearDrag() {
  * The row keeps its own press handler rather than being a drag source for the
  * frame above it: the cards have no frames, which is the point of a column.
  */
-const Card: React.FC<{ widget: WidgetDoc; onOpen: () => void }> = ({ widget, onOpen }) => {
+const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => void }> = ({
+  widget,
+  mark,
+  onOpen,
+}) => {
   const isPage = widget.type === 'browser' || widget.type === 'webapp';
   const Body = WIDGET_REGISTRY[widget.type].Component;
   const isDragging = useUiStore((s) => s.draggingWidgetId === widget.id);
@@ -175,9 +184,12 @@ const Card: React.FC<{ widget: WidgetDoc; onOpen: () => void }> = ({ widget, onO
   return (
     <div
       className={`group card-tile relative w-full shrink-0 overflow-hidden rounded-xl ${
-        isDragging ? 'opacity-40' : ''
-      }`}
-      style={{ height: COLUMN_CARD_HEIGHT }}
+        mark ? 'card-tile-marked' : ''
+      } ${isDragging ? 'opacity-40' : ''}`}
+      style={{
+        height: COLUMN_CARD_HEIGHT,
+        ...(mark && ({ '--mark': mark } as React.CSSProperties)),
+      }}
     >
       <div className="h-full w-full flex flex-col">
         <div
@@ -185,7 +197,12 @@ const Card: React.FC<{ widget: WidgetDoc; onOpen: () => void }> = ({ widget, onO
           title="Drag to move it"
           style={{
             height: CARD_HANDLE,
-            background: 'color-mix(in srgb, var(--ink) 7%, transparent)',
+            // Mixed rather than the flat hue: a solid band of colour on a card
+            // that is already tinted reads as a sticker laid over it, and the
+            // widget's own marked header is a mix for the same reason.
+            background: mark
+              ? `color-mix(in srgb, ${mark} 55%, transparent)`
+              : 'color-mix(in srgb, var(--ink) 7%, transparent)',
           }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -194,7 +211,11 @@ const Card: React.FC<{ widget: WidgetDoc; onOpen: () => void }> = ({ widget, onO
         >
           <div
             className="h-[2px] w-6 rounded-full"
-            style={{ background: 'color-mix(in srgb, var(--ink) 22%, transparent)' }}
+            style={{
+              background: mark
+                ? 'rgba(255, 255, 255, 0.55)'
+                : 'color-mix(in srgb, var(--ink) 22%, transparent)',
+            }}
           />
         </div>
 
@@ -207,7 +228,7 @@ const Card: React.FC<{ widget: WidgetDoc; onOpen: () => void }> = ({ widget, onO
               title="Click to open it"
               onClick={onOpen}
             >
-              <PagePreview widget={widget} />
+              <PagePreview widget={widget} mark={mark} />
             </div>
           ) : (
             <Body id={widget.id} />
@@ -222,6 +243,11 @@ const Card: React.FC<{ widget: WidgetDoc; onOpen: () => void }> = ({ widget, onO
  * The column: a name, a count, and its cards. The cards are ordinary widgets in
  * the space document — the column owns their order and draws them, and the
  * canvas leaves them out of its own render for as long as they are in here.
+ *
+ * A column has one colour and every card in it wears that colour. A column is
+ * one thing — a list — so a list of rows in eight different colours says nothing
+ * a colour is supposed to say. A card's own mark, from before it was put in
+ * here, is kept in the document and comes back when it is taken out again.
  */
 export const ColumnWidget: React.FC<{ id: string }> = ({ id }) => {
   const [data] = useWidgetData<ColumnData>(id);
@@ -282,6 +308,9 @@ export const ColumnWidget: React.FC<{ id: string }> = ({ id }) => {
     }
   }, [children]);
 
+  // The column's own colour, worn by every card in it.
+  const columnMark = useSpaceStore((s) => colorOf(s.spaces[s.activeSpaceId]?.widgets[id]?.color));
+
   const target = useUiStore((s) => (s.dropTarget?.columnId === id ? s.dropTarget.index : null));
   const draggingWidgetId = useUiStore((s) => s.draggingWidgetId);
 
@@ -317,6 +346,7 @@ export const ColumnWidget: React.FC<{ id: string }> = ({ id }) => {
               <React.Fragment key={child.id}>
                 <Card
                   widget={child}
+                  mark={columnMark}
                   onOpen={() => useSpaceStore.getState().openFromColumn(child.id)}
                 />
                 {dropAt === i + 1 && <Line />}

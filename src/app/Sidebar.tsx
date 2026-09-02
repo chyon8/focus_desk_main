@@ -13,7 +13,23 @@ import { ChromeImportPanel } from './ChromeImportPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { SpaceSessionPanel } from './SpaceSessionPanel';
 import { WebAppDock } from './WebAppDock';
-import { WidgetPalette } from './WidgetPalette';
+
+/** One cell of the tool grid: an icon over its name, like the palette's items. */
+const Tool: React.FC<{
+  onClick: () => void;
+  label: string;
+  title: string;
+  children: React.ReactNode;
+}> = ({ onClick, label, title, children }) => (
+  <button
+    onClick={onClick}
+    title={title}
+    className="row flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg active:scale-95"
+  >
+    {children}
+    <span className="text-[9px] leading-none tracking-wide">{label}</span>
+  </button>
+);
 
 function spaceIcon(name: string) {
   const n = name.toLowerCase();
@@ -262,57 +278,62 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
               </button>
             )}
             <WebAppDock />
-            <WidgetPalette />
 
-            {/* Canvas tools. They were a floating bar across the bottom of the
-                screen; the canvas is worth more than they are. */}
-            <div className="border-hair shrink-0 mt-3 pt-3 flex items-center gap-1 border-t">
-              <ArrangeMenu />
-              <button
-                onClick={fitToWidgets}
-                title="Fit — frame every widget (F, or ⇧F inside a page)"
-                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
-              >
-                <Frame size={18} />
-              </button>
-              <button
-                onClick={toggleFullscreen}
-                title={isFullscreen ? 'Leave fullscreen (⇧M)' : 'Fullscreen (⇧M)'}
-                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
-              >
-                {isFullscreen ? <Shrink size={18} /> : <Expand size={18} />}
-              </button>
-              <button
-                onClick={useUiStore.getState().toggleShortcuts}
-                title="Keyboard shortcuts (?)"
-                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
-              >
-                <Keyboard size={18} />
-              </button>
-              <button
-                onClick={() => setIsImportOpen((open) => !open)}
-                title="Bring in the windows open in Chrome"
-                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
-              >
-                <Chrome size={18} />
-              </button>
-              <button
-                onClick={() => setIsSessionOpen((open) => !open)}
-                title="What this space is signed in to"
-                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
-              >
-                <KeyRound size={18} />
-              </button>
-              <button
-                onClick={() => setIsSettingsOpen((open) => !open)}
-                title="Settings — data, backups, paper"
-                className="chrome-button w-10 h-10 flex items-center justify-center rounded-xl active:scale-95"
-              >
-                <Settings size={18} />
-              </button>
-              <span className="t-faint ml-auto px-2 text-xs tabular-nums" title="Canvas zoom">
-                {Math.round(zoom * 100)}%
-              </span>
+            {/* The tools, in the drawer the widget palette used to have. Eight
+                icons in one strip along the bottom is a row nobody can read; the
+                widgets they replaced are still a canvas double-click and K away,
+                and these are not anywhere else. */}
+            <div className="border-hair shrink-0 mt-3 pt-3 border-t">
+              <div className="flex items-baseline justify-between px-3 mb-2">
+                <span className="t-faint text-[10px] font-bold uppercase tracking-widest">
+                  Tools
+                </span>
+                <span className="t-faint text-[10px] tabular-nums" title="Canvas zoom">
+                  {Math.round(zoom * 100)}%
+                </span>
+              </div>
+
+              <div className="grid grid-cols-4 gap-1 px-1">
+                <ArrangeMenu />
+                <Tool onClick={fitToWidgets} label="Fit" title="Frame every widget (F, or ⇧F inside a page)">
+                  <Frame size={18} />
+                </Tool>
+                <Tool
+                  onClick={toggleFullscreen}
+                  label="Screen"
+                  title={isFullscreen ? 'Leave fullscreen (⇧M)' : 'Fullscreen (⇧M)'}
+                >
+                  {isFullscreen ? <Shrink size={18} /> : <Expand size={18} />}
+                </Tool>
+                <Tool
+                  onClick={useUiStore.getState().toggleShortcuts}
+                  label="Keys"
+                  title="Keyboard shortcuts (?)"
+                >
+                  <Keyboard size={18} />
+                </Tool>
+                <Tool
+                  onClick={() => setIsImportOpen((open) => !open)}
+                  label="Chrome"
+                  title="Bring in the windows open in Chrome"
+                >
+                  <Chrome size={18} />
+                </Tool>
+                <Tool
+                  onClick={() => setIsSessionOpen((open) => !open)}
+                  label="Logins"
+                  title="What this space is signed in to"
+                >
+                  <KeyRound size={18} />
+                </Tool>
+                <Tool
+                  onClick={() => setIsSettingsOpen((open) => !open)}
+                  label="Settings"
+                  title="Data, backups, paper"
+                >
+                  <Settings size={18} />
+                </Tool>
+              </div>
             </div>
 
           </motion.div>

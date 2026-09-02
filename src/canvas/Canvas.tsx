@@ -237,9 +237,15 @@ export const Canvas: React.FC = () => {
       bottom: Math.max(a.y, b.y),
     };
     const widgets = useSpaceStore.getState().spaces[useSpaceStore.getState().activeSpaceId].widgets;
+    // Only what the canvas actually draws. A card in a column keeps the `x`/`y`
+    // it had as a canvas widget — nothing reads them while it is in there — so
+    // banding over the empty patch it used to stand in picked it up invisibly.
+    // Whatever was done to the selection next then happened to a card the user
+    // could not see was selected: a colour landed on cards nobody had picked.
     const hits = Object.values(widgets)
       .filter(
         (w) =>
+          ids.includes(w.id) &&
           w.x < band.right &&
           w.x + w.width > band.left &&
           w.y < band.bottom &&
