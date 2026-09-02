@@ -85,6 +85,43 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     doc.schemaVersion = 8;
   }
 
+  if (doc.schemaVersion < 9) {
+    // v9 dropped the links widget. A column of page cards is the same list with
+    // the page's own picture, name and line on each row, so the links are kept
+    // as one — nothing a user saved is thrown away.
+    const widgets = { ...doc.widgets };
+    for (const widget of Object.values(doc.widgets)) {
+      if ((widget.type as string) !== 'bookmarks') continue;
+      delete widgets[widget.id];
+      const links = ((widget.data as { items?: { title?: string; url?: string }[] }).items ?? [])
+        .filter((item) => item.url);
+      for (const [i, link] of links.entries()) {
+        const id = `${widget.id}-${i}`;
+        widgets[id] = {
+          id,
+          type: 'browser',
+          x: widget.x,
+          y: widget.y,
+          width: 900,
+          height: 620,
+          z: widget.z,
+          // Closed: a saved link is a card, and opening twelve of them at once
+          // is not what a list of links was.
+          data: { url: link.url!, title: link.title ?? '', open: false },
+        };
+      }
+      widgets[widget.id] = {
+        ...widget,
+        type: 'column',
+        width: COLUMN_WIDTH,
+        height: columnHeight(links.length),
+        data: { title: 'Links', children: links.map((_, i) => `${widget.id}-${i}`) },
+      };
+    }
+    doc.widgets = widgets;
+    doc.schemaVersion = 9;
+  }
+
   doc.schemaVersion = SCHEMA_VERSION;
   return doc;
 }
@@ -108,7 +145,6 @@ const LEGACY_TYPE_MAP: Record<string, LegacyMappedType> = {
   KANBAN: 'kanban',
   BROWSER: 'browser',
   CALENDAR: 'calendar',
-  BOOKMARKS: 'bookmarks',
   PHOTO: 'photo',
 };
 
@@ -119,7 +155,7 @@ interface LegacyWidget {
   theme?: 'LIGHT' | 'DARK';
   content?: string;
   title?: string;
-  // Todo items and bookmarks both lived under `items` with different shapes.
+  // Todo items and links both lived under `items` with different shapes.
   items?: {
     id: string;
     text?: string;
@@ -192,14 +228,6 @@ function convertWidget(legacy: LegacyWidget, z: number): WidgetDoc | null {
       break;
     case 'photo':
       data = { url: legacy.url ?? '', caption: legacy.caption ?? '' };
-      break;
-    case 'bookmarks':
-      data = {
-        theme,
-        items: (legacy.items ?? [])
-          .filter((i) => i.url)
-          .map((i) => ({ id: i.id, title: i.title ?? i.url!, url: i.url! })),
-      };
       break;
   }
 

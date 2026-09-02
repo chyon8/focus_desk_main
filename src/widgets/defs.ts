@@ -48,11 +48,6 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     defaultSize: { width: 340, height: 360 },
     createData: () => ({ theme: 'LIGHT' }),
   },
-  bookmarks: {
-    label: 'Links',
-    defaultSize: { width: 320, height: 380 },
-    createData: () => ({ items: [], theme: 'LIGHT' }),
-  },
   photo: {
     label: 'Photo',
     defaultSize: { width: 280, height: 320 },

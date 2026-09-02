@@ -261,8 +261,6 @@ body {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-/* The slot a card would go into: a line between two rows, the width of the list.
-   Drawn where the card would start, so it says a position rather than a target. */
 /* Where a card dragged into the open will stand. A dashed outline rather than a
    filled shape: it is drawn over whatever it is about to cover, and a solid one
    would hide the thing the user is deciding whether to cover. Its border divides
@@ -273,6 +271,8 @@ body {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
+/* The slot a card would go into: a line between two rows, the width of the list.
+   Drawn where the card would start, so it says a position rather than a target. */
 .drop-line {
   height: 3px;
   border-radius: 2px;

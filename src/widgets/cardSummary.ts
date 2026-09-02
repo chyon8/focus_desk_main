@@ -1,7 +1,6 @@
 import { hostOf } from './browserAddress';
 import { WIDGET_DEFS } from './defs';
 import type {
-  BookmarksData,
   BrowserData,
   ColumnData,
   MemoData,
@@ -73,10 +72,6 @@ export function cardSummary(widget: WidgetDoc): CardSummary {
         title: items[0]?.text || 'Empty list',
         subtitle: `${left} left of ${items.length}`,
       };
-    }
-    case 'bookmarks': {
-      const items = (widget.data as unknown as BookmarksData).items ?? [];
-      return { title: label, subtitle: `${items.length} links` };
     }
     case 'column': {
       const data = widget.data as unknown as ColumnData;

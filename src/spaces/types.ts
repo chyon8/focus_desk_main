@@ -3,7 +3,7 @@ import type { Camera } from '../canvas/camera';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export type WidgetType =
   | 'todo'
@@ -13,7 +13,6 @@ export type WidgetType =
   | 'kanban'
   | 'browser'
   | 'calendar'
-  | 'bookmarks'
   | 'photo'
   | 'sketch'
   | 'app'
@@ -154,17 +153,6 @@ export interface BrowserData {
 }
 
 export interface CalendarData {
-  theme: 'LIGHT' | 'DARK';
-}
-
-export interface Bookmark {
-  id: string;
-  title: string;
-  url: string;
-}
-
-export interface BookmarksData {
-  items: Bookmark[];
   theme: 'LIGHT' | 'DARK';
 }
 

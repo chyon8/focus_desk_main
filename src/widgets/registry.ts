@@ -8,7 +8,6 @@ import {
   Globe,
   KanbanSquare,
   Image,
-  Link2,
   LayoutGrid,
   PenLine,
   StickyNote,
@@ -24,7 +23,6 @@ import { ClockWidget } from './ClockWidget';
 import { KanbanWidget } from './KanbanWidget';
 import { BrowserWidget } from './BrowserWidget';
 import { CalendarWidget } from './CalendarWidget';
-import { BookmarksWidget } from './BookmarksWidget';
 import { PhotoWidget } from './PhotoWidget';
 import { CanvasWidget } from './CanvasWidget';
 import { AppWidget } from './AppWidget';
@@ -44,7 +42,6 @@ const PARTS: Record<WidgetType, { icon: LucideIcon; Component: React.FC<{ id: st
   kanban: { icon: KanbanSquare, Component: KanbanWidget },
   browser: { icon: Globe, Component: BrowserWidget },
   calendar: { icon: CalendarDays, Component: CalendarWidget },
-  bookmarks: { icon: Link2, Component: BookmarksWidget },
   photo: { icon: Image, Component: PhotoWidget },
   sketch: { icon: PenLine, Component: CanvasWidget },
   app: { icon: AppWindow, Component: AppWidget },
