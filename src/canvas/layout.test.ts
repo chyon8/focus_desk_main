@@ -40,14 +40,10 @@ describe('arrange', () => {
     expect(inReadingOrder(boxes).map((box) => box.id)).toEqual(['a', 'b', 'c']);
   });
 
-  it('grid fills the area: the block spans it and nothing spills out', () => {
+  it('grid stays inside the area', () => {
     const out = placed(boxes, area, 'grid', 2);
-    const right = Math.max(...out.map((p) => p.x + p.width));
-    const bottom = Math.max(...out.map((p) => p.y + p.height));
-    expect(right).toBeLessThanOrEqual(area.width);
-    expect(bottom).toBeLessThanOrEqual(area.height);
-    // At least one axis is used up to the padding the fit leaves.
-    expect(Math.max(right / area.width, bottom / area.height)).toBeGreaterThan(0.9);
+    expect(Math.max(...out.map((p) => p.x + p.width))).toBeLessThanOrEqual(area.width);
+    expect(Math.max(...out.map((p) => p.y + p.height))).toBeLessThanOrEqual(area.height);
   });
 
   it('grid grows small boxes but keeps each aspect ratio', () => {
@@ -56,6 +52,34 @@ describe('arrange', () => {
       expect(p.width).toBeGreaterThan(box.width);
       expect(p.width / p.height).toBeCloseTo(box.width / box.height, 1);
     }
+  });
+
+  it('never blows a box up past half again the size it was designed at', () => {
+    // A clock alone in a space used to be given half the screen, because the one
+    // cell was the screen. The ceiling is read off `natural`, not off the box.
+    const clock: Box[] = [
+      { id: 'clock', x: 0, y: 0, width: 320, height: 400, natural: { width: 320, height: 400 } },
+    ];
+    const [p] = placed(clock, area, 'grid');
+    expect(p.width).toBeLessThanOrEqual(320 * 1.5);
+    expect(p.height).toBeLessThanOrEqual(400 * 1.5);
+  });
+
+  it('leaves no gap between what a box was given and what it takes', () => {
+    // The grid is pulled in to the sizes that came out of the cells, so the block
+    // is what the widgets need — a fit after this must not frame empty room.
+    const small: Box[] = Array.from({ length: 4 }, (_, i) => ({
+      id: String(i),
+      x: 0,
+      y: 0,
+      width: 300,
+      height: 200,
+      natural: { width: 300, height: 200 },
+    }));
+    const out = placed(small, area, 'grid', 2);
+    const width = Math.max(...out.map((p) => p.x + p.width)) - Math.min(...out.map((p) => p.x));
+    // Two columns of 450 with one gap between them, and nothing else.
+    expect(width).toBe(450 * 2 + 32);
   });
 
   it('a tall, narrow area is filled with one column', () => {

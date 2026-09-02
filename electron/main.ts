@@ -25,6 +25,15 @@ if (process.env.FOCUS_DESK_PROFILE) {
   );
 }
 
+// A debugging port, off unless asked for. Set it to drive a dev run over CDP —
+// the renderer cannot be inspected from outside without it, and adding the
+// switch by hand meant editing this file, which restarts whatever else is
+// already running.
+//   FOCUS_DESK_DEBUG_PORT=9333 npm run dev
+if (process.env.FOCUS_DESK_DEBUG_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.FOCUS_DESK_DEBUG_PORT);
+}
+
 // Privileged schemes must be declared before the app is ready.
 registerImageProtocolScheme();
 
@@ -148,7 +157,15 @@ app.on('web-contents-created', (_event, contents) => {
       // No preload and no node: this is someone else's page, and it has no
       // business reaching the app the way a widget's own guest does. Size is left
       // to the features the site asked for.
+      //
+      // `parent` is what keeps it findable. Without it the popup is a window of
+      // its own in the window list, so the first click back on the canvas raised
+      // the main window over it and the popup was gone as far as anyone could
+      // tell — a page opened from a widget looked like it had vanished. A child
+      // window stays above the window it came from, which is also what a sign-in
+      // needs: that flow is the reason popups are allowed at all (D-075).
       overrideBrowserWindowOptions: {
+        parent: win ?? undefined,
         autoHideMenuBar: true,
         webPreferences: { nodeIntegration: false, contextIsolation: true },
       },

@@ -33,6 +33,37 @@ interface UiState {
   // Widget blown up to fill the canvas. Purely a view state: the widget keeps its
   // stored position and size, so leaving maximised puts it back untouched.
   maximizedWidgetId: string | null;
+  /**
+   * A card in a column, opened where it stands.
+   *
+   * A card is a picture of a page, and a picture is not something you can read —
+   * so a click has to show the real thing. Filling the screen for that is too
+   * much: the click was "what is this", not "I am working in here now", and
+   * coming back meant finding the way out of a full-screen page. So it opens as
+   * a panel beside its column and closes again on the next click elsewhere,
+   * leaving the column exactly as it was.
+   */
+  peekWidgetId: string | null;
+  /**
+   * Where a widget being dragged right now would land if it were let go: which
+   * column, and which slot down it.
+   *
+   * It is here rather than in the drag itself because the column has to draw the
+   * line and the drag is happening somewhere else — over the canvas, or over
+   * another column. Null while nothing is being dragged, and while a drag is out
+   * in the open where letting go means leaving the column.
+   */
+  dropTarget: { columnId: string; index: number } | null;
+  /** The widget being dragged right now, so it can step out of the way of what it is being dropped on. */
+  draggingWidgetId: string | null;
+  /**
+   * Where a card being dragged into the open would stand, in world coordinates.
+   * A card comes out at its full widget size, which is several times the card
+   * under the pointer, so without an outline there is no telling what is about
+   * to be covered. Null while the drag is over a column — the column draws its
+   * own line — and while nothing is being dragged.
+   */
+  dropSpot: { x: number; y: number; width: number; height: number } | null;
   /** Widgets picked out with ⇧-drag or ⌥-click: move, arrange and fit act on these alone. */
   selectedIds: string[];
   /** ⌥ is down, so hovering a widget shows it can be picked. */
@@ -94,6 +125,12 @@ interface UiState {
   closeMoveMenu: () => void;
   toggleMaximized: (widgetId: string) => void;
   clearMaximized: () => void;
+  /** Opens a card where it stands. Replaces whatever was open before. */
+  openPeek: (widgetId: string) => void;
+  closePeek: () => void;
+  setDropTarget: (target: { columnId: string; index: number } | null) => void;
+  setDropSpot: (spot: { x: number; y: number; width: number; height: number } | null) => void;
+  setDraggingWidget: (widgetId: string | null) => void;
   toggleDock: (dock: 'ambience' | 'theme') => void;
   closeDock: () => void;
   openQuickAdd: (screen: Point, world: Point) => void;
@@ -113,6 +150,10 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   isSidebarOpen: true,
   maximizedWidgetId: null,
+  peekWidgetId: null,
+  dropTarget: null,
+  draggingWidgetId: null,
+  dropSpot: null,
   selectedIds: [],
   isAltHeld: false,
   lastActiveId: null,
@@ -151,10 +192,27 @@ export const useUiStore = create<UiState>((set) => ({
 
   closeMoveMenu: () => set({ isMoveMenuOpen: false }),
 
+  // Maximising leaves the peek: the two are the same widget being looked at, and
+  // a panel left open behind a full-screen page has nothing to sit beside.
   toggleMaximized: (widgetId) =>
-    set((s) => ({ maximizedWidgetId: s.maximizedWidgetId === widgetId ? null : widgetId })),
+    set((s) => ({
+      maximizedWidgetId: s.maximizedWidgetId === widgetId ? null : widgetId,
+      peekWidgetId: null,
+    })),
 
   clearMaximized: () => set({ maximizedWidgetId: null, openDock: null }),
+
+  // Clearing the maximised widget is not tidying: a panel is drawn beside the
+  // column it came from, and a maximised widget covers the whole canvas
+  // including that column. Leaving both set drew the blocking layer the panel
+  // sits on with no panel on it — an invisible sheet over the canvas.
+  openPeek: (peekWidgetId) =>
+    set({ peekWidgetId, maximizedWidgetId: null, selectedIds: [] }),
+  closePeek: () => set({ peekWidgetId: null }),
+
+  setDropTarget: (dropTarget) => set({ dropTarget }),
+  setDraggingWidget: (draggingWidgetId) => set({ draggingWidgetId }),
+  setDropSpot: (dropSpot) => set({ dropSpot }),
 
   toggleDock: (dock) => set((s) => ({ openDock: s.openDock === dock ? null : dock })),
   closeDock: () => set({ openDock: null }),

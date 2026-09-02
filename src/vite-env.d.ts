@@ -129,6 +129,14 @@ declare global {
       favicons: (
         hosts: string[]
       ) => Promise<Record<string, { url: string; color: string } | null>>;
+      /**
+       * What each page says about itself for a link preview: its `og:image`,
+       * downloaded and filed, and its `og:description`. Null for a page that
+       * could not be read.
+       */
+      previews: (
+        urls: string[]
+      ) => Promise<Record<string, { image: string | null; description: string | null } | null>>;
     };
     windowMode?: {
       toggleFullscreen: () => Promise<boolean>;

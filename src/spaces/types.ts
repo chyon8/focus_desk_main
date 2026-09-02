@@ -3,7 +3,7 @@ import type { Camera } from '../canvas/camera';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export type WidgetType =
   | 'todo'
@@ -127,6 +127,22 @@ export interface BrowserData {
    * a grid before they have read a word of it.
    */
   faviconColor?: string;
+  /**
+   * The page's own preview picture (`og:image`), filed locally. A card is a
+   * bookmark, and a bookmark with the picture the page offers is read at a
+   * glance where a row of favicons is not. Empty string means asked for and the
+   * page had none — so it is not asked again on every mount.
+   */
+  thumbnail?: string;
+  /** The line the page offers about itself (`og:description`), for a card to carry under its title. */
+  description?: string;
+  /**
+   * The address `thumbnail` and `description` were read from. Browsing inside a
+   * card's page changes `url`, and the picture of the page it started on is not
+   * a picture of the page it is on now — so the card asks again whenever this
+   * stops matching `url`.
+   */
+  previewUrl?: string;
   /**
    * Whether the page is loaded rather than a card standing for it, like the web
    * app widget's `open`. Undefined means loaded: widgets made before this existed

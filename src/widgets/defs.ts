@@ -70,10 +70,9 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   },
   column: {
     label: 'Column',
-    // As wide as a note and no wider: a column is read down, and a page dropped
-    // into one becomes a card rather than keeping its own width. The height is
-    // never this — a column is always as tall as what it holds.
-    defaultSize: { width: 340, height: 204 },
+    // Every column is this wide — `COLUMN_WIDTH`. The height is never this: a
+    // column is always as tall as the cards it holds.
+    defaultSize: { width: 300, height: 136 },
     createData: () => ({ title: '', children: [] }),
   },
   webapp: {

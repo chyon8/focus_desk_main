@@ -136,6 +136,19 @@ body {
   background: color-mix(in srgb, var(--ink) 12%, transparent);
 }
 
+/* A card in a column: a surface of its own, so a stack of them reads as a list
+   of things rather than one long panel. Lifted on hover, the way a link
+   preview is. */
+.card-tile {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.card-tile:hover {
+  background: color-mix(in srgb, var(--ink) 11%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
 /* A row in a list: hoverable, and selectable. */
 .row {
   color: var(--ink-soft);
@@ -237,6 +250,34 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.38);
   pointer-events: none;
+}
+
+/* The column a dragged widget would land in. Filled as well as ringed: a ring
+   alone reads as "picked out", and the answer being asked for here is "this one,
+   here" while something is in the air. */
+.widget-drop-target {
+  outline: calc(2px / var(--zoom, 1)) solid var(--accent);
+  outline-offset: calc(3px / var(--zoom, 1));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* The slot a card would go into: a line between two rows, the width of the list.
+   Drawn where the card would start, so it says a position rather than a target. */
+/* Where a card dragged into the open will stand. A dashed outline rather than a
+   filled shape: it is drawn over whatever it is about to cover, and a solid one
+   would hide the thing the user is deciding whether to cover. Its border divides
+   by --zoom so it stays the same weight on screen at any zoom. */
+.drop-spot {
+  border: calc(2px / var(--zoom, 1)) dashed var(--accent);
+  border-radius: calc(12px / var(--zoom, 1));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.drop-line {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
 /* Where you just were. A glow rather than a ring: a ring already means "picked

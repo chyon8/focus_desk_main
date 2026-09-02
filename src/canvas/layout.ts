@@ -6,6 +6,19 @@ export interface Box {
   y: number;
   width: number;
   height: number;
+  /**
+   * A box that owns its size: an arrange places it and leaves its width and
+   * height alone. A column is one — its height is its card count, so a grid
+   * that resized it would have its answer overwritten and read the overwritten
+   * box the next time round.
+   */
+  fixed?: boolean;
+  /**
+   * The size this box was designed at, which is the size an arrange measures
+   * growth against. Without it a grid has nothing to say how big is too big and
+   * scales every box to fill its cell.
+   */
+  natural?: { width: number; height: number };
 }
 
 /** Where a box ends up after an arrange — grid mode resizes as well as moves. */
@@ -41,35 +54,93 @@ function innerArea(area: Area): Area {
   };
 }
 
-/** One cell of a `cols`-wide grid holding `count` boxes. */
-function cellSize(count: number, cols: number, area: Area) {
+/**
+ * One cell of a `cols`-wide grid holding `count` boxes, never narrower than a
+ * box that owns its width.
+ *
+ * Only the width has a floor. A column is as tall as its cards — over a
+ * thousand pixels is ordinary — and making every cell in the grid that tall
+ * collapses the whole layout into one long strip of tiny widgets. Height is
+ * handled per row instead, where only the row the column is in grows.
+ */
+function cellSize(count: number, cols: number, area: Area, floorWidth = 1) {
   const rows = Math.ceil(count / cols);
   return {
-    width: Math.max(1, (area.width - ARRANGE_GAP * (cols - 1)) / cols),
+    width: Math.max(floorWidth, (area.width - ARRANGE_GAP * (cols - 1)) / cols),
     height: Math.max(1, (area.height - ARRANGE_GAP * (rows - 1)) / rows),
   };
 }
 
-/** How much of the area the boxes would actually cover in cells of this size. */
-function covered(boxes: Box[], cell: Area) {
-  return boxes.reduce((sum, box) => {
-    const scale = Math.min(cell.width / box.width, cell.height / box.height);
-    return sum + box.width * box.height * scale * scale;
-  }, 0);
+/** The widest of the boxes that own their size, which every cell has to clear. */
+function fixedWidth(boxes: Box[]): number {
+  return Math.max(1, ...boxes.filter((box) => box.fixed).map((box) => box.width));
 }
 
 /**
- * Column count that wastes the least space. A wide window wants wide rows and a
+ * How much bigger than its designed size an arrange may draw a widget.
+ *
+ * There was no ceiling at all, and a grid scales every box to fill its cell — so
+ * a space holding one clock gave that clock half the screen, because the cell
+ * was the screen. Past half again its designed size a clock face or a timer is
+ * not more readable, only bigger. The same number holds for every type, so the
+ * result still reads as one grid rather than as each widget having its own idea
+ * of how much room it deserves.
+ */
+const MAX_GROWTH = 1.5;
+
+/**
+ * The size a box is drawn at in a cell this big: as large as the cell allows,
+ * but never past `growth` times what the box was designed at. Aspect is kept, so
+ * the box is centred in whatever the cell has left over.
+ *
+ * `growth` is raised for a mosaic's front tiles. Holding every tile to the same
+ * ceiling flattened the mosaic — the big tile hit the ceiling while the small
+ * ones were still under it, so "twice the size" came out as 1.57 and the mode
+ * stopped saying anything. A front tile spans two cells, so it is allowed twice
+ * the ceiling, and the multiple between the two sizes survives.
+ */
+function sizeIn(box: Box, cell: Area, growth = MAX_GROWTH): { width: number; height: number } {
+  if (box.fixed) return { width: box.width, height: box.height };
+  const fit = Math.min(cell.width / box.width, cell.height / box.height);
+  const natural = box.natural ?? box;
+  const ceiling = Math.min(
+    (natural.width * growth) / box.width,
+    (natural.height * growth) / box.height
+  );
+  const scale = Math.min(fit, ceiling);
+  return { width: Math.round(box.width * scale), height: Math.round(box.height * scale) };
+}
+
+/**
+ * How well a `cols`-wide grid uses the screen: the area its boxes cover once the
+ * camera frames the block, which is what an arrange is followed by.
+ *
+ * Covered area on its own stopped telling the two apart once growth was capped —
+ * every column count fits everything at full size, so they all scored the same
+ * and the first one won, which is a single tall stack. Weighting by the zoom the
+ * fit would land at is what puts a block shaped like the screen in front.
+ */
+function gridScore(boxes: Box[], inner: Area, cols: number): number {
+  const placed = Object.values(fillInto(boxes, inner, cols, 0));
+  if (placed.length === 0) return 0;
+  const width = Math.max(1, Math.max(...placed.map((p) => p.x + p.width)));
+  const height = Math.max(1, Math.max(...placed.map((p) => p.y + p.height)));
+  const zoom = Math.min(inner.width / width, inner.height / height);
+  return placed.reduce((sum, p) => sum + p.width * p.height, 0) * zoom * zoom;
+}
+
+/**
+ * Column count that uses the screen best. A wide window wants wide rows and a
  * tall one wants columns, and the boxes' own shapes tip the balance too — so try
- * every count and keep the one that covers the most.
+ * every count and keep the one that scores highest.
  */
 function bestColumns(boxes: Box[], inner: Area): number {
   let best = 1;
-  let bestCover = -1;
+  let bestScore = -1;
   for (let cols = 1; cols <= boxes.length; cols++) {
-    const cover = covered(boxes, cellSize(boxes.length, cols, inner));
-    if (cover > bestCover) {
-      bestCover = cover;
+    const score = gridScore(boxes, inner, cols);
+    if (score > bestScore) {
+      bestScore = score;
       best = cols;
     }
   }
@@ -81,9 +152,19 @@ export function autoColumns(boxes: Box[], area: Area): number {
 }
 
 /**
- * A grid that fills the area rather than one that merely tidies: the cells are as
- * big as the space allows, and every box grows (or shrinks) into its own cell.
- * Each box keeps its aspect ratio, so it is centred in whatever the cell leaves over.
+ * A `cols`-wide grid: every box takes as much of its cell as it may, and the
+ * grid is then pulled in to exactly what the boxes turned out to need.
+ *
+ * The two steps are separate on purpose. The cell decides how big a box is
+ * allowed to be; the column widths and row heights are read back off the sizes
+ * that came out of that. Before the growth ceiling those were the same number,
+ * so leaving the cells at their original size was harmless — now a cell is
+ * routinely wider than anything in it, and a grid built on cell size would space
+ * the widgets out with gaps nothing sits in. The fit that follows an arrange
+ * would then zoom out to frame all that empty room.
+ *
+ * Because a column's width is shared down the whole grid, the left and right
+ * edges of the widgets line up column by column however different their sizes.
  */
 function fillInto(
   boxes: Box[],
@@ -91,23 +172,45 @@ function fillInto(
   cols: number,
   top: number
 ): Record<string, Placement> {
-  const cell = cellSize(boxes.length, cols, inner);
+  const cell = cellSize(boxes.length, cols, inner, fixedWidth(boxes));
+  const rowOf = (i: number) => Math.floor(i / cols);
+  const sizes = boxes.map((box) => sizeIn(box, cell));
+
+  // Each column is as wide as its widest box, each row as tall as its tallest. A
+  // row holding a column widget — as tall as its cards, and never scaled — grows
+  // to clear it, and the rows above and below keep the height they needed.
+  const colWidths: number[] = [];
+  const rowHeights: number[] = [];
+  sizes.forEach((size, i) => {
+    const col = i % cols;
+    const row = rowOf(i);
+    colWidths[col] = Math.max(colWidths[col] ?? 0, size.width);
+    rowHeights[row] = Math.max(rowHeights[row] ?? 0, size.height);
+  });
+  const track = (lengths: number[], start: number) =>
+    lengths.reduce<number[]>((offsets, _, i) => {
+      offsets.push(i === 0 ? start : offsets[i - 1] + lengths[i - 1] + ARRANGE_GAP);
+      return offsets;
+    }, []);
+  const colXs = track(colWidths, 0);
+  const rowYs = track(rowHeights, top);
+  const gridWidth = colXs[colWidths.length - 1] + colWidths[colWidths.length - 1];
 
   const placements: Record<string, Placement> = {};
   boxes.forEach((box, i) => {
     const col = i % cols;
-    const row = Math.floor(i / cols);
+    const row = rowOf(i);
+    const size = sizes[i];
     // The last row is often short; centring it keeps the block from looking torn off.
-    const inRow = Math.min(cols, boxes.length - row * cols);
-    const rowInset = ((cols - inRow) * (cell.width + ARRANGE_GAP)) / 2;
-    const scale = Math.min(cell.width / box.width, cell.height / box.height);
-    const width = Math.round(box.width * scale);
-    const height = Math.round(box.height * scale);
+    const inRow = Math.min(colWidths.length, boxes.length - row * cols);
+    const rowWidth = colXs[inRow - 1] + colWidths[inRow - 1];
     placements[box.id] = {
-      x: Math.round(rowInset + col * (cell.width + ARRANGE_GAP) + (cell.width - width) / 2),
-      y: Math.round(top + row * (cell.height + ARRANGE_GAP) + (cell.height - height) / 2),
-      width,
-      height,
+      x: Math.round(
+        (gridWidth - rowWidth) / 2 + colXs[col] + (colWidths[col] - size.width) / 2
+      ),
+      y: Math.round(rowYs[row] + (rowHeights[row] - size.height) / 2),
+      width: size.width,
+      height: size.height,
     };
   });
   return placements;
@@ -184,7 +287,10 @@ function packTiles(spans: number[], cols: number) {
  * With two or fewer boxes there is no mosaic to make, so it is an even grid.
  */
 function focusGrid(boxes: Box[], area: Area): Record<string, Placement> {
-  if (boxes.length <= FOCUS_COUNT) return fillGrid(boxes, area);
+  // A mosaic is built out of tiles that take the size they are given. A column
+  // does not, so a space holding one gets the even grid, which does have a way
+  // to make room for it.
+  if (boxes.length <= FOCUS_COUNT || boxes.some((box) => box.fixed)) return fillGrid(boxes, area);
 
   const inner = innerArea(area);
   const spans = boxes.map((_, i) => (i < FOCUS_COUNT ? LEAD_SPAN : 1));
@@ -202,9 +308,8 @@ function focusGrid(boxes: Box[], area: Area): Record<string, Placement> {
     };
     if (cell.width < 1 || cell.height < 1) continue;
     const covers = boxes.reduce((sum, box, i) => {
-      const tile = tileSize(cell, spans[i]);
-      const scale = Math.min(tile.width / box.width, tile.height / box.height);
-      return sum + box.width * box.height * scale * scale;
+      const size = sizeIn(box, tileSize(cell, spans[i]), MAX_GROWTH * spans[i]);
+      return sum + size.width * size.height;
     }, 0);
     if (!best || covers > best.covers) best = { cells, cell, covers };
   }
@@ -214,14 +319,14 @@ function focusGrid(boxes: Box[], area: Area): Record<string, Placement> {
   boxes.forEach((box, i) => {
     const { row, col } = best.cells[i];
     const tile = tileSize(best.cell, spans[i]);
-    const scale = Math.min(tile.width / box.width, tile.height / box.height);
-    const width = Math.round(box.width * scale);
-    const height = Math.round(box.height * scale);
+    // A front tile spans two cells, so its ceiling is twice the even grid's —
+    // that is what keeps the front row twice the size rather than merely bigger.
+    const size = sizeIn(box, tile, MAX_GROWTH * spans[i]);
     placements[box.id] = {
-      x: Math.round(col * (best.cell.width + ARRANGE_GAP) + (tile.width - width) / 2),
-      y: Math.round(row * (best.cell.height + ARRANGE_GAP) + (tile.height - height) / 2),
-      width,
-      height,
+      x: Math.round(col * (best.cell.width + ARRANGE_GAP) + (tile.width - size.width) / 2),
+      y: Math.round(row * (best.cell.height + ARRANGE_GAP) + (tile.height - size.height) / 2),
+      width: size.width,
+      height: size.height,
     };
   });
   return placements;
@@ -260,6 +365,56 @@ export function arrange(
   if (mode === 'focus') return focusGrid(ordered, area);
 
   return fillGrid(ordered, area, columns);
+}
+
+/** Do these two boxes touch, with `gap` of clear space counted as touching? */
+function overlaps(a: Placement, b: Box, gap: number): boolean {
+  return (
+    a.x < b.x + b.width + gap &&
+    a.x + a.width + gap > b.x &&
+    a.y < b.y + b.height + gap &&
+    a.y + a.height + gap > b.y
+  );
+}
+
+/**
+ * The nearest spot to `wanted` where `size` sits clear of `taken`.
+ *
+ * Searched in rings outward from where the caller asked for, so a widget put
+ * down beside the thing it came out of stays beside it and only steps aside as
+ * far as it has to. Nothing is ever placed on top of something else, which is
+ * what made taking a card out of a column look like it had done nothing at all:
+ * it landed under the next column along.
+ */
+export function findFreeSpot(
+  wanted: { x: number; y: number },
+  size: { width: number; height: number },
+  taken: Box[],
+  gap = ARRANGE_GAP
+): { x: number; y: number } {
+  const step = size.width + gap;
+  const drop = size.height + gap;
+  // 0, 1, -1, 2, -2 … so a ring is tried down and to the right before up and to
+  // the left. Straight outward order took the first free cell it found, which was
+  // the one above — and a widget that steps up out of the top of the window is
+  // the same "nothing happened" the free spot exists to prevent. Down and right
+  // is where the rest of the app puts things, so it is also where the eye goes.
+  const outward = (ring: number) => {
+    const offsets = [0];
+    for (let i = 1; i <= ring; i++) offsets.push(i, -i);
+    return offsets;
+  };
+  for (let ring = 0; ring <= 6; ring++) {
+    for (const dy of outward(ring)) {
+      for (const dx of outward(ring)) {
+        // Only the ring's own edge: the inside of it was tried on an earlier pass.
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+        const at = { ...size, x: wanted.x + dx * step, y: wanted.y + dy * drop };
+        if (!taken.some((box) => overlaps(at, box, gap))) return { x: at.x, y: at.y };
+      }
+    }
+  }
+  return wanted;
 }
 
 /**

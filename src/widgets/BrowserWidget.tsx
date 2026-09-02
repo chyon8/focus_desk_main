@@ -73,13 +73,17 @@ const NavButton: React.FC<{
  * look like somebody's desk at a glance, from far enough out that no title can
  * be read, and colour is the only thing that carries that far.
  */
+/** Pages already asked about this run. Only what comes back is stored — a failure is about the moment, not the page. */
+const askedFor = new Set<string>();
+
 const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data, onOpen }) => {
   const tint = data.faviconColor;
+  const host = hostOf(data.url);
   return (
     <button
       onClick={onOpen}
       title={`Load ${data.url}`}
-      className="t-ink relative h-full w-full flex flex-col items-center justify-center gap-3 p-4 overflow-hidden"
+      className="t-ink relative h-full w-full flex flex-col overflow-hidden text-left"
       style={
         tint
           ? {
@@ -91,22 +95,40 @@ const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data
           : undefined
       }
     >
-      {data.favicon ? (
-        <img
-          src={data.favicon}
-          alt=""
-          className="w-16 h-16 rounded-xl object-contain"
-          style={tint ? { filter: `drop-shadow(0 6px 14px rgba(${tint}, 0.55))` } : undefined}
-        />
+      {/* The page's own preview picture, the way a pasted link is drawn
+          elsewhere. It takes the room and the icon steps down to the caption:
+          the picture says what the page is faster than its title does. Without
+          one the card is what it was — a big icon over the title. */}
+      {data.thumbnail ? (
+        <img src={data.thumbnail} alt="" draggable={false} className="w-full flex-1 min-h-0 object-cover" />
       ) : (
-        <span className="glass t-soft w-16 h-16 rounded-xl flex items-center justify-center text-xl uppercase">
-          {hostOf(data.url)[0] ?? '?'}
-        </span>
+        <div className="flex flex-1 min-h-0 items-center justify-center p-3">
+          {data.favicon ? (
+            <img
+              src={data.favicon}
+              alt=""
+              className="w-16 h-16 rounded-xl object-contain"
+              style={tint ? { filter: `drop-shadow(0 6px 14px rgba(${tint}, 0.55))` } : undefined}
+            />
+          ) : (
+            <span className="glass t-soft w-16 h-16 rounded-xl flex items-center justify-center text-xl uppercase">
+              {host[0] ?? '?'}
+            </span>
+          )}
+        </div>
       )}
-      <span className="text-[13px] font-medium text-center leading-snug line-clamp-2 max-w-full">
-        {data.title || hostOf(data.url)}
-      </span>
-      <span className="t-faint text-[10px] truncate max-w-full">{hostOf(data.url)}</span>
+
+      <div className="shrink-0 flex items-center gap-2 px-3 py-2">
+        {data.thumbnail && data.favicon && (
+          <img src={data.favicon} alt="" className="shrink-0 w-4 h-4 rounded object-contain" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-medium leading-snug truncate">
+            {data.title || host}
+          </div>
+          <div className="t-faint text-[10px] truncate">{host}</div>
+        </div>
+      </div>
     </button>
   );
 };
@@ -183,6 +205,35 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
     // `update` is stable for the widget's lifetime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closed, data.url, data.favicon]);
+
+  /**
+   * And its preview picture, for the same reason: a card is a bookmark, and the
+   * picture a page offers for one is what makes a stack of them readable. Asked
+   * for per address rather than per host — every page has its own — and asked
+   * again whenever the picture on file belongs to an address the widget has
+   * since browsed away from. What came back is written even when it is nothing,
+   * so the picture of the old page comes down and the ask does not repeat.
+   */
+  useEffect(() => {
+    if (!closed || !data.url || data.previewUrl === data.url || askedFor.has(data.url)) return;
+    const url = data.url;
+    askedFor.add(url);
+    let wanted = true;
+    void window.images?.previews([url]).then((found) => {
+      if (!wanted) return;
+      const preview = found[url];
+      update({
+        previewUrl: url,
+        thumbnail: preview?.image ?? '',
+        description: preview?.description ?? '',
+      });
+    });
+    return () => {
+      wanted = false;
+    };
+    // `update` is stable for the widget's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closed, data.url, data.previewUrl]);
 
   useEffect(() => {
     const el = pageBox.current;

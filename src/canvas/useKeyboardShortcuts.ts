@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { openQuickAddAtCentre } from '../app/QuickAdd';
+import { returnFocusToApp } from './appFocus';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 
@@ -51,8 +52,13 @@ export function useKeyboardShortcuts() {
         else if (ui.quickAdd) ui.closeQuickAdd();
         else if (ui.isShortcutsOpen) ui.toggleShortcuts();
         else if (ui.openDock) ui.closeDock();
+        else if (ui.peekWidgetId) ui.closePeek();
         else if (ui.maximizedWidgetId) ui.clearMaximized();
-        else if (ui.selectedIds.length) ui.clearSelection();
+        else ui.clearSelection();
+        // Always, whatever layer came off. A field or a page holding the
+        // keyboard is invisible — the shortcuts simply stop working and nothing
+        // says why — so Esc is the one key guaranteed to hand it back.
+        returnFocusToApp();
         return;
       }
 
@@ -89,8 +95,14 @@ export function useKeyboardShortcuts() {
 
     // The same shortcuts, but pressed while a browser widget had focus.
     const offGuestKey = window.windowMode?.onGuestKey((key) => {
-      if (key === 'escape') useUiStore.getState().clearMaximized();
-      else runShortcut(key);
+      if (key === 'escape') {
+        const ui = useUiStore.getState();
+        // Esc pressed inside a page: the same peel-one-layer-off order as above,
+        // and the keyboard comes back to the app either way.
+        if (ui.peekWidgetId) ui.closePeek();
+        else ui.clearMaximized();
+        returnFocusToApp();
+      } else runShortcut(key);
     });
 
     window.addEventListener('keydown', onKeyDown);

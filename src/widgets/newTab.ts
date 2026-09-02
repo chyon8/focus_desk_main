@@ -1,7 +1,6 @@
-import { centreCamera, isFullyVisible } from '../canvas/layout';
 import type { WidgetType } from '../spaces/types';
-import { getCamera, useSpaceStore } from '../stores/spaceStore';
-import { canvasArea, useUiStore } from '../stores/uiStore';
+import { showWhereItLanded, useSpaceStore } from '../stores/spaceStore';
+import { useUiStore } from '../stores/uiStore';
 import { WIDGET_DEFS } from './defs';
 import { textToHtml } from './memoContent';
 
@@ -10,12 +9,8 @@ const NEW_TAB_GAP = 32;
 
 /**
  * Puts a new widget to the right of the one it came out of, and says so when it
- * lands off screen.
- *
- * The camera deliberately stays where it is — the user is still reading the page
- * they were on. But at anything but a wide view the new widget is then out of
- * sight, and the click looks like it did nothing, so the notice offers to go
- * there instead of moving them without being asked.
+ * lands somewhere the user cannot see — off the edge of the view, or behind a
+ * maximised widget. `showWhereItLanded` decides which, and offers the way there.
  */
 export function placeBeside(
   sourceId: string,
@@ -36,16 +31,7 @@ export function placeBeside(
 
   const after = useSpaceStore.getState();
   const created = after.spaces[after.activeSpaceId]?.widgets[newId];
-  if (!created || isFullyVisible(getCamera(), created, canvasArea())) return;
-
-  useUiStore.getState().showNotice(notice, {
-    label: 'Show',
-    run: () => {
-      const store = useSpaceStore.getState();
-      const widget = store.spaces[store.activeSpaceId]?.widgets[newId];
-      if (widget) store.setCamera(centreCamera(getCamera(), widget, canvasArea()));
-    },
-  });
+  if (created) showWhereItLanded(created, notice);
 }
 
 /**

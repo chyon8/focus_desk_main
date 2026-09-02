@@ -1,40 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { columnAt, dropIndex, layOutColumn, COLUMN_TITLE_HEIGHT } from './columns';
+import { columnAt, columnHeight, COLUMN_CARD_HEIGHT, dropIndex } from './columns';
 import type { Box } from './layout';
 
-const column = { x: 100, y: 200, width: 340 };
-
-describe('layOutColumn', () => {
-  it('stacks the children down the column, inset from its sides', () => {
-    const { placements } = layOutColumn(column, [
-      { id: 'a', height: 170 },
-      { id: 'b', height: 170 },
-    ]);
-    expect(placements.a.x).toBe(placements.b.x);
-    expect(placements.a.x).toBeGreaterThan(column.x);
-    expect(placements.a.width).toBeLessThan(column.width);
-    expect(placements.b.y).toBeGreaterThan(placements.a.y + 170);
+describe('columnHeight', () => {
+  it('grows by one card at a time', () => {
+    const step = columnHeight(3) - columnHeight(2);
+    expect(step).toBeGreaterThan(COLUMN_CARD_HEIGHT);
+    expect(step).toBeLessThan(COLUMN_CARD_HEIGHT + 40);
+    expect(columnHeight(4) - columnHeight(3)).toBe(step);
   });
 
-  it('starts below the frame header and the title strip', () => {
-    const { placements } = layOutColumn(column, [{ id: 'a', height: 170 }]);
-    expect(placements.a.y).toBeGreaterThanOrEqual(column.y + 40 + COLUMN_TITLE_HEIGHT);
+  it('is a target worth dropping on when empty', () => {
+    expect(columnHeight(0)).toBeGreaterThan(100);
   });
 
-  it('is as tall as what it holds', () => {
-    const one = layOutColumn(column, [{ id: 'a', height: 170 }]).height;
-    const two = layOutColumn(column, [
-      { id: 'a', height: 170 },
-      { id: 'b', height: 170 },
-    ]).height;
-    expect(two - one).toBeGreaterThan(170);
-    expect(two - one).toBeLessThan(200);
-  });
-
-  it('is still a target when it is empty', () => {
-    const empty = layOutColumn(column, []);
-    expect(empty.height).toBeGreaterThan(40 + COLUMN_TITLE_HEIGHT);
-    expect(empty.placements).toEqual({});
+  it('is the same answer every time — nothing it reads can drift', () => {
+    expect(columnHeight(5)).toBe(columnHeight(5));
   });
 });
 
@@ -49,7 +30,7 @@ describe('columnAt', () => {
   });
 
   it('takes the nearest one where they overlap', () => {
-    // The list is given in stacking order, so the last match is the top one.
+    // The list comes in stacking order, so the last match is the top one.
     expect(columnAt(columns, { x: 250, y: 50 })).toBe('high');
   });
 
@@ -63,17 +44,20 @@ describe('columnAt', () => {
 });
 
 describe('dropIndex', () => {
-  const children = [
-    { y: 0, height: 100 },
-    { y: 110, height: 100 },
-  ];
+  const column = { y: 0 };
+  // The list starts below the frame header, the title strip and the padding.
+  const top = columnHeight(0) - 96 + 10;
 
-  it('goes above a card when let go on its top half', () => {
-    expect(dropIndex(children, 20)).toBe(0);
-    expect(dropIndex(children, 130)).toBe(1);
+  it('lands in the slot the pointer is over', () => {
+    expect(dropIndex(column, 3, top + 10)).toBe(0);
+    expect(dropIndex(column, 3, top + COLUMN_CARD_HEIGHT + 20)).toBe(1);
   });
 
   it('goes to the end below the last card', () => {
-    expect(dropIndex(children, 500)).toBe(2);
+    expect(dropIndex(column, 3, 5000)).toBe(3);
+  });
+
+  it('never lands above the first slot', () => {
+    expect(dropIndex(column, 3, -500)).toBe(0);
   });
 });

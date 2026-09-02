@@ -2,8 +2,23 @@ import { create } from 'zustand';
 import type { AmbienceLevels } from '../ambience/engine';
 import { SILENT_AMBIENCE } from '../ambience/engine';
 import { MIN_ZOOM, type Camera } from '../canvas/camera';
-import { arrange, ArrangeMode, clampCamera, fitCamera, minZoomFor } from '../canvas/layout';
-import { COLUMN_CARD_HEIGHT, columnAt, dropIndex, layOutColumn } from '../canvas/columns';
+import {
+  arrange,
+  ArrangeMode,
+  centreCamera,
+  clampCamera,
+  findFreeSpot,
+  fitCamera,
+  isFullyVisible,
+  minZoomFor,
+} from '../canvas/layout';
+import {
+  columnAt,
+  COLUMN_CARD_HEIGHT,
+  columnHeight,
+  COLUMN_WIDTH,
+  dropIndex,
+} from '../canvas/columns';
 import { useAppTimeStore } from './appTimeStore';
 import { useSpaceTimeStore } from './spaceTimeStore';
 import { canvasArea, useUiStore } from './uiStore';
@@ -27,6 +42,9 @@ const MIN_WIDGET_SIZE = 140;
 const DUPLICATE_OFFSET = 24;
 // Clear space between what the target already holds and what lands in it.
 const MOVE_GAP = 48;
+// A dragged widget is held by its header, so it is set down with the pointer on
+// that header rather than in the middle of a page it would then cover.
+const HEADER_DROP_OFFSET = 20;
 
 interface SpaceState {
   spaces: Record<string, SpaceDoc>;
@@ -85,10 +103,20 @@ interface SpaceState {
   removeWidgets: (ids: string[]) => void;
   /** Puts widgets into a new column, in the order they are read down the canvas. */
   groupIntoColumn: (ids: string[]) => void;
-  /** Drops a widget into the column under `at`, or out of the one it was in. Hands back whether it landed in a column. */
-  dropIntoColumn: (id: string, at: { x: number; y: number }) => boolean;
-  /** Takes a widget out of its column so a drag can carry it away. Does not reopen it — that waits for where it lands. */
-  detachFromColumn: (id: string) => void;
+  /** Which column and slot a world point would drop into, or null out in the open. */
+  columnSlotAt: (id: string, at: { x: number; y: number }) => { columnId: string; index: number } | null;
+  /** Puts a widget into a column at a slot — from the canvas, from another column, or reordered in its own. */
+  dropIntoColumnAt: (id: string, columnId: string, index: number) => void;
+  /** Loads the page a card stands for and opens it where it stands. It stays in the column. */
+  openFromColumn: (id: string) => void;
+  /** Puts a card back to being a card: the page it was showing is unloaded. */
+  closeIntoColumn: (id: string) => void;
+  /**
+   * Puts a card back on the canvas. `open` loads a page again; taking it out
+   * without opening leaves it as it was. `at` is where the card was let go —
+   * without one it is set down beside the column it came from.
+   */
+  takeOutOfColumn: (id: string, open: boolean, at?: { x: number; y: number }) => void;
   /** Sends widgets to another space, keeping the shape of the group. */
   moveWidgetsToSpace: (ids: string[], targetSpaceId: string) => void;
   /** The widgets sent away by the last move, kept so the toast can bring them back. */
@@ -161,10 +189,11 @@ function ownerOf(widgets: Record<string, WidgetDoc>, id: string): WidgetDoc | un
 }
 
 /**
- * The one place a column's children are positioned. Every column operation ends
- * here: it stacks the children down the column, resizes the column to whatever
- * they come to, and lifts them above it. Children that no longer exist drop out
- * of the list on the way through, so nothing else has to remember to tidy up.
+ * The one place a column's own box is set. A column is exactly as wide as every
+ * column and exactly as tall as its card count, so this is the whole of it —
+ * the cards are drawn inside the column's body and have no box of their own to
+ * maintain. Children that no longer exist drop out of the list on the way
+ * through, so nothing else has to remember to tidy up.
  */
 function applyColumn(
   widgets: Record<string, WidgetDoc>,
@@ -174,25 +203,18 @@ function applyColumn(
   if (!column || column.type !== 'column') return widgets;
 
   const children = columnData(column).children.filter((id) => widgets[id]);
-  const { placements, height } = layOutColumn(
-    column,
-    children.map((id) => ({ id, height: widgets[id].height }))
-  );
-
-  const next = { ...widgets };
-  next[columnId] = {
-    ...column,
-    height,
-    data: { ...columnData(column), children } as unknown as WidgetDoc['data'],
+  return {
+    ...widgets,
+    [columnId]: {
+      ...column,
+      width: COLUMN_WIDTH,
+      height: columnHeight(children.length),
+      data: { ...columnData(column), children } as unknown as WidgetDoc['data'],
+    },
   };
-  children.forEach((id, i) => {
-    const place = placements[id];
-    next[id] = { ...next[id], x: place.x, y: place.y, width: place.width, z: column.z + 1 + i };
-  });
-  return next;
 }
 
-/** Re-runs the layout of every column, for changes that could have touched any of them. */
+/** Re-runs every column, for changes that could have touched any of them. */
 function applyColumns(widgets: Record<string, WidgetDoc>): Record<string, WidgetDoc> {
   return Object.values(widgets)
     .filter((w) => w.type === 'column')
@@ -200,25 +222,64 @@ function applyColumns(widgets: Record<string, WidgetDoc>): Record<string, Widget
 }
 
 /**
- * What a widget becomes on the way into a column: a card, at the card height.
- * A page kept live in a column would give back the space but not the Chromium
- * renderer holding it, and a live page a card's height tall is unreadable
- * anyway.
+ * What a page becomes on the way into a column: closed. A page kept live in a
+ * column would give back the space but not the Chromium renderer holding it,
+ * and the column draws a card for it either way.
  */
 function asCard(widget: WidgetDoc): WidgetDoc {
   if (widget.type !== 'browser' && widget.type !== 'webapp') return widget;
-  return {
-    ...widget,
-    height: COLUMN_CARD_HEIGHT,
-    data: { ...widget.data, open: false },
-  };
+  return { ...widget, data: { ...widget.data, open: false } };
 }
 
-/** And what it becomes on the way out: its page again, at the size it would have been made. */
+/** And what it becomes on the way out, when the way out was opening it. */
 function asPage(widget: WidgetDoc): WidgetDoc {
   if (widget.type !== 'browser' && widget.type !== 'webapp') return widget;
   const size = WIDGET_DEFS[widget.type].defaultSize;
   return { ...widget, ...size, data: { ...widget.data, open: true } };
+}
+
+/**
+ * Where a card let go at `at` will stand: the size it opens at, centred on the
+ * pointer. For the outline drawn under a card being dragged into the open —
+ * `takeOutOfColumn` places it by the same rule, on a widget it has already
+ * opened.
+ */
+export function dropRectAt(widget: WidgetDoc, at: { x: number; y: number }) {
+  const opened = asPage(widget);
+  return {
+    x: at.x - opened.width / 2,
+    y: at.y - HEADER_DROP_OFFSET,
+    width: opened.width,
+    height: opened.height,
+  };
+}
+
+/**
+ * Says where a widget landed when it landed somewhere the user cannot see, and
+ * offers to go there. Nothing moves on its own — the user is still reading what
+ * they were reading, and being thrown across the canvas is worse than a line of
+ * text.
+ *
+ * A widget is out of sight two ways: off the edge of the view, or underneath a
+ * maximised widget, which covers the whole canvas. Only the first was counted,
+ * so opening a link in a new tab from a maximised page looked like it had done
+ * nothing at all — the new widget was there, behind the page being read.
+ */
+export function showWhereItLanded(widget: WidgetDoc, label: string) {
+  const ui = useUiStore.getState();
+  const covered = ui.maximizedWidgetId !== null && ui.maximizedWidgetId !== widget.id;
+  if (!covered && isFullyVisible(getCamera(), widget, canvasArea())) return;
+
+  ui.showNotice(label, {
+    label: 'Show',
+    run: () => {
+      const store = useSpaceStore.getState();
+      const current = store.spaces[store.activeSpaceId]?.widgets[widget.id];
+      if (!current) return;
+      useUiStore.getState().clearMaximized();
+      store.setCamera(centreCamera(getCamera(), current, canvasArea()));
+    },
+  });
 }
 
 /** The widgets a column holds, and the column itself — what an operation on a column really acts on. */
@@ -331,7 +392,13 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }
 
     const spaces: Record<string, SpaceDoc> = {};
-    for (const doc of docs) spaces[doc.id] = migrateSpace(doc);
+    for (const doc of docs) {
+      // Every column is put right on the way in: its box is a function of its
+      // card count, and a document written by an older build — or by a build
+      // whose card height was a different number — carries whatever it had.
+      const space = migrateSpace(doc);
+      spaces[doc.id] = { ...space, widgets: applyColumns(space.widgets) };
+    }
 
     const savedId = (await window.store?.get(ACTIVE_SPACE_KEY)) as string | undefined;
     const activeSpaceId = savedId && spaces[savedId] ? savedId : docs[0].id;
@@ -462,20 +529,29 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       const area = canvasArea();
       // Most recently used first: `z` is bumped every time a widget is touched,
       // so the top of the stack is also the thing worked on last.
-      const ordered = [...boxes].sort((a, b) => b.z - a.z);
+      // `natural` is the size the widget was designed at, which is the ceiling an
+      // arrange grows it against — without it a grid fills the cell it is given,
+      // and one clock in a space got half the screen.
+      const ordered = [...boxes]
+        .sort((a, b) => b.z - a.z)
+        .map((w) =>
+          w.type === 'column'
+            ? { ...w, fixed: true }
+            : { ...w, natural: WIDGET_DEFS[w.type].defaultSize }
+        );
       const placements = arrange(ordered, area, mode, columns);
       const widgets = { ...space.widgets };
       for (const [id, place] of Object.entries(placements)) {
+        const isColumn = widgets[id].type === 'column';
         widgets[id] = {
           ...widgets[id],
           x: place.x + anchor.x,
           y: place.y + anchor.y,
-          width: place.width,
-          height: place.height,
+          // A column owns its size — the arrange only says where it goes.
+          width: isColumn ? widgets[id].width : place.width,
+          height: isColumn ? widgets[id].height : place.height,
         };
       }
-      // A column that the grid moved or widened has to restack what it holds:
-      // its children are not in the arrange, so nothing else would move them.
       const laid = applyColumns(widgets);
       const camera = fitCamera(inPlay({ ...space, widgets: laid }), area);
       return { ...space, widgets: laid, camera: camera ?? space.camera };
@@ -696,15 +772,64 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       return { ...space, widgets: applyColumn(widgets, column.id) };
     }),
 
-  detachFromColumn: (id) => {
-    const { spaces, activeSpaceId } = get();
-    const owner = ownerOf(spaces[activeSpaceId]?.widgets ?? {}, id);
-    if (!owner) return;
-    detachedFromColumn = id;
+  openFromColumn: (id) => {
     updateActive(set, (space) => {
+      const widget = space.widgets[id];
+      if (!widget) return space;
+      // A page has to be told to load: in the column it is a card, and the panel
+      // is where it is drawn as itself.
+      const opened =
+        widget.type === 'browser' || widget.type === 'webapp'
+          ? { ...widget, data: { ...widget.data, open: true } }
+          : widget;
+      return { ...space, widgets: { ...space.widgets, [id]: opened } };
+    });
+    useUiStore.getState().openPeek(id);
+  },
+
+  // The page really is closed on the way back, not merely hidden: a card left
+  // marked open holds a Chromium renderer for a page nobody is looking at, and
+  // twelve cards in a column is twelve of them. This is what makes the panel a
+  // look rather than a second way to keep a tab open.
+  closeIntoColumn: (id) =>
+    updateActive(set, (space) => {
+      const widget = space.widgets[id];
+      if (!widget || !ownerOf(space.widgets, id)) return space;
+      return { ...space, widgets: { ...space.widgets, [id]: asCard(widget) } };
+    }),
+
+  takeOutOfColumn: (id, open, at) => {
+    updateActive(set, (space) => {
+      const owner = ownerOf(space.widgets, id);
+      if (!owner) return space;
       const data = columnData(space.widgets[owner.id]);
+
+      const slot = data.children.indexOf(id);
+      const widget = open ? asPage(space.widgets[id]) : space.widgets[id];
+
+      // Dragged out, it stands where it was let go, centred on the pointer. It is
+      // left there even if it covers something: the card came out at its full
+      // widget size, which is several times a card, so it nearly always overlaps
+      // and a nudge to the nearest clear spot threw it somewhere the user had
+      // not pointed at.
+      //
+      // Taken out without a drag there is no such place, so it goes beside the
+      // column it came from, level with the card it was — and that one is nudged
+      // clear, or it lands under the next column along. Everything on the canvas
+      // counts as taken, except the widget itself and the cards, which are drawn
+      // inside their columns.
+      const spot = at
+        ? { x: at.x - widget.width / 2, y: at.y - HEADER_DROP_OFFSET }
+        : findFreeSpot(
+            { x: owner.x + owner.width + MOVE_GAP, y: owner.y + slot * COLUMN_CARD_HEIGHT },
+            widget,
+            Object.values(space.widgets).filter(
+              (other) => other.id !== id && !ownerOf(space.widgets, other.id)
+            )
+          );
       const widgets = {
         ...space.widgets,
+        [id]: { ...widget, ...spot, z: topZ(space) + 1 },
         [owner.id]: {
           ...space.widgets[owner.id],
           data: {
@@ -715,53 +840,65 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       };
       return { ...space, widgets: applyColumn(widgets, owner.id) };
     });
+
+    // A widget the app placed can land outside the view, which is the same as one
+    // that never came out. A widget the user dragged is where they put it, so
+    // saying anything about it would be telling them what they just did.
+    const landed = get().spaces[get().activeSpaceId]?.widgets[id];
+    if (landed && !at) showWhereItLanded(landed, 'Taken out of the column');
   },
 
-  dropIntoColumn: (id, at) => {
+  columnSlotAt: (id, at) => {
     const { spaces, activeSpaceId } = get();
     const space = spaces[activeSpaceId];
-    if (!space) return false;
+    // A column inside a column is not a thing, so a column being dragged never
+    // finds a target — and neither does a card over its own column's own box
+    // being the one it is leaving; that case is a reorder, handled below.
+    if (!space || space.widgets[id]?.type === 'column') return null;
 
-    const columns = Object.values(space.widgets).filter((w) => w.type === 'column');
-    const target = columnAt(
-      [...columns].sort((a, b) => a.z - b.z),
-      at,
-      [id]
-    );
-    const wasInColumn = detachedFromColumn === id;
-    detachedFromColumn = null;
+    const columns = Object.values(space.widgets)
+      .filter((w) => w.type === 'column')
+      .sort((a, b) => a.z - b.z);
+    const columnId = columnAt(columns, at, [id]);
+    if (!columnId) return null;
 
-    if (!target) {
-      // Dragged out into the open: a card that was in a column becomes its page
-      // again. A card that was never in one — an imported tab — is left alone.
-      if (wasInColumn) {
-        updateActive(set, (current) => ({
-          ...current,
-          widgets: { ...current.widgets, [id]: asPage(current.widgets[id]) },
-        }));
-      }
-      return false;
-    }
-
-    updateActive(set, (current) => {
-      const data = columnData(current.widgets[target]);
-      const siblings = data.children.map((child) => current.widgets[child]).filter(Boolean);
-      const index = dropIndex(siblings, at.y);
-      const children = [...data.children.filter((child) => child !== id)];
-      children.splice(index, 0, id);
-
-      const widgets = {
-        ...current.widgets,
-        [id]: asCard(current.widgets[id]),
-        [target]: {
-          ...current.widgets[target],
-          data: { ...data, children } as unknown as WidgetDoc['data'],
-        },
-      };
-      return { ...current, widgets: applyColumn(widgets, target) };
-    });
-    return true;
+    // The list the slot is counted against leaves out the card being dragged, so
+    // dropping a card back where it started is the slot it already had rather
+    // than one further down.
+    const children = columnData(space.widgets[columnId]).children.filter((c) => c !== id);
+    return { columnId, index: dropIndex(space.widgets[columnId], children.length, at.y) };
   },
+
+  dropIntoColumnAt: (id, columnId, index) =>
+    updateActive(set, (space) => {
+      const target = space.widgets[columnId];
+      const widget = space.widgets[id];
+      if (!target || target.type !== 'column' || !widget || widget.type === 'column') return space;
+
+      // The card may be coming out of another column, so that one is emptied
+      // first — otherwise it would be in two lists at once.
+      const source = ownerOf(space.widgets, id);
+      let widgets = { ...space.widgets, [id]: asCard(widget) };
+      if (source && source.id !== columnId) {
+        widgets[source.id] = {
+          ...widgets[source.id],
+          data: {
+            ...columnData(widgets[source.id]),
+            children: columnData(widgets[source.id]).children.filter((c) => c !== id),
+          } as unknown as WidgetDoc['data'],
+        };
+      }
+
+      const children = columnData(widgets[columnId]).children.filter((c) => c !== id);
+      children.splice(Math.max(0, Math.min(children.length, index)), 0, id);
+      widgets[columnId] = {
+        ...widgets[columnId],
+        data: { ...columnData(widgets[columnId]), children } as unknown as WidgetDoc['data'],
+      };
+
+      widgets = applyColumn(widgets, columnId);
+      return { ...space, widgets: source ? applyColumn(widgets, source.id) : widgets };
+    }),
 
   moveWidgetsToSpace: (ids, targetSpaceId) => {
     const { spaces, activeSpaceId } = get();

@@ -1,7 +1,8 @@
 import { SILENT_AMBIENCE } from '../ambience/engine';
 import { asDocument } from '../widgets/memoContent';
 import { DEFAULT_THEME_ID, THEMES } from '../themes/themes';
-import { SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from './types';
+import { ColumnData, SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from './types';
+import { columnHeight, COLUMN_WIDTH } from '../canvas/columns';
 
 /**
  * Brings a stored space document up to the current schema.
@@ -63,6 +64,25 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     // or the picker shows nothing selected.
     if (!THEMES.some((t) => t.id === doc.themeId)) doc.themeId = DEFAULT_THEME_ID;
     doc.schemaVersion = 6;
+  }
+
+  if (doc.schemaVersion < 8) {
+    // v8 made a column's box a pure function of its card count. Columns saved
+    // by v7 carry whatever width and height an arrange had left on them, and
+    // their cards carry positions that nothing reads any more.
+    const widgets = { ...doc.widgets };
+    for (const widget of Object.values(widgets)) {
+      if (widget.type !== 'column') continue;
+      const children = (widget.data as unknown as ColumnData).children.filter((id) => widgets[id]);
+      widgets[widget.id] = {
+        ...widget,
+        width: COLUMN_WIDTH,
+        height: columnHeight(children.length),
+        data: { ...widget.data, children },
+      };
+    }
+    doc.widgets = widgets;
+    doc.schemaVersion = 8;
   }
 
   doc.schemaVersion = SCHEMA_VERSION;

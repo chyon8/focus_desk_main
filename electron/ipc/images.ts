@@ -213,6 +213,102 @@ function faviconFor(host: string): Promise<Favicon | null> {
   return wanted;
 }
 
+/**
+ * The picture a page offers for a link preview. `og:image` is what nearly every
+ * site sets for the card other apps draw when the link is pasted; Twitter's tag
+ * is the fallback a few sites set instead.
+ *
+ * The whole head is read, not the first stretch of it. Measured 2026-09-01: a
+ * YouTube watch page is 1.1MB with a 682KB head, and its `og:image` sits past
+ * the scripts near the end of it — capping the scan at 60KB found three meta
+ * tags and none of them was this one. Only the head, because these tags never
+ * appear below it and the body is where the weight is.
+ */
+function declaredPreview(head: string, base: string): string | null {
+  for (const tag of head.match(/<meta\b[^>]*>/gi) ?? []) {
+    const key = (
+      tag.match(/(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1] ?? ''
+    ).toLowerCase();
+    if (key !== 'og:image' && key !== 'twitter:image' && key !== 'twitter:image:src') continue;
+    const content = tag.match(/content\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (!content) continue;
+    try {
+      return new URL(content, base).href;
+    } catch {
+      // A relative address that will not resolve: keep looking.
+    }
+  }
+  return null;
+}
+
+/** The line a page offers about itself, for the card to carry under its title. */
+function declaredDescription(head: string): string | null {
+  for (const tag of head.match(/<meta\b[^>]*>/gi) ?? []) {
+    const key = (
+      tag.match(/(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1] ?? ''
+    ).toLowerCase();
+    if (key !== 'og:description' && key !== 'description' && key !== 'twitter:description') continue;
+    const content = tag.match(/content\s*=\s*["']([^"']*)["']/i)?.[1];
+    if (content) {
+      // Entities and newlines, since this lands straight in a card.
+      return content
+        .replace(/&quot;/g, '"')
+        .replace(/&#(\d+);/g, (_m, code) => String.fromCharCode(Number(code)))
+        .replace(/&amp;/g, '&')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 300);
+    }
+  }
+  return null;
+}
+
+/** What a page says about itself for a link preview: its picture, filed locally, and its line of description. */
+export interface Preview {
+  image: string | null;
+  description: string | null;
+}
+
+/** No colour is taken from the picture — a photograph has no logo colour to find, and averaging a full-size one is work for nothing. */
+async function downloadPreview(url: string): Promise<Preview | null> {
+  try {
+    const page = await net.fetch(url, { signal: AbortSignal.timeout(FAVICON_TIMEOUT_MS) });
+    if (!page.ok) return null;
+    const head = (await page.text()).split(/<\/head>/i)[0];
+    const description = declaredDescription(head);
+    const found = declaredPreview(head, url);
+    if (!found) return description ? { image: null, description } : null;
+
+    const response = await net.fetch(found, { signal: AbortSignal.timeout(FAVICON_TIMEOUT_MS) });
+    if (!response.ok) return { image: null, description };
+    const type = (response.headers.get('content-type') ?? '').split(';')[0].trim();
+    if (!type.startsWith('image/')) return { image: null, description };
+    const data = Buffer.from(await response.arrayBuffer());
+    if (data.length === 0) return { image: null, description };
+    return { image: store(data, EXT_FOR_TYPE[type] ?? '.jpg'), description };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One request per address while the app runs, for the same reason the icons have
+ * one per host: a card asks as it mounts, and a space full of them mounts at
+ * once. Unlike an icon this is per address — every page has its own picture.
+ */
+const previewsInFlight = new Map<string, Promise<Preview | null>>();
+
+function previewFor(url: string): Promise<Preview | null> {
+  const known = previewsInFlight.get(url);
+  if (known) return known;
+  const wanted = downloadPreview(url).then((preview) => {
+    if (!preview) previewsInFlight.delete(url);
+    return preview;
+  });
+  previewsInFlight.set(url, wanted);
+  return wanted;
+}
+
 export function registerImagesIpc() {
   // The wallpapers folder is a drop zone: whatever is in it shows up in the
   // picker, so adding a picture is copying a file — no code change.
@@ -232,6 +328,13 @@ export function registerImagesIpc() {
     const unique = [...new Set(hosts)].filter((host) => /^[a-z0-9.-]+$/i.test(host));
     const found = await Promise.all(unique.map((host) => faviconFor(host)));
     return Object.fromEntries(unique.map((host, i) => [host, found[i]]));
+  });
+
+  // Addresses, not hosts: the preview picture belongs to the page, not the site.
+  ipcMain.handle('images:previews', async (_event, urls: string[]) => {
+    const unique = [...new Set(urls)].filter((url) => /^https?:\/\//.test(url));
+    const found = await Promise.all(unique.map((url) => previewFor(url)));
+    return Object.fromEntries(unique.map((url, i) => [url, found[i]]));
   });
 
   protocol.handle(IMAGE_SCHEME, (request) => {

@@ -138,6 +138,7 @@ contextBridge.exposeInMainWorld('images', {
     ipcRenderer.invoke('images:from-url', url, partition),
   // Real icons, with a tint, for sites the app has never loaded.
   favicons: (hosts: string[]) => ipcRenderer.invoke('images:favicons', hosts),
+  previews: (urls: string[]) => ipcRenderer.invoke('images:previews', urls),
 });
 
 contextBridge.exposeInMainWorld('backup', {
