@@ -44,6 +44,7 @@ export const ArrangeMenu: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Arrange (G, or ⌥G inside a page)"
+        data-first-step="tidy"
         className={`row w-full flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg active:scale-95 ${
           isOpen ? 'row-on' : ''
         }`}

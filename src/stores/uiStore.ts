@@ -99,6 +99,17 @@ interface UiState {
    * happened off-screen, where silence reads as nothing having happened.
    */
   notice: Notice | null;
+  /**
+   * The move the first run is waiting for the user to make, if it is still
+   * waiting. Two of them, one at a time: bringing a widget out, then tidying up.
+   * Neither is written anywhere on screen, and the sidebar palette that used to
+   * show the first one is gone.
+   *
+   * Not stored. It belongs to the run that finished the first-run screen — a
+   * line that came back on the third launch is nagging, and by then the user has
+   * either found the move or does not want it.
+   */
+  firstStep: 'add' | 'tidy' | 'done' | null;
   /** The window covers the screen (⇧M, or the sidebar button). */
   isFullscreen: boolean;
   /**
@@ -140,6 +151,14 @@ interface UiState {
   toggleShortcuts: () => void;
   showNotice: (label: string, action?: Notice['action'], sticky?: boolean) => void;
   dismissNotice: () => void;
+  /** Starts the two moves, once the first run has settled into the space. */
+  startFirstSteps: (spaceName: string) => void;
+  /** The user made the move: on to the next one, or done. */
+  passFirstStep: (step: 'add' | 'tidy') => void;
+  /** Closed by hand, or the last word has been read. */
+  endFirstSteps: () => void;
+  /** The space's name, for the first line. Only set while the steps are running. */
+  firstStepSpace: string;
   toggleFullscreen: () => void;
   setStaged: (staged: boolean) => void;
   toggleAppOpen: (widgetId: string) => void;
@@ -147,7 +166,7 @@ interface UiState {
   closeAllApps: () => void;
 }
 
-export const useUiStore = create<UiState>((set) => ({
+export const useUiStore = create<UiState>((set, get) => ({
   isSidebarOpen: true,
   maximizedWidgetId: null,
   peekWidgetId: null,
@@ -159,6 +178,8 @@ export const useUiStore = create<UiState>((set) => ({
   lastActiveId: null,
   isMoveMenuOpen: false,
   quickAdd: null,
+  firstStep: null,
+  firstStepSpace: '',
   openDock: null,
   isLauncherOpen: false,
   isShortcutsOpen: false,
@@ -228,6 +249,18 @@ export const useUiStore = create<UiState>((set) => ({
   showNotice: (label, action, sticky) =>
     set((s) => ({ notice: { id: (s.notice?.id ?? 0) + 1, label, action, sticky } })),
   dismissNotice: () => set({ notice: null }),
+
+  startFirstSteps: (spaceName) => set({ firstStep: 'add', firstStepSpace: spaceName }),
+
+  // Asked once each. A step ends the moment the move is made rather than after a
+  // count of seconds: it has said everything it had to say, and a card that stays
+  // up over the move it was teaching is in the way.
+  passFirstStep: (step) => {
+    if (get().firstStep !== step) return;
+    set({ firstStep: step === 'add' ? 'tidy' : 'done' });
+  },
+
+  endFirstSteps: () => set({ firstStep: null, firstStepSpace: '' }),
 
   // The main process owns the real state and hands it back; the flag here is only
   // so the button can show which way it goes next.

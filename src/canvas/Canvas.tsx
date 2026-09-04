@@ -209,6 +209,9 @@ export const Canvas: React.FC = () => {
     useUiStore
       .getState()
       .openQuickAdd({ x: e.clientX, y: e.clientY }, screenToWorld(camera, local));
+    // Only from here, not from `openQuickAdd` itself: N opens the same palette in
+    // the middle of the view, and the move being taught is the double-click.
+    useUiStore.getState().passFirstStep('add');
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -261,6 +264,9 @@ export const Canvas: React.FC = () => {
     // unreachable. The world container's origin is this element's top-left.
     <div
       ref={viewportRef}
+      /* The first-run ring has to point at a spot where a double-click lands on
+         bare canvas, which is this element and nothing inside it. */
+      data-canvas-viewport=""
       className="absolute top-0 bottom-0 right-0 overflow-hidden transition-[left] duration-300"
       style={{
         left: isSidebarOpen ? SIDEBAR_WIDTH : 0,

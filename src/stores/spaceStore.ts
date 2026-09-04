@@ -517,7 +517,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   setParticles: (particles) => updateActive(set, (space) => ({ ...space, particles })),
 
   // Fill the canvas with the widgets in play, then frame the result.
-  arrangeWidgets: (mode = 'grid', columns) =>
+  arrangeWidgets: (mode = 'grid', columns) => {
+    useUiStore.getState().passFirstStep('tidy');
     updateActive(set, (space) => {
       const boxes = inPlay(space);
       if (boxes.length === 0) return space;
@@ -557,7 +558,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       const laid = applyColumns(widgets);
       const camera = fitCamera(inPlay({ ...space, widgets: laid }), area);
       return { ...space, widgets: laid, camera: camera ?? space.camera };
-    }),
+    });
+  },
 
   fitToWidgets: () =>
     updateActive(set, (space) => {

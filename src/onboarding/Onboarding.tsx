@@ -278,22 +278,15 @@ function pullOut(target: Camera, spaceName: string) {
     if (t < 1) requestAnimationFrame(step);
     else
       /**
-       * The desk is theirs, and here are the two keys.
+       * The desk is theirs, and here are the two moves it does not show anywhere:
+       * bringing a widget out, and tidying up. One line at a time, each waiting
+       * for the move rather than for a clock — a shortcut named in a line that
+       * disappears after six seconds only reaches whoever was looking at it.
        *
-       * Not a tour: a tour makes somebody click through moves they have no
-       * reason for yet. This says the desk is ready and names the keys beside
-       * one they can already see. It does not time out — a line teaching a
-       * shortcut that disappears after six seconds only reaches whoever happened
-       * to be looking at it — and it goes the moment they tidy up, because by
-       * then it has said everything it had to say.
+       * Two, and no more. A tour makes somebody click through moves they have no
+       * reason for yet; these two are the ones a space cannot be used without.
        */
-      useUiStore
-        .getState()
-        .showNotice(
-          `“${spaceName}” is yours — make yourself at home. G tidies up, F fits it on screen.`,
-          undefined,
-          true
-        );
+      useUiStore.getState().startFirstSteps(spaceName);
   };
   requestAnimationFrame(step);
 }

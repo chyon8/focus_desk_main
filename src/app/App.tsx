@@ -12,6 +12,7 @@ import { usePrefsStore } from '../stores/prefsStore';
 import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { useWebAppStore } from '../stores/webappStore';
+import { FirstSteps } from '../onboarding/FirstSteps';
 import { Onboarding } from '../onboarding/Onboarding';
 import { SceneLayer } from '../themes/SceneLayer';
 import { useActiveTheme, useThemeVariables } from '../themes/useTheme';
@@ -92,6 +93,7 @@ export const App: React.FC = () => {
       <UndoToast />
       <NoticeToast />
       <HiddenAppsToast />
+      <FirstSteps />
       {showInsights && <FocusInsights onClose={() => setShowInsights(false)} />}
       {onboarding && <Onboarding onDone={() => setOnboarding(false)} />}
     </div>
