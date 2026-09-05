@@ -109,7 +109,12 @@ interface UiState {
    * line that came back on the third launch is nagging, and by then the user has
    * either found the move or does not want it.
    */
-  firstStep: 'add' | 'tidy' | 'done' | null;
+  firstStep: 'add' | 'tidy' | 'drag' | 'done' | null;
+  /**
+   * The sample page the third move is practised on, while it is standing. Held
+   * here so the step that made it is the step that takes it away.
+   */
+  firstStepSampleId: string | null;
   /** The window covers the screen (⇧M, or the sidebar button). */
   isFullscreen: boolean;
   /**
@@ -154,7 +159,8 @@ interface UiState {
   /** Starts the two moves, once the first run has settled into the space. */
   startFirstSteps: (spaceName: string) => void;
   /** The user made the move: on to the next one, or done. */
-  passFirstStep: (step: 'add' | 'tidy') => void;
+  passFirstStep: (step: 'add' | 'tidy' | 'drag') => void;
+  setFirstStepSample: (id: string | null) => void;
   /** Closed by hand, or the last word has been read. */
   endFirstSteps: () => void;
   /** The space's name, for the first line. Only set while the steps are running. */
@@ -180,6 +186,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   quickAdd: null,
   firstStep: null,
   firstStepSpace: '',
+  firstStepSampleId: null,
   openDock: null,
   isLauncherOpen: false,
   isShortcutsOpen: false,
@@ -257,8 +264,11 @@ export const useUiStore = create<UiState>((set, get) => ({
   // up over the move it was teaching is in the way.
   passFirstStep: (step) => {
     if (get().firstStep !== step) return;
-    set({ firstStep: step === 'add' ? 'tidy' : 'done' });
+    const next = { add: 'tidy', tidy: 'drag', drag: 'done' } as const;
+    set({ firstStep: next[step] });
   },
+
+  setFirstStepSample: (firstStepSampleId) => set({ firstStepSampleId }),
 
   endFirstSteps: () => set({ firstStep: null, firstStepSpace: '' }),
 

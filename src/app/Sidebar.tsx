@@ -207,6 +207,10 @@ export const Sidebar: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsigh
             exit={{ x: -300, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             style={{ width: SIDEBAR_WIDTH }}
+            /* The first run's second step lights this whole panel rather than
+               the Arrange button alone: the button opens a menu above itself,
+               and a hole cut to the button would leave that menu in the dark. */
+            data-first-step-area="tidy"
             className="glass-panel fixed left-0 top-0 bottom-0 z-50 flex flex-col p-3 border-y-0 border-l-0 shadow-[4px_0_24px_rgba(0,0,0,0.25)]"
           >
             <div

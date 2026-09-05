@@ -77,34 +77,110 @@ export const WebAppWidget: React.FC<{ id: string }> = ({ id }) => {
   return data.open ? (
     <WebAppPage id={id} data={data} update={update} />
   ) : (
-    <WebAppTile data={data} onOpen={() => update({ open: true })} onEdit={() => setEditing(true)} />
+    <WebAppTile
+      data={data}
+      onOpen={() => update({ open: true })}
+      onEdit={() => setEditing(true)}
+      onIcon={(favicon, faviconColor) => update({ favicon, faviconColor })}
+    />
   );
 };
 
-/** The closed state: an icon and a name, exactly like an app widget's launcher. */
+/**
+ * The closed state, built like a browser card: the site's own icon over the
+ * site's own colour, with the name and host along the bottom.
+ *
+ * It used to be the preset emoji floating in the middle of an empty grey panel,
+ * which read as unfinished — an envelope is not Gmail, and three panels side by
+ * side were three identical grey rectangles.
+ */
 const WebAppTile: React.FC<{
   data: WebAppData;
   onOpen: () => void;
   onEdit: () => void;
-}> = ({ data, onOpen, onEdit }) => (
-  <div className="t-ink h-full w-full flex flex-col p-3 gap-2">
+  onIcon: (favicon: string, faviconColor?: string) => void;
+}> = ({ data, onOpen, onEdit, onIcon }) => {
+  const address = data.url || data.homeUrl;
+  const host = hostOf(address);
+  const tint = data.faviconColor;
+
+  // The site's icon, asked for once per host and cached in the main process, so
+  // a tile is wearing the real logo a second after it lands. The emoji shows
+  // until then and stays for sites that have no icon at all.
+  //
+  // The full hostname, not `hostOf`: that one drops `www.` because it writes the
+  // label under the name, and `notion.so` without it serves nothing to fetch.
+  useEffect(() => {
+    if (data.favicon) return;
+    let name: string;
+    try {
+      name = new URL(address).hostname;
+    } catch {
+      return;
+    }
+    let wanted = true;
+    void window.images?.favicons([name]).then((found) => {
+      const icon = found[name];
+      if (wanted && icon) onIcon(icon.url, icon.color);
+    });
+    return () => {
+      wanted = false;
+    };
+    // `onIcon` is stable for the widget's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, data.favicon]);
+
+  return (
     <button
       onClick={onOpen}
       title={`Open ${data.name} here`}
-      className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2.5"
+      className="t-ink group/tile relative h-full w-full flex flex-col overflow-hidden text-left"
+      style={
+        tint
+          ? {
+              background: `linear-gradient(160deg, rgba(${tint}, 0.30), rgba(${tint}, 0.10))`,
+              boxShadow: `inset 0 0 0 1px rgba(${tint}, 0.35)`,
+            }
+          : undefined
+      }
     >
-      <WebAppMark icon={data.icon} name={data.name} size={56} />
-      <span className="text-sm font-medium truncate max-w-full">{data.name}</span>
-    </button>
+      <div className="flex flex-1 min-h-0 items-center justify-center p-3">
+        {data.favicon ? (
+          <img
+            src={data.favicon}
+            alt=""
+            draggable={false}
+            className="w-16 h-16 rounded-xl object-contain"
+            style={tint ? { filter: `drop-shadow(0 6px 14px rgba(${tint}, 0.55))` } : undefined}
+          />
+        ) : (
+          <WebAppMark icon={data.icon} name={data.name} size={56} />
+        )}
+      </div>
 
-    <div className="flex items-center justify-between gap-2 px-1">
-      <span className="t-soft text-[11px] truncate">{hostOf(data.url || data.homeUrl)}</span>
-      <button onClick={onEdit} title="Change which web app this is" className="t-faint hover:t-ink">
-        <Pencil size={11} />
-      </button>
-    </div>
-  </div>
-);
+      <div className="shrink-0 flex items-center gap-2 px-3 py-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-medium leading-snug truncate">{data.name}</div>
+          <div className="t-faint text-[10px] truncate">{host}</div>
+        </div>
+        {/* On hover only: changing which app this is belongs with the other
+            things a header offers, not in the tile's resting state. */}
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          title="Change which web app this is"
+          className="t-faint hover:t-ink shrink-0 opacity-0 group-hover/tile:opacity-100"
+        >
+          <Pencil size={12} />
+        </span>
+      </div>
+    </button>
+  );
+};
 
 /** The open state: the page, with only the controls a single-site window needs. */
 const WebAppPage: React.FC<{

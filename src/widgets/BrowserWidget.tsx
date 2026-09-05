@@ -265,7 +265,12 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
             transformOrigin: 'top left',
           }),
         };
-  const showChrome = pageSize.width === 0 || pageSize.width >= CHROME_MIN_WIDTH;
+  // A page written into its own address — the first run's sample is one — has no
+  // address to read or type and nowhere to go back to, so the bar is left off
+  // rather than filled with the blob the page is made of.
+  const inlinePage = data.url.startsWith('data:');
+  const showChrome =
+    !inlinePage && (pageSize.width === 0 || pageSize.width >= CHROME_MIN_WIDTH);
 
   /** Goes somewhere, mounting the guest if this widget has not been anywhere yet. */
   const go = (url: string) => {

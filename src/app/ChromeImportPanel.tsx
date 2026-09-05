@@ -67,6 +67,9 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
   );
 
   const bring = () => {
+    // Before the import: `addSpaces` makes its first document active, and the
+    // list this ticks a line on is in the space the user is leaving.
+    useSpaceStore.getState().checkHint('chrome');
     useSpaceStore.getState().addSpaces(spacesFrom(chosen, newSpace, canvasArea()));
     onClose();
   };

@@ -28,6 +28,8 @@ import {
   ParticlesChoice,
   SCHEMA_VERSION,
   SpaceDoc,
+  TodoData,
+  TourHint,
   WidgetDoc,
   WidgetType,
 } from '../spaces/types';
@@ -92,6 +94,12 @@ interface SpaceState {
   duplicateWidgets: (ids: string[]) => void;
   /** Sets the stacking order from a list given most recently used first. */
   orderWidgets: (ids: string[]) => void;
+  /**
+   * Ticks the line that asks for this move, on the list the first run leaves
+   * behind. Does nothing when there is no such line, which is the normal case
+   * once the user has deleted the list or never had one.
+   */
+  checkHint: (hint: TourHint) => void;
   bringToFront: (id: string) => void;
   moveWidget: (id: string, x: number, y: number) => void;
   /** Moves a whole selection by one delta, so the group keeps its shape. */
@@ -519,6 +527,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   // Fill the canvas with the widgets in play, then frame the result.
   arrangeWidgets: (mode = 'grid', columns) => {
     useUiStore.getState().passFirstStep('tidy');
+    get().checkHint('tidy');
     updateActive(set, (space) => {
       const boxes = inPlay(space);
       if (boxes.length === 0) return space;
@@ -669,6 +678,43 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       });
       return { ...space, widgets };
     }),
+
+  /**
+   * Only the space on screen is looked at. The list is made in the first space
+   * and the user is in it while they are finding these moves; walking every
+   * space would write to files nobody has open to tick a line nobody is reading.
+   */
+  checkHint: (hint) => {
+    const space = get().spaces[get().activeSpaceId];
+    if (!space) return;
+    const lists = Object.values(space.widgets).filter(
+      (widget) =>
+        widget.type === 'todo' &&
+        (widget.data as unknown as TodoData).items?.some(
+          (item) => item.hint === hint && !item.done
+        )
+    );
+    // Looked at before writing anything: these fire on every G and every K, and
+    // going through `updateActive` schedules a save whether or not the space
+    // changed. Once the line is ticked — or the list deleted — this does nothing.
+    if (lists.length === 0) return;
+    updateActive(set, (current) => {
+      const widgets = { ...current.widgets };
+      for (const list of lists) {
+        const data = widgets[list.id].data as unknown as TodoData;
+        widgets[list.id] = {
+          ...widgets[list.id],
+          data: {
+            ...data,
+            items: data.items.map((item) =>
+              item.hint === hint ? { ...item, done: true } : item
+            ),
+          } as unknown as WidgetDoc['data'],
+        };
+      }
+      return { ...current, widgets };
+    });
+  },
 
   bringToFront: (id) =>
     updateActive(set, (space) => {

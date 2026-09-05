@@ -47,8 +47,15 @@ const FAVICON_TIMEOUT_MS = 4000;
 /** An icon and the colour to tint its card with. */
 export interface Favicon {
   url: string;
-  /** `r, g, b` — the average of the icon's opaque pixels, ready for `rgb()`. */
-  color: string;
+  /**
+   * `r, g, b` — the average of the icon's opaque pixels, ready for `rgb()`.
+   *
+   * Absent when the bytes could not be decoded here. `.ico` is the case that
+   * matters: `nativeImage` does not read it, but the renderer's `<img>` does, so
+   * the icon is still worth keeping — a card wearing the real logo with no tint
+   * beats a letter in a grey box. Gmail and Google Calendar serve only `.ico`.
+   */
+  color?: string;
 }
 
 /**
@@ -120,10 +127,9 @@ async function fetchImage(url: string): Promise<Favicon | null> {
   if (!type.startsWith('image/')) return null;
   const data = Buffer.from(await response.arrayBuffer());
   if (data.length === 0) return null;
+  // The colour is what this process can work out; the picture is kept either way.
   const colour = averageColour(data);
-  // No decodable pixels means no image, whatever the header said.
-  if (!colour) return null;
-  return { url: store(data, EXT_FOR_TYPE[type] ?? '.png'), color: colour };
+  return { url: store(data, EXT_FOR_TYPE[type] ?? '.png'), color: colour ?? undefined };
 }
 
 /** The largest square a `sizes` attribute claims, or 0 when it claims none. */
@@ -349,6 +355,15 @@ export function registerImagesIpc() {
    * one the user is actually looking at rather than a 403.
    */
   ipcMain.handle('images:from-url', async (_event, url: string, partition: string) => {
+    // A picture written into the page rather than fetched. Sent to the canvas
+    // like any other, so it is decoded here instead of being refused: `fetch`
+    // does not take a `data:` address, and a page that inlines its images would
+    // otherwise report that the picture could not be saved.
+    const inline = url.match(/^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i);
+    if (inline) {
+      const data = Buffer.from(inline[2], 'base64');
+      return data.length ? store(data, EXT_FOR_TYPE[inline[1].toLowerCase()] ?? '.png') : null;
+    }
     if (!/^https?:\/\//.test(url)) return null;
     try {
       const response = await session.fromPartition(partition).fetch(url);

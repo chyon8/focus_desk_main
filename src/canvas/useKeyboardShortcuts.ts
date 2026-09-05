@@ -16,7 +16,10 @@ function isTyping(target: EventTarget | null) {
  */
 function runShortcut(code: string) {
   const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
-  if (code === 'KeyK') useUiStore.getState().toggleLauncher();
+  if (code === 'KeyK') {
+    useUiStore.getState().toggleLauncher();
+    useSpaceStore.getState().checkHint('launcher');
+  }
   else if (code === 'KeyN') openQuickAddAtCentre();
   // G moves the widgets, F only moves the camera. Two keys that sound alike and
   // do very different things, so they are labelled as the difference in the

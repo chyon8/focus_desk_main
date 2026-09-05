@@ -10,7 +10,7 @@ import { newSpace, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
 import { useWebAppStore } from '../stores/webappStore';
 import { WEB_APP_PRESETS, hostOf, normalizeUrl, type WebAppGroup } from '../webapps/presets';
-import type { TodoItem, WebAppIcon } from '../spaces/types';
+import type { TodoItem, TourHint, WebAppIcon } from '../spaces/types';
 import { ParticleLayer } from '../themes/ParticleLayer';
 import { greetingForHour, roomsForHour, type Room } from './rooms';
 
@@ -175,6 +175,39 @@ function firstTasks(work: Work | null): TodoItem[] {
   return texts.map((text) => ({ id: crypto.randomUUID(), text, done: false }));
 }
 
+/**
+ * The list of moves the first run leaves behind.
+ *
+ * A tour can teach two moves before it turns into something to click through, so
+ * the rest are written down instead. Each line ticks itself the first time the
+ * user makes the move — nothing here asks to be done, and the two FirstSteps
+ * lines are ticked within the first minute, which is what says the rest of the
+ * list is the same kind of thing.
+ *
+ * The Chrome line is only for people who did not take the Chrome path: the ones
+ * who did have already done it.
+ */
+const TOUR_LINES: { hint: TourHint; text: string }[] = [
+  { hint: 'add', text: 'Double-click empty space to add a widget' },
+  { hint: 'tidy', text: 'Press G to tidy the desk' },
+  { hint: 'select', text: 'Drag across two widgets to select them' },
+  { hint: 'launcher', text: 'Press K to find anything' },
+  { hint: 'drag-out', text: 'Right-click a picture on a page to send it to the desk' },
+  { hint: 'chrome', text: 'Bring in the windows open in Chrome' },
+];
+
+/** The colour mark that tells this list from the one holding the user's work. */
+const TOUR_COLOR = 'denim';
+
+function tourList(cameFromChrome: boolean): TodoItem[] {
+  return TOUR_LINES.filter((line) => line.hint !== 'chrome' || !cameFromChrome).map((line) => ({
+    id: crypto.randomUUID(),
+    text: line.text,
+    done: false,
+    hint: line.hint,
+  }));
+}
+
 /** The note a space opens with: the user's own answer, and a place under it. */
 function firstNote(name: string, work: Work | null) {
   const heading = name || (work ? `${work.label} — today` : 'Today');
@@ -189,6 +222,8 @@ function firstNote(name: string, work: Work | null) {
 interface Planned {
   type: 'webapp' | 'memo' | 'todo' | 'browser';
   data: Record<string, unknown>;
+  /** A mark, for the one widget that has to be told from its twin. */
+  color?: string;
 }
 
 /**
@@ -240,6 +275,7 @@ function layOut(planned: Planned[], spaceName: string, mode: ArrangeMode = 'grid
       const id = useSpaceStore.getState().addWidget(item.type, item.data);
       useSpaceStore.getState().moveWidget(id, place.x, place.y);
       useSpaceStore.getState().resizeWidget(id, place.width, place.height);
+      if (item.color) useSpaceStore.getState().colorWidgets([id], item.color);
       made.push(id);
       setTimeout(next, LAND_MS);
       return;
@@ -673,6 +709,13 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     // sample text nobody asked for.
     planned.push({ type: 'memo', data: { content: firstNote(name, work) } });
     planned.push({ type: 'todo', data: { items: firstTasks(work), theme: 'LIGHT' } });
+    // Last, so a focus arrange ranks it below everything the user picked: the
+    // list is there to be glanced at, not to be handed the biggest tile.
+    planned.push({
+      type: 'todo',
+      data: { items: tourList(false), theme: 'LIGHT' },
+      color: TOUR_COLOR,
+    });
 
     layOut(planned, name || space.name);
   };
@@ -719,6 +762,11 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       // what anybody would write at the top of a page.
       { type: 'memo', data: { content: firstNote('', work) } },
       { type: 'todo', data: { items: firstTasks(work), theme: 'LIGHT' } },
+      {
+        type: 'todo',
+        data: { items: tourList(true), theme: 'LIGHT' },
+        color: TOUR_COLOR,
+      },
     ];
     const planned: Planned[] = [
       ...first.tabs.map((tab, i) => ({

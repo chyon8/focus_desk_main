@@ -23,8 +23,24 @@ export const SOLID_COLORS = [
  * mist(`#f1f5f9`)와 sand(`#fdf6e3`)는 여기로 옮겼다. 위 단색 목록에 그대로 두면
  * 같은 색이 스와치 두 개로 나온다(누른 결과도 똑같다).
  */
-export const MINIMAL_THEMES = [
-  { name: 'Mist', bg: '#f1f5f9', text: '#475569', accent: '#94a3b8', border: '#cbd5e1' },
+interface MinimalTheme {
+  name: string;
+  bg: string;
+  text: string;
+  accent: string;
+  border: string;
+  /** 위젯 틀. 없으면 배경 밝기에서 뽑는다. */
+  panel?: string;
+  /** 위젯 안쪽 종이(`--paper`가 이걸 쓴다). 없으면 배경 밝기에서 뽑는다. */
+  surface?: string;
+}
+
+export const MINIMAL_THEMES: MinimalTheme[] = [
+  // 캔버스가 이미 거의 흰색이라 밝기로 뽑은 틀·종이가 서로 1/255 차이로 붙었다.
+  // 세 층에 slate 눈금을 하나씩 준다 — 캔버스 100 / 틀 50 / 종이 흰색.
+  // panel은 위젯이 겹칠 때 층이 보이도록 반투명이다(#f1f5f9 위에서 #f8fafc가 된다).
+  { name: 'Mist', bg: '#f1f5f9', text: '#475569', accent: '#94a3b8', border: '#cbd5e1',
+    panel: 'rgba(255, 255, 255, 0.5)', surface: '#ffffff' },
   { name: 'Deep Forest', bg: '#0f291e', text: '#d1fae5', accent: '#34d399', border: '#064e3b' },
   { name: 'Stone', bg: '#292524', text: '#d6d3d1', accent: '#78716c', border: '#44403c' },
   { name: 'Sand', bg: '#fdf6e3', text: '#5c534b', accent: '#dcb886', border: '#ebdcc1' },
@@ -64,9 +80,9 @@ export function backgroundTokens<T extends ThemeTokens>(value: string, base: T):
     ink,
     inkSoft: `color-mix(in srgb, ${ink} 60%, transparent)`,
     // 위젯끼리 겹칠 때 층이 보이도록 반투명으로 둔다.
-    panel: light ? 'rgba(255, 255, 255, 0.72)' : 'rgba(255, 255, 255, 0.07)',
+    panel: named?.panel ?? (light ? 'rgba(255, 255, 255, 0.72)' : 'rgba(255, 255, 255, 0.07)'),
     // surface는 배경이 안 비치는 창이 쓰므로 불투명해야 한다.
-    surface: `color-mix(in srgb, #ffffff ${light ? 70 : 7}%, ${value})`,
+    surface: named?.surface ?? `color-mix(in srgb, #ffffff ${light ? 70 : 7}%, ${value})`,
     panelBorder: named?.border ?? (light ? 'rgba(40, 45, 55, 0.16)' : 'rgba(255, 255, 255, 0.14)'),
     accent: named?.accent ?? base.accent,
   };

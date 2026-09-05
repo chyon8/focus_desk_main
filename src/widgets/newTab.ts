@@ -49,6 +49,8 @@ export function openTabBeside(sourceId: string, url: string) {
  * one behind a login, would otherwise leave an empty frame behind.
  */
 export async function sendToCanvas(sourceId: string, kind: 'image' | 'text', value: string) {
+  useSpaceStore.getState().checkHint('drag-out');
+  useUiStore.getState().passFirstStep('drag');
   if (kind === 'text') {
     placeBeside(sourceId, 'memo', { content: textToHtml(value), theme: 'LIGHT' }, 'Text taken out of the page');
     return;

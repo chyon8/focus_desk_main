@@ -240,6 +240,16 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
 
+/* 단색 배경에는 blur가 흐릴 것이 없다. Chromium은 그래도 blur 반경(26px)만큼 안쪽
+   가장자리를 밝게 칠해서, 위젯 안에 띠 하나를 그린다. 다시 그려질 때마다 나타났다
+   사라지므로 깜빡이는 것으로 보인다. 사진 배경에서는 blur가 실제로 일을 하므로 켜둔다.
+   (useTheme.ts가 data-flat-bg를 단다.) */
+:root[data-flat-bg] .widget-glass,
+:root[data-flat-bg] .glass,
+:root[data-flat-bg] .glass-panel {
+  backdrop-filter: none;
+}
+
 /* A marked widget, painted the way a marked card is: the edge, the surface and
    the bar across the top. `--mark` is set on the element.
 

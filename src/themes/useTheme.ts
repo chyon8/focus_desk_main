@@ -29,6 +29,15 @@ export function useThemeVariables(theme: Theme) {
     [background, theme],
   );
 
+  // 단색 배경 위에서는 유리의 blur가 흐릴 것이 없다. 대신 Chromium이 blur 반경만큼
+  // 가장자리를 밝게 칠해서 위젯 안쪽에 25px짜리 테두리 띠가 생긴다 — 다시 그릴 때마다
+  // 나타났다 사라져 깜빡인다. 사진 배경에서는 blur가 실제로 일을 하므로 그대로 둔다.
+  const flat = background?.type === 'COLOR';
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-flat-bg', flat);
+  }, [flat]);
+
   useEffect(() => {
     const { style } = document.documentElement;
     const { ink, inkSoft, panel, surface, panelBorder, accent, font } = tokens;

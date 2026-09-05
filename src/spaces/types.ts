@@ -81,7 +81,19 @@ export interface TodoItem {
   id: string;
   text: string;
   done: boolean;
+  /**
+   * The move this line asks for, on the list the first run leaves behind. The
+   * line ticks itself when the user makes that move, so the list is a record of
+   * what they have found rather than instructions to follow.
+   *
+   * Absent on every line anybody typed. Matching on the text instead would break
+   * the moment the user rewrote one, which they are meant to be able to do.
+   */
+  hint?: TourHint;
 }
+
+/** The moves the first-run list keeps track of. */
+export type TourHint = 'add' | 'tidy' | 'select' | 'maximize' | 'launcher' | 'drag-out' | 'chrome';
 
 export interface TodoData {
   items: TodoItem[];
@@ -206,6 +218,18 @@ export interface WebAppData {
   /** What the saved web app points at — where the home button goes back to. */
   homeUrl: string;
   icon: WebAppIcon | null;
+  /**
+   * The site's real icon and colour, fetched by the closed tile the same way a
+   * browser card fetches them. The presets ship an emoji apiece — a generic
+   * envelope for Gmail, a page for Notion — which stands in only until this
+   * arrives: it says the tile is a placeholder, and three of them side by side
+   * say nothing about which site is which.
+   *
+   * `faviconColor` is `r, g, b`, so the tile can wear the site's colour the way
+   * a card does.
+   */
+  favicon?: string;
+  faviconColor?: string;
   /** Page zoom, like a browser's ⌘+/⌘−. 1 is 100%. */
   zoom?: number;
   /**

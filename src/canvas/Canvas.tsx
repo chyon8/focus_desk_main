@@ -212,6 +212,7 @@ export const Canvas: React.FC = () => {
     // Only from here, not from `openQuickAdd` itself: N opens the same palette in
     // the middle of the view, and the move being taught is the double-click.
     useUiStore.getState().passFirstStep('add');
+    useSpaceStore.getState().checkHint('add');
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -256,7 +257,11 @@ export const Canvas: React.FC = () => {
       )
       .map((w) => w.id);
     const ui = useUiStore.getState();
-    ui.setSelection(marquee.additive ? [...new Set([...ui.selectedIds, ...hits])] : hits);
+    const picked = marquee.additive ? [...new Set([...ui.selectedIds, ...hits])] : hits;
+    ui.setSelection(picked);
+    // Two is where the selection bar appears, which is the whole reason the
+    // first-run list mentions this move.
+    if (picked.length > 1) useSpaceStore.getState().checkHint('select');
   };
 
   return (

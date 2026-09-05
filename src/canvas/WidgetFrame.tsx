@@ -3,7 +3,7 @@ import { Copy, LogOut, Maximize2, Palette, PanelLeft, Volume2, X } from 'lucide-
 import { hostOf } from '../widgets/browserAddress';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { screenToWorld } from './camera';
-import type { BrowserData, ColumnData } from '../spaces/types';
+import type { BrowserData, ColumnData, WebAppData } from '../spaces/types';
 import { canvasArea, Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 import { colorOf } from '../widgets/widgetColors';
@@ -22,6 +22,11 @@ export const PEEK_Z = 8000;
 // is open, in which case it is holding that corner and the widget starts to its
 // right.
 const TRAFFIC_LIGHTS_WIDTH = 78;
+// Narrower than this and the header has no room for a third button: four of them
+// fill a 140px bar and get pressed by accident, which is why this one was left
+// out to begin with. Everything the first run puts down is 320px or wider, and a
+// column card is 300, so both keep the button.
+const MAXIMIZE_MIN_WIDTH = 260;
 
 /**
  * The column slot the pointer is over, in world units.
@@ -110,13 +115,18 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
   const mark = colorOf(widget.color);
   const isMarked = !!mark && !isFull;
 
-  // A browser widget's header shows the page it is on. Open three of them and the
-  // registry's fixed "Browser" label with a globe makes all three look the same.
+  // A browser widget's header shows the page it is on, and a web app's shows
+  // which app it is. Open three of either and the registry's fixed label makes
+  // all three look the same.
   const page = widget.type === 'browser' ? (widget.data as Partial<BrowserData>) : null;
+  const app = widget.type === 'webapp' ? (widget.data as Partial<WebAppData>) : null;
   const columnTitle =
     widget.type === 'column' ? (widget.data as Partial<ColumnData>).title : undefined;
   const label =
-    columnTitle || (page && (page.title || (page.url && hostOf(page.url)))) || entry.label;
+    columnTitle ||
+    (page && (page.title || (page.url && hostOf(page.url)))) ||
+    app?.name ||
+    entry.label;
 
   const box = overlay ?? widget;
   const bodyHeight = box.height - HEADER_HEIGHT;
@@ -247,6 +257,9 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
           e.preventDefault();
           e.stopPropagation();
           useUiStore.getState().toggleSelected(id);
+          if (useUiStore.getState().selectedIds.length > 1) {
+            useSpaceStore.getState().checkHint('select');
+          }
           return;
         }
         useSpaceStore.getState().bringToFront(id);
@@ -259,6 +272,8 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
           e.stopPropagation();
         }
       }}
+      /* So the first run can measure the sample page it puts down and light it. */
+      data-widget-id={id}
     >
       <div
         /* Not a window drag region while maximised, even though it is where the
@@ -272,11 +287,14 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
            of cards, and a screen-wide list of 300px cards is the same list with
            a field of empty space beside it. Its header double-click renames it
            instead, which is the thing anyone actually wants from a list header. */
-        onDoubleClick={() =>
-          widget.type === 'column'
-            ? setIsNaming(true)
-            : useUiStore.getState().toggleMaximized(id)
-        }
+        onDoubleClick={() => {
+          if (widget.type === 'column') {
+            setIsNaming(true);
+            return;
+          }
+          useUiStore.getState().toggleMaximized(id);
+          useSpaceStore.getState().checkHint('maximize');
+        }}
         onPointerDown={(e) => startGesture(e, 'move')}
         onPointerMove={onPointerMove}
         onPointerUp={endGesture}
@@ -329,9 +347,9 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
               {(widget.data as unknown as ColumnData).children.length}
             </span>
           </>
-        ) : page?.favicon ? (
+        ) : page?.favicon || app?.favicon ? (
           <img
-            src={page.favicon}
+            src={page?.favicon || app?.favicon}
             alt=""
             draggable={false}
             className="shrink-0 w-3.5 h-3.5 rounded-sm object-contain"
@@ -385,13 +403,26 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
               <LogOut size={14} />
             </HeaderButton>
           )}
-          {/* Only two buttons, and one of them only on hover. A header can be as
-              narrow as 140px, where four of them fill the whole bar and get
-              pressed by accident. The two that are gone have other ways in:
-              double-clicking the header fills the canvas, and moving to another
-              space is on the selection bar. */}
+          {/* Hover only, and the wider of the two is dropped on a narrow header.
+              A header can be as narrow as 140px, where three buttons fill the
+              whole bar and get pressed by accident. Moving to another space is
+              the one that is gone for good — it is on the selection bar. */}
           {!overlay && (
             <div className="opacity-0 group-hover:opacity-100 flex items-center">
+              {/* The double-click on this header does the same thing. The button
+                  is here because nothing says so, and a column is the exception:
+                  a screen-wide list of 300px cards shows no more than the list. */}
+              {widget.type !== 'column' && widget.width >= MAXIMIZE_MIN_WIDTH && !isFull && (
+                <HeaderButton
+                  onClick={() => {
+                    useUiStore.getState().toggleMaximized(id);
+                    useSpaceStore.getState().checkHint('maximize');
+                  }}
+                  label="Fill the screen (or double-click the header)"
+                >
+                  <Maximize2 size={13} />
+                </HeaderButton>
+              )}
               <HeaderButton
                 onClick={() => useSpaceStore.getState().duplicateWidgets([id])}
                 label="Duplicate (⌘D)"
