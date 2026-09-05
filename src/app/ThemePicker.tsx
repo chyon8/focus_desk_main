@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Ban, CloudRain, Flame, Moon, Palette, Snowflake, Sparkles, Sun, Upload, type LucideIcon } from 'lucide-react';
-import { assetUrl, SOLID_COLORS } from '../spaces/backgrounds';
+import { assetUrl, MINIMAL_THEMES, SOLID_COLORS } from '../spaces/backgrounds';
 import type { ParticlesChoice } from '../spaces/types';
 import { usePrefsStore } from '../stores/prefsStore';
 import { useSpaceStore } from '../stores/spaceStore';
@@ -232,7 +232,7 @@ export const ThemePicker: React.FC = () => {
               }}
             />
 
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-6 gap-2 mb-5">
               {SOLID_COLORS.map((color) => (
                 <button
                   key={color}
@@ -240,6 +240,39 @@ export const ThemePicker: React.FC = () => {
                   className="aspect-square rounded-lg transition-transform hover:scale-[1.1]"
                   style={{ backgroundColor: color, ...ring(override?.value === color) }}
                 />
+              ))}
+            </div>
+
+            {/* 단색과 달리 글자·강조·테두리까지 들고 있다. 옆의 점 두 개가 고르기 전에
+                무슨 색이 딸려 오는지 보여준다. */}
+            <Label>Minimal themes</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {MINIMAL_THEMES.map((t) => (
+                <button
+                  key={t.name}
+                  onClick={() => setBackground({ type: 'COLOR', value: t.bg })}
+                  className="border-hair chrome-button flex items-center gap-2.5 p-2 rounded-xl border"
+                  style={ring(override?.value === t.bg)}
+                >
+                  <span
+                    className="border-hair w-8 h-8 shrink-0 rounded-full border"
+                    style={{ backgroundColor: t.bg }}
+                  />
+                  <span className="flex flex-col items-start gap-1 min-w-0">
+                    <span className="t-ink text-[11px] font-medium leading-tight text-left">
+                      {t.name}
+                    </span>
+                    <span className="flex gap-1">
+                      {[t.text, t.accent].map((dot) => (
+                        <span
+                          key={dot}
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: dot }}
+                        />
+                      ))}
+                    </span>
+                  </span>
+                </button>
               ))}
             </div>
           </motion.div>

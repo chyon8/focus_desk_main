@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { assetUrl } from '../spaces/backgrounds';
+import { assetUrl, isLightBackground } from '../spaces/backgrounds';
 import { useSpaceStore } from '../stores/spaceStore';
 import { ParticleLayer } from './ParticleLayer';
 import type { Atmosphere, Glow, SceneSpec, Theme } from './types';
@@ -69,6 +69,13 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
   // Changing theme or wallpaper crossfades rather than cutting.
   const sceneKey = scene.kind === 'image' ? scene.src : scene.value;
 
+  // scrim과 glow는 사진 위에서 글자가 읽히게 하려고 테마가 자기 사진에 맞춰 정해둔
+  // 것이다. 단색 배경에 그대로 얹으면 고른 색이 그 색으로 안 나온다 — Golden Hour의
+  // 따뜻한 scrim 아래에서 Mist(#f1f5f9)가 탁한 회색으로 보이던 원인이다.
+  const flat = scene.kind === 'color';
+  // 비네트도 마찬가지로 테마의 mood가 아니라 실제로 뒤에 깔린 색을 따라간다.
+  const lightBackdrop = flat ? isLightBackground(scene.value) : theme.mood === 'light';
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       <AnimatePresence>
@@ -83,9 +90,9 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
         />
       </AnimatePresence>
 
-      <div className="absolute inset-0" style={scrimStyle(atmosphere)} />
+      {!flat && <div className="absolute inset-0" style={scrimStyle(atmosphere)} />}
 
-      {atmosphere.glow && (
+      {!flat && atmosphere.glow && (
         <div
           className={`absolute inset-0 scene-glow ${
             atmosphere.glow.flicker ? 'scene-glow-flicker' : 'scene-glow-breathe'
@@ -100,7 +107,7 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
 
       <div
         className={`absolute inset-0 ${
-          theme.mood === 'light' ? 'scene-vignette-light' : 'scene-vignette'
+          lightBackdrop ? 'scene-vignette-light' : 'scene-vignette'
         }`}
       />
       <div className="absolute inset-0 scene-grain" />
