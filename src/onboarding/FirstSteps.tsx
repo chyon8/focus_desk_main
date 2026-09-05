@@ -235,6 +235,58 @@ const Ring: React.FC<{ at: Point; size: number }> = ({ at, size }) => (
   </div>
 );
 
+/**
+ * A short burst of paper out of the tick, once, when the last move is made.
+ *
+ * Drawn rather than pulled in: twenty divs on their own transforms cost nothing
+ * next to a library, and the burst has to be small — the desk behind it is the
+ * thing being handed over, and a screen of falling confetti covers it up.
+ */
+const CONFETTI = Array.from({ length: 22 }, (_, i) => {
+  const angle = (i / 22) * Math.PI * 2 + (i % 3) * 0.22;
+  const reach = 78 + (i % 5) * 26;
+  return {
+    id: i,
+    x: Math.cos(angle) * reach,
+    y: Math.sin(angle) * reach - 26, // biased upwards, the way thrown paper goes
+    spin: (i % 2 ? 1 : -1) * (160 + (i % 4) * 90),
+    delay: (i % 6) * 0.022,
+    color: ["var(--accent)", "#f6b17a", "#7fb5a5", "#e8dcc8"][i % 4],
+    tall: i % 3 === 0,
+  };
+});
+
+const Confetti: React.FC = () => (
+  <div className="absolute left-1/2 top-0 pointer-events-none" aria-hidden>
+    {CONFETTI.map((bit) => (
+      <motion.span
+        key={bit.id}
+        className="block absolute rounded-[1px]"
+        style={{
+          width: bit.tall ? 4 : 7,
+          height: bit.tall ? 10 : 4,
+          background: bit.color,
+        }}
+        initial={{ x: 0, y: 0, opacity: 0, rotate: 0, scale: 0.6 }}
+        animate={{
+          x: bit.x,
+          // Up and then a little down: it is thrown, not sprayed.
+          y: [0, bit.y, bit.y + 34],
+          opacity: [0, 1, 0],
+          rotate: bit.spin,
+          scale: 1,
+        }}
+        transition={{
+          duration: 1.15,
+          delay: bit.delay,
+          ease: [0.15, 0.7, 0.3, 1],
+          times: [0, 0.55, 1],
+        }}
+      />
+    ))}
+  </div>
+);
+
 /** A key as it is drawn on a keyboard, so the letter reads as something to press. */
 const Key: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd
@@ -410,11 +462,17 @@ export const FirstSteps: React.FC = () => {
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            initial={{ opacity: 0, y: 8, scale: step === "done" ? 0.9 : 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.22 }}
-            className="glass-panel px-4 py-3 rounded-2xl shadow-2xl"
+            transition={
+              step === "done"
+                ? { type: "spring", stiffness: 320, damping: 20 }
+                : { duration: 0.22 }
+            }
+            className={`glass-panel rounded-2xl shadow-2xl ${
+              step === "done" ? "px-6 py-6" : "px-4 py-3"
+            }`}
           >
             {step === "add" && (
               <>
@@ -443,8 +501,8 @@ export const FirstSteps: React.FC = () => {
                   Last one — take something off this page.
                 </p>
                 <p className="t-soft text-xs leading-relaxed">
-                  Right-click the picture and choose “Send image to the canvas”.
-                  Selected text works the same way.
+                  Right-click the picture — or select some of the text and
+                  right-click that. Either one becomes a widget on the desk.
                 </p>
               </>
             )}
@@ -453,17 +511,26 @@ export const FirstSteps: React.FC = () => {
                 two keys are named rather than asked for: a key is worth more
                 tomorrow than a button is worth now. */}
             {step === "done" && (
-              <div className="text-center px-1 py-1">
-                <span
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-full mb-2.5"
+              <div className="relative text-center px-2 pt-1 pb-2">
+                <Confetti />
+                <motion.span
+                  className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3.5"
                   style={{
                     background:
-                      "color-mix(in srgb, var(--accent) 20%, transparent)",
+                      "color-mix(in srgb, var(--accent) 22%, transparent)",
+                    boxShadow:
+                      "0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent)",
                   }}
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 14 }}
                 >
-                  <Check size={18} className="t-accent" />
-                </span>
-                <p className="t-ink text-[15px] font-semibold mb-1">
+                  <Check size={28} className="t-accent" strokeWidth={2.5} />
+                </motion.span>
+                <p className="t-ink text-[22px] font-semibold leading-tight tracking-[-0.02em] mb-1.5">
+                  That’s everything.
+                </p>
+                <p className="t-ink text-[15px] font-medium mb-1">
                   “{spaceName}” is yours.
                 </p>
                 <p className="t-soft text-xs leading-relaxed">
@@ -471,7 +538,13 @@ export const FirstSteps: React.FC = () => {
                 </p>
                 <button
                   onClick={() => useUiStore.getState().endFirstSteps()}
-                  className="chrome-button pointer-events-auto mt-3.5 px-4 h-8 rounded-lg text-xs font-medium"
+                  className="pointer-events-auto mt-4 px-5 h-9 rounded-lg text-[13px] font-semibold"
+                  /* Filled rather than tinted: it is the one button on the one
+                     card that is a handover. The ink is fixed dark because every
+                     room theme's accent is a light one (#ffb27a · #7fc8d8 ·
+                     #a8b8e8 · #b07d4a), and there is no token for text on top
+                     of the accent. */
+                  style={{ background: "var(--accent)", color: "#17151b" }}
                 >
                   Start
                 </button>

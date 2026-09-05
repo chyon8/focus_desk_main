@@ -50,11 +50,11 @@ const HTML = `<!doctype html>
   <p class="kicker">Sample page</p>
   <h1>Anything here can come out.</h1>
   <img src="${PICTURE_SRC}" alt="">
-  <p><strong>Right-click the picture</strong> and choose “Send image to the canvas”.
-  It lands on the desk beside this page and stays there — the copy is yours, so it
-  survives the site changing or asking you to sign in again.</p>
-  <p>Selected text works the same way: highlight a line, right-click, “Send text to
-  the canvas”, and it becomes a note. This page goes away once you have done it.</p>
+  <p><strong>Both work.</strong> Right-click the picture and choose “Send image to
+  the canvas”, and it becomes a photo on the desk. Or select any of this text,
+  right-click, choose “Send text to the canvas”, and it becomes a note.</p>
+  <p>Either one is a copy that is yours — it survives the site changing, or asking
+  you to sign in again. Do one and this page goes away.</p>
 </body></html>`;
 
 export const SAMPLE_PAGE_URL = `data:text/html;charset=utf-8;base64,${btoa(

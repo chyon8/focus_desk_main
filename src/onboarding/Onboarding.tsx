@@ -601,8 +601,16 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const [opened, setOpened] = useState(false);
   const [cursor, setCursor] = useState({ x: 0.5, y: 0.4 });
 
-  /** The room behind everything: the one picked, or the one under the pointer. */
-  const shown = room ?? peek;
+  /**
+   * The room behind everything: the one picked, the one under the pointer, or —
+   * with the pointer on neither — the first card's.
+   *
+   * A black screen behind the cards said nothing and made the first hover look
+   * like the screen turning on. Standing in the room the app would have chosen
+   * anyway makes hovering a card a change of room rather than the arrival of one,
+   * which is what the cards are for.
+   */
+  const shown = room ?? peek ?? rooms[0] ?? null;
 
   /**
    * Picking a room sets the real theme, so the scene behind the next question is
@@ -790,7 +798,8 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         setCursor({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight })
       }
     >
-      {/* Before any room has been looked at. */}
+      {/* The ground under the rooms, for the moment before a wallpaper has
+          decoded and for a room that is a gradient rather than a photograph. */}
       <div
         className="absolute inset-0"
         style={{

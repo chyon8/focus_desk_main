@@ -17,10 +17,10 @@ export function placeBeside(
   type: WidgetType,
   data: Record<string, unknown>,
   notice: string
-) {
+): string | null {
   const state = useSpaceStore.getState();
   const self = state.spaces[state.activeSpaceId]?.widgets[sourceId];
-  if (!self) return;
+  if (!self) return null;
 
   const size = WIDGET_DEFS[type].defaultSize;
   // `at` is the new widget's centre.
@@ -32,6 +32,7 @@ export function placeBeside(
   const after = useSpaceStore.getState();
   const created = after.spaces[after.activeSpaceId]?.widgets[newId];
   if (created) showWhereItLanded(created, notice);
+  return newId;
 }
 
 /**
@@ -49,18 +50,35 @@ export function openTabBeside(sourceId: string, url: string) {
  * one behind a login, would otherwise leave an empty frame behind.
  */
 export async function sendToCanvas(sourceId: string, kind: 'image' | 'text', value: string) {
-  useSpaceStore.getState().checkHint('drag-out');
-  useUiStore.getState().passFirstStep('drag');
+  let placed: string | null;
   if (kind === 'text') {
-    placeBeside(sourceId, 'memo', { content: textToHtml(value), theme: 'LIGHT' }, 'Text taken out of the page');
-    return;
+    placed = placeBeside(
+      sourceId,
+      'memo',
+      { content: textToHtml(value), theme: 'LIGHT' },
+      'Text taken out of the page'
+    );
+  } else {
+    const spaceId = useSpaceStore.getState().activeSpaceId;
+    const url = await window.images?.fromUrl(value, `persist:space-${spaceId}`);
+    if (!url) {
+      useUiStore.getState().showNotice('That image could not be saved.');
+      return;
+    }
+    placed = placeBeside(sourceId, 'photo', { url, caption: '' }, 'Image taken out of the page');
   }
+  if (!placed) return;
 
-  const spaceId = useSpaceStore.getState().activeSpaceId;
-  const url = await window.images?.fromUrl(value, `persist:space-${spaceId}`);
-  if (!url) {
-    useUiStore.getState().showNotice('That image could not be saved.');
-    return;
+  // Only once something is actually standing on the canvas. The first run's
+  // third move ends by taking the sample page away, and the page is what a new
+  // widget is placed beside — telling the tour first left the picture with
+  // nowhere to be put, so nothing appeared at all.
+  useSpaceStore.getState().checkHint('drag-out');
+  if (useUiStore.getState().firstStep === 'drag') {
+    // What landed goes beside a 900px page, which is off the edge of a view
+    // framed on the desk. The move has to be seen to have worked.
+    useUiStore.getState().dismissNotice();
+    useSpaceStore.getState().fitToWidgets();
   }
-  placeBeside(sourceId, 'photo', { url, caption: '' }, 'Image taken out of the page');
+  useUiStore.getState().passFirstStep('drag');
 }
