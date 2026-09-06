@@ -1,0 +1,303 @@
+<title>Widget Treatment Bench</title>
+<style>
+:root{
+  --chrome-bg:#101215; --chrome-ink:#E8EAEE; --chrome-ink-2:#98A0AC;
+  --chrome-edge:#2C313A; --chrome-panel:#1A1D22; --chrome-accent:#7FB2D6;
+
+  /* ---- 지금 · Golden Hour (사진 배경일 때 테마 토큰 그대로) ---- */
+  --n-ink:#fff3e6; --n-ink-soft:rgba(255,243,230,.6); --n-faint:rgba(255,243,230,.32);
+  --n-panel:rgba(50,28,26,.46); --n-surface:#2e1c1a;
+  --n-border:rgba(255,208,168,.17); --n-accent:#ffb27a;
+  --n-blur:blur(26px) saturate(1.25);
+
+  /* ---- A1 ---- */
+  --a1-surface:#f8f7f4; --a1-surface-2:#eeece7; --a1-plate:#e2dfd8;
+  --a1-edge:#d9d5cd; --a1-text:#211f1c; --a1-text-2:#63605b;
+  --a1-accent:#2f5f96; --a1-accent-ink:#f8f7f4;
+  --a1-shadow:0 1px 1px rgba(46,38,26,.10), 0 10px 24px -10px rgba(46,38,26,.34);
+
+  /* ---- A2 ---- */
+  --a2-surface:#F7F6F3; --a2-surface-2:#EFEDE8; --a2-plate:#DCD9D2;
+  --a2-text:#1E1C19; --a2-text-2:#5C574F; --a2-text-3:#726C62;
+  --a2-edge:rgba(30,28,25,.11); --a2-edge-strong:rgba(30,28,25,.20);
+  --a2-halo:rgba(255,255,255,.55); --a2-accent:#A9581B; --a2-accent-ink:#FFF7EF;
+  --a2-shadow:0 1px 2px rgba(46,38,28,.10), 0 10px 22px -8px rgba(46,38,28,.20), 0 28px 56px -26px rgba(46,38,28,.30);
+}
+
+/* 어두운 벽지에서 A1·A2는 자기 다크 토큰으로 바꾼다. 지금 디자인은 안 바꾼다. */
+body[data-polarity="dark"]{
+  --a1-surface:#232120; --a1-surface-2:#2c2a27; --a1-plate:#35322e;
+  --a1-edge:#403c37; --a1-text:#efece7; --a1-text-2:#a8a29a;
+  --a1-accent:#7fb2e8; --a1-accent-ink:#16202b;
+  --a1-shadow:0 1px 1px rgba(0,0,0,.4), 0 12px 26px -10px rgba(0,0,0,.6);
+
+  --a2-surface:#201E1B; --a2-surface-2:#2A2723; --a2-plate:#39352F;
+  --a2-text:#F0EDE7; --a2-text-2:#A9A29A; --a2-text-3:#948D83;
+  --a2-edge:rgba(255,255,255,.10); --a2-edge-strong:rgba(255,255,255,.20);
+  --a2-halo:rgba(0,0,0,.42); --a2-accent:#E9A75F; --a2-accent-ink:#231F1A;
+  --a2-shadow:0 1px 2px rgba(0,0,0,.36), 0 12px 26px -10px rgba(0,0,0,.55), 0 28px 56px -26px rgba(0,0,0,.6);
+}
+
+/* 지금 디자인: 단색 배경이면 backgroundTokens()가 밝기에서 토큰을 뽑고 blur가 꺼진다 */
+body[data-wall="solid-light"]{
+  --n-ink:#475569; --n-ink-soft:rgba(71,85,105,.55); --n-faint:rgba(71,85,105,.32);
+  --n-panel:rgba(255,255,255,.5); --n-surface:#ffffff;
+  --n-border:#cbd5e1; --n-accent:#94a3b8; --n-blur:none;
+}
+body[data-wall="solid-dark"]{
+  --n-ink:#d1fae5; --n-ink-soft:rgba(209,250,229,.55); --n-faint:rgba(209,250,229,.32);
+  --n-panel:rgba(15,41,30,.5); --n-surface:#0f291e;
+  --n-border:#064e3b; --n-accent:#34d399; --n-blur:none;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100dvh; background:var(--chrome-bg); color:var(--chrome-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+
+/* ---- control bar ---- */
+.bar{
+  position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; align-items:center; gap:14px;
+  padding:14px 22px; background:var(--chrome-bg); border-bottom:1px solid var(--chrome-edge);
+}
+.bar h1{font-size:14px;font-weight:600;letter-spacing:-.01em;margin:0 auto 0 0}
+.seg{display:flex;gap:2px;background:var(--chrome-panel);border:1px solid var(--chrome-edge);border-radius:8px;padding:3px}
+.seg button{
+  appearance:none;border:0;background:transparent;color:var(--chrome-ink-2);
+  font:inherit;font-size:12px;font-weight:550;padding:6px 13px;border-radius:5px;cursor:pointer;
+}
+.seg button:hover{color:var(--chrome-ink)}
+.seg button[aria-pressed="true"]{background:var(--chrome-accent);color:#0d1418}
+.seg button:focus-visible{outline:2px solid var(--chrome-accent);outline-offset:2px}
+
+/* ---- bench ---- */
+.bench{position:relative;padding:0;min-height:calc(100dvh - 57px);display:flex;flex-direction:column}
+.wall{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}
+body[data-wall="photo-light"] .wall{background-image:url("https://picsum.photos/seed/harbour-fog-morning/1600/1000")}
+body[data-wall="photo-dark"]  .wall{background-image:url("https://picsum.photos/id/190/1600/1000")}
+body[data-wall="solid-light"] .wall{background-image:none;background-color:#f1f5f9}
+body[data-wall="solid-dark"]  .wall{background-image:none;background-color:#0f291e}
+
+.cols{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:0;flex:1}
+.col{padding:26px 22px 44px;min-width:0}
+.col + .col{border-left:1px solid rgba(128,128,128,.28)}
+.collab{
+  display:inline-flex;align-items:center;gap:8px;margin:0 0 20px;
+  padding:5px 11px;border-radius:6px;background:rgba(10,12,15,.72);
+  color:#EDEFF3;font-size:11px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;backdrop-filter:blur(8px);
+}
+.stack{display:flex;flex-direction:column;gap:18px;max-width:440px}
+
+/* ================= 지금 ================= */
+.n-w{
+  border-radius:16px; background:var(--n-panel); border:1px solid var(--n-border);
+  backdrop-filter:var(--n-blur); color:var(--n-ink); overflow:hidden;
+  box-shadow:0 28px 64px -16px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.09);
+}
+.n-hd{
+  display:flex;align-items:center;gap:7px;padding:7px 10px;font-size:12px;
+  background:linear-gradient(to bottom, rgba(255,255,255,.07), rgba(255,255,255,.015));
+  border-bottom:1px solid var(--n-border);
+}
+.n-hd .x{margin-left:auto;color:var(--n-ink-soft)}
+.n-body{padding:12px 14px 14px}
+.n-faint{color:var(--n-faint)}
+.n-soft{color:var(--n-ink-soft)}
+.n-addr{
+  display:flex;align-items:center;gap:8px;margin:0 10px 10px;padding:6px 10px;border-radius:8px;
+  background:color-mix(in srgb, var(--n-ink) 7%, transparent);font-size:11px;color:var(--n-ink-soft);
+}
+.n-plate{height:132px;background:color-mix(in srgb, var(--n-ink) 6%, transparent);border-top:1px solid var(--n-border)}
+.n-row{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px}
+.n-box{width:14px;height:14px;border-radius:4px;border:1px solid color-mix(in srgb, var(--n-ink) 18%, transparent);flex:none}
+.n-box.on{background:var(--n-accent);border-color:var(--n-accent)}
+.n-add{margin-top:8px;padding-top:9px;border-top:1px solid var(--n-border);font-size:12px;color:var(--n-faint)}
+
+/* ================= A1 ================= */
+.a1-w{
+  border-radius:4px; background:var(--a1-surface); border:1px solid var(--a1-edge);
+  color:var(--a1-text); overflow:hidden; box-shadow:var(--a1-shadow);
+}
+.a1-hd{
+  display:flex;align-items:center;gap:7px;padding:7px 10px;font-size:12px;
+  background:var(--a1-surface-2);border-bottom:1px solid var(--a1-edge);color:var(--a1-text-2);
+}
+.a1-hd .x{margin-left:auto}
+.a1-tabs{display:flex;gap:2px;padding:6px 8px 0;background:var(--a1-surface-2);border-bottom:1px solid var(--a1-edge)}
+.a1-tab{font-size:11px;padding:5px 10px;border-radius:4px 4px 0 0;color:var(--a1-text-2)}
+.a1-tab.on{background:var(--a1-surface);color:var(--a1-text);border:1px solid var(--a1-edge);border-bottom-color:var(--a1-surface);margin-bottom:-1px}
+.a1-addr{
+  display:flex;align-items:center;gap:8px;margin:8px 10px;padding:5px 9px;border-radius:4px;
+  border:1px solid var(--a1-edge);background:var(--a1-surface);font-size:11px;color:var(--a1-text-2);
+}
+.a1-plate{height:132px;background:var(--a1-plate);border-top:1px solid var(--a1-edge)}
+.a1-body{padding:12px 14px 14px}
+.a1-row{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px}
+.a1-box{width:14px;height:14px;border-radius:2px;border:1px solid var(--a1-edge);flex:none}
+.a1-box.on{background:var(--a1-accent);border-color:var(--a1-accent)}
+.a1-soft{color:var(--a1-text-2)}
+.a1-add{margin-top:8px;padding-top:9px;border-top:1px solid var(--a1-edge);font-size:12px;color:var(--a1-text-2)}
+
+/* ================= A2 ================= */
+.a2-w{
+  border-radius:16px; background:var(--a2-surface); color:var(--a2-text); overflow:hidden;
+  /* 이중 테두리: 안쪽 잉크 · 바깥 헤일로 · 배경 색조로 틴트한 그림자 */
+  box-shadow:0 0 0 1px var(--a2-edge-strong), 0 0 0 2.5px var(--a2-halo), var(--a2-shadow);
+}
+.a2-hd{
+  display:flex;align-items:center;gap:7px;padding:7px 11px;font-size:12px;
+  color:var(--a2-text-3);border-bottom:1px solid var(--a2-edge);
+}
+.a2-hd .x{margin-left:auto}
+.a2-tabs{display:flex;gap:3px;padding:7px 9px 0}
+.a2-tab{font-size:11px;padding:5px 10px;border-radius:8px 8px 0 0;color:var(--a2-text-3)}
+.a2-tab.on{background:var(--a2-surface-2);color:var(--a2-text)}
+.a2-addr{
+  display:flex;align-items:center;gap:8px;margin:7px 9px;padding:6px 10px;border-radius:8px;
+  background:var(--a2-surface-2);font-size:11px;color:var(--a2-text-2);
+}
+.a2-plate{height:132px;background:var(--a2-plate)}
+.a2-body{padding:13px 15px 15px}
+.a2-row{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px}
+.a2-box{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--a2-edge-strong);flex:none}
+.a2-box.on{background:var(--a2-accent);border-color:var(--a2-accent)}
+.a2-soft{color:var(--a2-text-2)}
+.a2-faint{color:var(--a2-text-3)}
+.a2-add{margin-top:9px;padding-top:10px;border-top:1px solid var(--a2-edge);font-size:12px;color:var(--a2-text-3)}
+
+/* shared bits */
+.done{text-decoration:line-through;opacity:.55}
+.timer{font-size:34px;letter-spacing:-.03em;font-weight:640;line-height:1.05;margin:2px 0 10px}
+.meta{display:flex;justify-content:space-between;font-size:11px;margin-top:10px}
+.dot{width:13px;height:13px;border-radius:3px;flex:none;opacity:.85}
+
+@media (max-width:1000px){
+  .cols{grid-template-columns:1fr}
+  .col + .col{border-left:0;border-top:1px solid rgba(128,128,128,.28)}
+}
+</style>
+
+<div class="bar">
+  <h1>위젯 처리 비교 · 배경 하나, 위젯만 다름</h1>
+  <div class="seg" id="walls" role="group" aria-label="배경">
+    <button data-w="photo-light" aria-pressed="true">밝은 사진</button>
+    <button data-w="photo-dark" aria-pressed="false">어두운 사진</button>
+    <button data-w="solid-light" aria-pressed="false">밝은 단색</button>
+    <button data-w="solid-dark" aria-pressed="false">어두운 단색</button>
+  </div>
+</div>
+
+<div class="bench">
+  <div class="wall" aria-hidden="true"></div>
+  <div class="cols">
+
+    <!-- ============ 지금 ============ -->
+    <div class="col">
+      <p class="collab">지금</p>
+      <div class="stack">
+        <div class="n-w">
+          <div class="n-hd"><span class="dot" style="background:#7FB2D6"></span><span>MDN</span><span class="x">&#10005;</span></div>
+          <div class="n-addr mono"><span>&#9679;</span><span>developer.mozilla.org/en-US/docs/Web/CSS/transform</span></div>
+          <div class="n-plate"></div>
+        </div>
+        <div class="n-w">
+          <div class="n-hd"><span>Todo</span><span class="x">&#10005;</span></div>
+          <div class="n-body">
+            <p class="n-faint mono" style="margin:0 0 8px;font-size:11px;letter-spacing:.08em">2 LEFT</p>
+            <div class="n-row"><span class="n-box on"></span><span class="done">Send the invoice</span></div>
+            <div class="n-row"><span class="n-box"></span><span>Rewrite the onboarding copy</span></div>
+            <div class="n-row"><span class="n-box"></span><span>Export the rail icons</span></div>
+            <p class="n-add">&#43; Add a task</p>
+          </div>
+        </div>
+        <div class="n-w">
+          <div class="n-hd"><span>Timer</span><span class="x">&#10005;</span></div>
+          <div class="n-body">
+            <p class="n-faint mono" style="margin:0;font-size:11px;letter-spacing:.08em">FOCUS SESSION</p>
+            <p class="timer mono">24:18</p>
+            <div class="meta n-soft mono"><span>Today</span><span>1h 52m</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ A1 ============ -->
+    <div class="col">
+      <p class="collab">A1 &#183; 하단 독</p>
+      <div class="stack">
+        <div class="a1-w">
+          <div class="a1-tabs"><span class="a1-tab on">CSS transform</span><span class="a1-tab">Grid inspector</span></div>
+          <div class="a1-addr mono"><span>&#9679;</span><span>developer.mozilla.org/en-US/docs/Web/CSS/transform</span></div>
+          <div class="a1-plate"></div>
+        </div>
+        <div class="a1-w">
+          <div class="a1-hd"><span>Todo</span><span class="x">&#10005;</span></div>
+          <div class="a1-body">
+            <p class="a1-soft mono" style="margin:0 0 8px;font-size:11px;letter-spacing:.08em">2 LEFT</p>
+            <div class="a1-row"><span class="a1-box on"></span><span class="done">Send the invoice</span></div>
+            <div class="a1-row"><span class="a1-box"></span><span>Rewrite the onboarding copy</span></div>
+            <div class="a1-row"><span class="a1-box"></span><span>Export the rail icons</span></div>
+            <p class="a1-add">&#43; Add a task</p>
+          </div>
+        </div>
+        <div class="a1-w">
+          <div class="a1-hd"><span>Timer</span><span class="x">&#10005;</span></div>
+          <div class="a1-body">
+            <p class="a1-soft mono" style="margin:0;font-size:11px;letter-spacing:.08em">FOCUS SESSION</p>
+            <p class="timer mono">24:18</p>
+            <div class="meta a1-soft mono"><span>Today</span><span>1h 52m</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ A2 ============ -->
+    <div class="col">
+      <p class="collab">A2 &#183; 좌측 레일</p>
+      <div class="stack">
+        <div class="a2-w">
+          <div class="a2-tabs"><span class="a2-tab on">CSS transform</span><span class="a2-tab">Grid inspector</span></div>
+          <div class="a2-addr mono"><span>&#9679;</span><span>developer.mozilla.org/en-US/docs/Web/CSS/transform</span></div>
+          <div class="a2-plate"></div>
+        </div>
+        <div class="a2-w">
+          <div class="a2-hd"><span>Todo</span><span class="x">&#10005;</span></div>
+          <div class="a2-body">
+            <p class="a2-faint mono" style="margin:0 0 8px;font-size:11px;letter-spacing:.08em">2 LEFT</p>
+            <div class="a2-row"><span class="a2-box on"></span><span class="done">Send the invoice</span></div>
+            <div class="a2-row"><span class="a2-box"></span><span>Rewrite the onboarding copy</span></div>
+            <div class="a2-row"><span class="a2-box"></span><span>Export the rail icons</span></div>
+            <p class="a2-add">&#43; Add a task</p>
+          </div>
+        </div>
+        <div class="a2-w">
+          <div class="a2-hd"><span>Timer</span><span class="x">&#10005;</span></div>
+          <div class="a2-body">
+            <p class="a2-faint mono" style="margin:0;font-size:11px;letter-spacing:.08em">FOCUS SESSION</p>
+            <p class="timer mono">24:18</p>
+            <div class="meta a2-soft mono"><span>Today</span><span>1h 52m</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var body = document.body;
+  var btns = Array.prototype.slice.call(document.querySelectorAll('#walls button'));
+  function set(w) {
+    body.setAttribute('data-wall', w);
+    body.setAttribute('data-polarity', w.indexOf('dark') > -1 ? 'dark' : 'light');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.w === w)); });
+  }
+  btns.forEach(function (b) { b.onclick = function () { set(b.dataset.w); }; });
+  set('photo-light');
+})();
+</script>

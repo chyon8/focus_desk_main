@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Spatial workspace canvas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ------------------------------------------------------------------
+   Direction: widgets are opaque matte objects resting on the user's
+   wallpaper. Nothing translucent carries text, because the wallpaper
+   can be a light photo, a dark photo, a light solid or a dark solid,
+   and one UI has to hold on all four. Chrome stays put away until the
+   pointer asks for it.
+   Tokens are CSS variables swapped on [data-theme]. Warm neutral ramp
+   only. One accent (burnt amber). Radius scale 16 / 8 / 4.
+   Icon geometry is Tabler Icons, inlined as an SVG sprite because this
+   is a single static file with no build step. Stroke width 1.75 global.
+------------------------------------------------------------------- */
+
+:root{
+  --r-surface:16px;
+  --r-control:8px;
+  --r-mark:4px;
+
+  --accent:#A9581B;
+  --accent-hover:#944C15;
+  --accent-ink:#FFF7EF;
+  --accent-soft:rgba(169,88,27,.12);
+
+  --surface:#F7F6F3;
+  --surface-2:#EFEDE8;
+  --surface-3:#E4E1DA;
+  --plate:#DCD9D2;
+
+  --text:#1E1C19;
+  --text-2:#5C574F;
+  --text-3:#726C62;
+
+  --edge:rgba(30,28,25,.11);
+  --edge-strong:rgba(30,28,25,.20);
+  --halo:rgba(255,255,255,.55);
+
+  --shadow:
+    0 1px 2px rgba(46,38,28,.10),
+    0 10px 22px -8px rgba(46,38,28,.20),
+    0 28px 56px -26px rgba(46,38,28,.30);
+  --lip: inset 0 1px 0 rgba(255,255,255,.75);
+
+  --wall:
+    linear-gradient(180deg, rgba(250,248,244,.52), rgba(230,226,218,.70)),
+    url("https://picsum.photos/seed/harbour-fog-morning/1800/1100?blur=2"),
+    radial-gradient(120% 92% at 16% 6%, #FBF9F5 0%, #EBE6DD 48%, #DAD4C9 100%);
+}
+
+[data-theme="dark"]{
+  --accent:#E9A75F;
+  --accent-hover:#F2B673;
+  --accent-ink:#231F1A;
+  --accent-soft:rgba(233,167,95,.15);
+
+  --surface:#201E1B;
+  --surface-2:#2A2723;
+  --surface-3:#36322C;
+  --plate:#39352F;
+
+  --text:#F0EDE7;
+  --text-2:#A9A29A;
+  --text-3:#948D83;
+
+  --edge:rgba(255,255,255,.10);
+  --edge-strong:rgba(255,255,255,.20);
+  --halo:rgba(0,0,0,.42);
+
+  --shadow:
+    0 1px 2px rgba(0,0,0,.36),
+    0 12px 26px -10px rgba(0,0,0,.55),
+    0 34px 70px -30px rgba(0,0,0,.62);
+  --lip: inset 0 1px 0 rgba(255,255,255,.06);
+
+  --wall:
+    linear-gradient(180deg, rgba(20,19,17,.62), rgba(11,10,9,.78)),
+    url("https://picsum.photos/seed/pine-ridge-dusk/1800/1100?blur=2"),
+    radial-gradient(120% 92% at 18% 4%, #262320 0%, #171613 52%, #0E0D0C 100%);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+html,body{height:100%}
+body{
+  min-height:100dvh;
+  font-family:"Instrument Sans", system-ui, -apple-system, sans-serif;
+  font-size:14px;
+  color:var(--text);
+  background:#DAD4C9;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+
+.mono{font-family:"JetBrains Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+
+/* ---------- window ---------- */
+.app{position:fixed; inset:0; min-height:100dvh}
+
+.wall{
+  position:absolute; inset:0;
+  background-color:#DAD4C9;
+  background-image:var(--wall);
+  background-size:cover;
+  background-position:center;
+  transition:background-image .28s ease;
+}
+[data-theme="dark"] .wall{background-color:#0E0D0C}
+
+.grain{
+  position:fixed; inset:0; pointer-events:none; z-index:60;
+  opacity:.20; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .grain{opacity:.13}
+
+/* ---------- the double edge ----------
+   Every opaque object gets an inner hairline in the theme's own ink
+   plus an outer halo in the theme's own light, so the object separates
+   from a same-polarity wallpaper AND from a photo's bright patches. */
+.surf{
+  background:var(--surface);
+  border:1px solid var(--edge);
+  border-radius:var(--r-surface);
+  box-shadow: 0 0 0 1px var(--halo), var(--shadow), var(--lip);
+}
+
+/* ---------- icons ---------- */
+.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic-14{width:14px;height:14px}
+.ic-16{width:16px;height:16px}
+.ic-20{width:20px;height:20px}
+.ic-fill{fill:currentColor;stroke:none}
+
+/* ---------- buttons ---------- */
+.btn{
+  font:inherit; font-weight:500; color:var(--text-2);
+  background:transparent; border:1px solid transparent;
+  border-radius:var(--r-control);
+  display:inline-flex; align-items:center; gap:7px;
+  padding:6px 10px; cursor:pointer;
+  transition:background .15s, color .15s, border-color .15s, transform .08s;
+}
+.btn:hover{background:var(--surface-2); color:var(--text)}
+.btn:active{transform:translateY(1px)}
+.btn-icon{padding:6px; gap:0}
+.btn-primary{
+  background:var(--accent); color:var(--accent-ink); border-color:transparent;
+  font-weight:600;
+}
+.btn-primary:hover{background:var(--accent-hover); color:var(--accent-ink)}
+.btn-quiet{color:var(--text-3)}
+.btn-outline{border-color:var(--edge-strong); color:var(--text)}
+.btn-outline:hover{border-color:var(--edge-strong); background:var(--surface-2)}
+
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--r-mark)}
+
+/* ---------- left rail ---------- */
+.rail{
+  position:absolute; left:14px; top:14px; bottom:14px; width:60px; z-index:40;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:10px 0 10px;
+}
+.rail .sep{width:24px; height:1px; background:var(--edge); flex:none}
+.rail .grow{flex:1}
+
+.space{
+  position:relative; width:38px; height:38px; flex:none; cursor:pointer;
+  border-radius:var(--r-control);
+  border:1px solid var(--edge);
+  box-shadow: var(--lip);
+  background-size:cover; background-position:center;
+  opacity:.62;
+  transition:opacity .16s, transform .12s;
+}
+.space:hover{opacity:.9}
+.space:active{transform:translateY(1px)}
+.space[aria-current="true"]{opacity:1}
+.space[aria-current="true"]::before{
+  content:""; position:absolute; left:-9px; top:7px; bottom:7px; width:3px;
+  border-radius:var(--r-mark); background:var(--accent);
+}
+.space-add{
+  width:38px;height:38px;flex:none;border-radius:var(--r-control);
+  border:1px dashed var(--edge-strong); color:var(--text-3);
+  display:grid;place-items:center;cursor:pointer;background:transparent;
+  transition:color .15s, border-color .15s;
+}
+.space-add:hover{color:var(--text); border-color:var(--text-3)}
+
+.tool{
+  width:38px;height:38px;flex:none;border-radius:var(--r-control);
+  display:grid;place-items:center;cursor:pointer;
+  background:transparent;border:1px solid transparent;color:var(--text-2);
+  transition:background .15s,color .15s,transform .08s;
+}
+.tool:hover{background:var(--surface-2);color:var(--text)}
+.tool:active{transform:translateY(1px)}
+.tool[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent)}
+
+/* ---------- space name ---------- */
+.spacename{
+  position:absolute; left:86px; top:16px; z-index:40;
+  display:flex; align-items:center; gap:8px;
+  padding:7px 13px 7px 11px;
+  font-weight:600; letter-spacing:-.01em;
+}
+.spacename svg{color:var(--text-3)}
+
+/* ---------- atmosphere panel ---------- */
+.panel{
+  position:absolute; left:86px; top:150px; width:264px; z-index:45;
+  padding:14px;
+}
+.panel h2{font-size:13px; font-weight:600; letter-spacing:-.01em; margin-bottom:12px}
+.grouplabel{
+  font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text-3); margin-bottom:8px;
+}
+.seg{
+  display:grid; grid-template-columns:1fr 1fr; gap:3px;
+  background:var(--surface-2); border-radius:var(--r-control); padding:3px;
+  margin-bottom:12px;
+}
+.seg button{
+  font:inherit; font-size:13px; font-weight:500; cursor:pointer;
+  border:0; border-radius:var(--r-mark); padding:6px 0; color:var(--text-2);
+  background:transparent; transition:background .15s,color .15s;
+}
+.seg button[aria-pressed="true"]{background:var(--surface); color:var(--text); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+.walls{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px}
+.wallswatch{
+  height:42px; border-radius:var(--r-control); cursor:pointer;
+  border:1px solid var(--edge); background-size:cover; background-position:center;
+  transition:transform .12s;
+}
+.wallswatch:hover{transform:translateY(-1px)}
+.wallswatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent), 0 0 0 4px var(--surface)}
+
+.fader{display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px 10px; margin-bottom:9px}
+.fader label{font-size:13px; color:var(--text-2)}
+.fader .val{font-size:11px; color:var(--text-3)}
+.fader input{grid-column:1 / -1}
+
+input[type=range]{
+  -webkit-appearance:none; appearance:none;
+  width:100%; height:14px; background:transparent; cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:3px; border-radius:var(--r-mark); background:var(--surface-3)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:9px; height:15px; margin-top:-6px;
+  border-radius:var(--r-mark); background:var(--accent); border:0;
+}
+input[type=range]::-moz-range-track{height:3px; border-radius:var(--r-mark); background:var(--surface-3)}
+input[type=range]::-moz-range-thumb{width:9px; height:15px; border:0; border-radius:var(--r-mark); background:var(--accent)}
+
+/* ---------- canvas ---------- */
+.canvas{position:absolute; inset:0; overflow:hidden; z-index:10}
+.layer{
+  position:absolute; left:0; top:0; width:100%; height:100%;
+  transform-origin:0 0; transform:scale(var(--zoom,.94));
+  transition:transform .2s cubic-bezier(.2,.8,.3,1);
+}
+
+/* ---------- widget shell ---------- */
+.w{position:absolute; display:flex; flex-direction:column; overflow:hidden}
+.w.sel{outline:2px solid var(--accent); outline-offset:1px}
+
+.whead{
+  height:30px; flex:none; display:flex; align-items:center; gap:7px;
+  padding:0 8px 0 12px; color:var(--text-3);
+  border-bottom:1px solid transparent;
+  opacity:0; transition:opacity .16s ease;
+}
+.w:hover .whead, .w:focus-within .whead, .w.chrome-on .whead{
+  opacity:1; border-bottom-color:var(--edge);
+}
+.whead .name{font-size:12px; font-weight:600; letter-spacing:.01em; color:var(--text-2); flex:1}
+.whead .btn{padding:4px}
+
+.wbody{flex:1; min-height:0; display:flex; flex-direction:column}
+
+/* ---------- browser widget ---------- */
+.tabs{display:flex; align-items:flex-end; gap:2px; padding:8px 8px 0; flex:none}
+.tab{
+  display:flex; align-items:center; gap:8px; max-width:190px;
+  font-size:12.5px; color:var(--text-3); font-weight:500;
+  padding:7px 10px; border-radius:var(--r-control) var(--r-control) 0 0;
+  cursor:pointer; white-space:nowrap; overflow:hidden;
+}
+.tab span{overflow:hidden; text-overflow:ellipsis}
+.tab:hover{background:var(--surface-2)}
+.tab[aria-selected="true"]{background:var(--surface-2); color:var(--text); font-weight:600}
+.tabadd{margin-left:2px}
+
+.bar{display:flex; align-items:center; gap:6px; padding:8px; flex:none; background:var(--surface-2)}
+.addr{
+  flex:1; min-width:0; display:flex; align-items:center; gap:8px;
+  background:var(--surface); border:1px solid var(--edge);
+  border-radius:var(--r-control); padding:6px 10px;
+  font-size:12.5px; color:var(--text-2);
+}
+.addr .url{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.addr .url b{color:var(--text); font-weight:600}
+.zoomchip{
+  font-size:11px; color:var(--text-3); border:1px solid var(--edge);
+  border-radius:var(--r-mark); padding:2px 5px; flex:none;
+}
+.barctl{display:flex; gap:2px; opacity:0; transition:opacity .16s}
+.w:hover .barctl, .w:focus-within .barctl{opacity:1}
+
+.page{position:relative; flex:1; min-height:0; background:var(--plate)}
+.loadbar{position:absolute; left:0; top:0; height:3px; width:62%; background:var(--accent)}
+
+/* ---------- memo ---------- */
+.memo{padding:14px 16px 0; flex:1; min-height:0; overflow:hidden}
+.memo h3{font-size:17px; font-weight:600; letter-spacing:-.015em; margin-bottom:8px}
+.memo p{font-size:13.5px; line-height:1.55; color:var(--text-2); margin-bottom:14px}
+.block{display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.45; padding:5px 0}
+.chk{
+  width:15px;height:15px;flex:none;margin-top:1px;border-radius:var(--r-mark);
+  border:1.5px solid var(--edge-strong); display:grid; place-items:center; color:transparent;
+}
+.chk.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.done{color:var(--text-3); text-decoration:line-through}
+.slashhint{margin-top:12px; font-size:12px; color:var(--text-3)}
+.slashhint kbd{
+  font-family:"JetBrains Mono",monospace; font-size:11px;
+  border:1px solid var(--edge); border-radius:var(--r-mark); padding:1px 5px; color:var(--text-2);
+}
+.errstrip{
+  flex:none; display:flex; align-items:center; gap:9px;
+  margin:12px 12px; padding:9px 10px;
+  background:var(--surface-2); border:1px solid var(--edge-strong);
+  border-radius:var(--r-control); font-size:12.5px; color:var(--text-2);
+}
+.errstrip svg{color:var(--text)}
+.errstrip .msg{flex:1}
+.errstrip .btn{padding:3px 8px; font-size:12.5px; color:var(--accent); font-weight:600}
+.errstrip .btn:hover{background:var(--surface-3); color:var(--accent)}
+
+/* ---------- todo ---------- */
+.todo{padding:12px 14px 0; flex:1; min-height:0; overflow:hidden}
+.todo .cap{font-size:12px; font-weight:600; color:var(--text-3); letter-spacing:.04em; text-transform:uppercase; margin-bottom:9px}
+.todo .row{display:flex; align-items:flex-start; gap:9px; padding:5px 0; font-size:13.5px; line-height:1.4}
+.addform{flex:none; padding:10px 14px 13px; display:grid; gap:5px}
+.addform label{font-size:11px; font-weight:600; color:var(--text-2); letter-spacing:.02em}
+.addform input[type=text]{
+  font:inherit; font-size:13px; color:var(--text);
+  background:var(--surface-2); border:1px solid var(--edge);
+  border-radius:var(--r-control); padding:7px 10px; width:100%;
+}
+.addform input::placeholder{color:var(--text-3)}
+
+/* ---------- timer ---------- */
+.timer{padding:14px 16px 14px; flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px}
+.timer .cap{font-size:12px; font-weight:600; color:var(--text-3); letter-spacing:.04em; text-transform:uppercase}
+.timer .clock{font-size:42px; font-weight:500; letter-spacing:-.035em; line-height:1; color:var(--text)}
+.track{height:3px; border-radius:var(--r-mark); background:var(--surface-3); overflow:hidden}
+.track i{display:block; height:100%; width:47%; background:var(--accent); border-radius:var(--r-mark)}
+.timer .foot{display:flex; align-items:center; gap:6px}
+.timer .foot .total{margin-left:auto; font-size:12px; color:var(--text-3)}
+
+/* ---------- column (empty) ---------- */
+.colempty{
+  flex:1; margin:10px 12px 12px; border:1px dashed var(--edge-strong);
+  border-radius:var(--r-control); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:7px; text-align:center;
+  color:var(--text-3); padding:8px;
+}
+.colempty p{font-size:12.5px; line-height:1.4; max-width:20ch}
+
+/* ---------- dock ---------- */
+.dock{
+  position:absolute; bottom:18px; left:calc(50% + 37px); transform:translateX(-50%);
+  z-index:45; display:flex; align-items:center; gap:4px; padding:6px;
+}
+.dock .sep{width:1px; align-self:stretch; margin:2px 4px; background:var(--edge)}
+.zoomval{font-size:12px; color:var(--text-2); min-width:42px; text-align:center}
+.selcount{font-size:12.5px; color:var(--text-3); padding:0 4px 0 2px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition-duration:.01ms !important; animation-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="wall" id="wall"></div>
+
+  <!-- ============ CANVAS ============ -->
+  <div class="canvas">
+    <div class="layer" id="layer" style="--zoom:.94">
+
+      <!-- Browser 780x500 @ (370,60) -->
+      <section class="w surf" style="left:370px; top:60px; width:780px; height:500px" aria-label="Browser widget">
+        <div class="wbody">
+          <div class="tabs">
+            <div class="tab" aria-selected="true"><svg class="ic ic-14"><use href="#i-world"/></svg><span>CSS transform</span></div>
+            <div class="tab"><span>Grid inspector</span></div>
+            <div class="tab"><span>Vantvej brief</span></div>
+            <button class="btn btn-icon btn-quiet tabadd" title="New tab" aria-label="New tab"><svg class="ic ic-14"><use href="#i-plus"/></svg></button>
+          </div>
+          <div class="bar">
+            <button class="btn btn-icon" title="Back" aria-label="Back"><svg class="ic ic-16"><use href="#i-chev-left"/></svg></button>
+            <button class="btn btn-icon" title="Forward" aria-label="Forward"><svg class="ic ic-16"><use href="#i-chev-right"/></svg></button>
+            <button class="btn btn-icon" title="Reload" aria-label="Reload"><svg class="ic ic-16"><use href="#i-reload"/></svg></button>
+            <div class="addr">
+              <svg class="ic ic-14"><use href="#i-lock"/></svg>
+              <span class="url"><b>developer.mozilla.org</b>/en-US/docs/Web/CSS/transform</span>
+              <span class="zoomchip mono">100%</span>
+            </div>
+            <div class="barctl">
+              <button class="btn btn-icon" title="Maximize widget" aria-label="Maximize widget"><svg class="ic ic-16"><use href="#i-maximize"/></svg></button>
+              <button class="btn btn-icon" title="Close widget" aria-label="Close widget"><svg class="ic ic-16"><use href="#i-x"/></svg></button>
+            </div>
+          </div>
+          <!-- page area: the site is not ours to paint, so it stays a plate -->
+          <div class="page">
+            <div class="loadbar" role="progressbar" aria-label="Page loading" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Memo 330x400 @ (1160,34), chrome pinned on to show the pattern -->
+      <section class="w surf chrome-on" style="left:1160px; top:34px; width:330px; height:400px" aria-label="Memo widget">
+        <div class="whead">
+          <svg class="ic ic-14"><use href="#i-notes"/></svg>
+          <span class="name">Migration notes</span>
+          <button class="btn btn-icon" title="Maximize widget" aria-label="Maximize widget"><svg class="ic ic-14"><use href="#i-maximize"/></svg></button>
+          <button class="btn btn-icon" title="Close widget" aria-label="Close widget"><svg class="ic ic-14"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="wbody">
+          <div class="memo">
+            <h3>Migration notes</h3>
+            <p>Column widths break when the sidebar collapses under 900px. Fix the grid before touching type.</p>
+            <div class="block"><span class="chk on"><svg class="ic ic-14" style="width:11px;height:11px;stroke-width:2.4"><use href="#i-check"/></svg></span><span class="done">Rewrite the column math</span></div>
+            <div class="block"><span class="chk"></span><span>Check the 900px break on the client build</span></div>
+            <p class="slashhint">Press <kbd>/</kbd> for tables, diagrams and headings.</p>
+          </div>
+          <div class="errstrip" role="alert">
+            <svg class="ic ic-16"><use href="#i-alert"/></svg>
+            <span class="msg">Save failed.</span>
+            <button class="btn">Retry</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Timer 330x215 @ (1160,460) -->
+      <section class="w surf" style="left:1160px; top:460px; width:330px; height:215px" aria-label="Timer widget">
+        <div class="whead">
+          <svg class="ic ic-14"><use href="#i-clock"/></svg>
+          <span class="name">Focus</span>
+          <button class="btn btn-icon" title="Maximize widget" aria-label="Maximize widget"><svg class="ic ic-14"><use href="#i-maximize"/></svg></button>
+          <button class="btn btn-icon" title="Close widget" aria-label="Close widget"><svg class="ic ic-14"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="wbody">
+          <div class="timer">
+            <div class="cap">Focus session</div>
+            <div class="clock mono">24:18</div>
+            <div class="track"><i></i></div>
+            <div class="foot">
+              <button class="btn btn-outline" aria-label="Pause session"><svg class="ic ic-14 ic-fill"><use href="#i-pause"/></svg>Pause</button>
+              <button class="btn btn-icon" title="End session" aria-label="End session"><svg class="ic ic-16"><use href="#i-stop"/></svg></button>
+              <span class="total mono">1h 52m today</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Todo 300x230 @ (370,600), selected -->
+      <section class="w surf sel" style="left:370px; top:600px; width:300px; height:230px" aria-label="Todo widget">
+        <div class="whead">
+          <svg class="ic ic-14"><use href="#i-list"/></svg>
+          <span class="name">Today</span>
+          <button class="btn btn-icon" title="Maximize widget" aria-label="Maximize widget"><svg class="ic ic-14"><use href="#i-maximize"/></svg></button>
+          <button class="btn btn-icon" title="Close widget" aria-label="Close widget"><svg class="ic ic-14"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="wbody">
+          <div class="todo">
+            <div class="row"><span class="chk on"><svg class="ic" style="width:11px;height:11px;stroke-width:2.4"><use href="#i-check"/></svg></span><span class="done">Send the Vantvej invoice</span></div>
+            <div class="row"><span class="chk"></span><span>Rewrite the onboarding copy</span></div>
+            <div class="row"><span class="chk"></span><span>Export the 12 rail icons</span></div>
+          </div>
+          <form class="addform" onsubmit="return false">
+            <label for="newtask">Add to today</label>
+            <input id="newtask" type="text" placeholder="Task name">
+          </form>
+        </div>
+      </section>
+
+      <!-- Column 280x130 @ (710,600), selected, empty -->
+      <section class="w surf sel" style="left:710px; top:600px; width:280px; height:130px" aria-label="Column widget">
+        <div class="whead">
+          <svg class="ic ic-14"><use href="#i-stack"/></svg>
+          <span class="name">Stack</span>
+          <button class="btn btn-icon" title="Close widget" aria-label="Close widget"><svg class="ic ic-14"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="wbody">
+          <div class="colempty">
+            <svg class="ic ic-20"><use href="#i-stack"/></svg>
+            <p>Drop widgets here to stack them.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ============ SHELL ============ -->
+  <aside class="rail surf" aria-label="Spaces and tools">
+    <button class="space" data-space="0" aria-current="true" aria-label="Aster rebuild"></button>
+    <button class="space" data-space="1" aria-current="false" aria-label="Thesis ch.4"></button>
+    <button class="space" data-space="2" aria-current="false" aria-label="Vantvej client"></button>
+    <button class="space" data-space="3" aria-current="false" aria-label="Reading"></button>
+    <button class="space-add" title="New space" aria-label="New space"><svg class="ic ic-16"><use href="#i-plus"/></svg></button>
+
+    <div class="sep"></div>
+
+    <button class="tool" title="Add widget" aria-label="Add widget"><svg class="ic"><use href="#i-plus"/></svg></button>
+    <button class="tool" title="Search this space" aria-label="Search this space"><svg class="ic"><use href="#i-search"/></svg></button>
+
+    <div class="grow"></div>
+    <div class="sep"></div>
+
+    <button class="tool" id="atmoBtn" title="Atmosphere" aria-label="Atmosphere" aria-pressed="true"><svg class="ic"><use href="#i-photo"/></svg></button>
+    <button class="tool" title="Settings" aria-label="Settings"><svg class="ic"><use href="#i-adjust"/></svg></button>
+  </aside>
+
+  <div class="spacename surf" role="heading" aria-level="1">
+    <svg class="ic ic-16"><use href="#i-stack"/></svg>
+    <span id="spaceName">Aster rebuild</span>
+  </div>
+
+  <section class="panel surf" id="atmoPanel" aria-label="Atmosphere">
+    <h2>Atmosphere</h2>
+
+    <div class="grouplabel">Background</div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button id="segLight" aria-pressed="true">Light</button>
+      <button id="segDark" aria-pressed="false">Dark</button>
+    </div>
+    <div class="walls" id="walls"></div>
+
+    <div class="grouplabel">Sound</div>
+    <div class="fader">
+      <label for="f1">Rain</label><span class="val mono">40</span>
+      <input id="f1" type="range" min="0" max="100" value="40">
+    </div>
+    <div class="fader">
+      <label for="f2">Room tone</label><span class="val mono">65</span>
+      <input id="f2" type="range" min="0" max="100" value="65">
+    </div>
+    <div class="fader">
+      <label for="f3">Cafe</label><span class="val mono">0</span>
+      <input id="f3" type="range" min="0" max="100" value="0">
+    </div>
+  </section>
+
+  <nav class="dock surf" aria-label="Canvas controls">
+    <button class="btn btn-icon" id="zoomOut" title="Zoom out" aria-label="Zoom out"><svg class="ic ic-16"><use href="#i-minus"/></svg></button>
+    <span class="zoomval mono" id="zoomVal">94%</span>
+    <button class="btn btn-icon" id="zoomIn" title="Zoom in" aria-label="Zoom in"><svg class="ic ic-16"><use href="#i-plus"/></svg></button>
+    <div class="sep"></div>
+    <button class="btn" id="fitBtn"><svg class="ic ic-16"><use href="#i-fit"/></svg>Fit</button>
+    <div class="sep"></div>
+    <span class="selcount">2 selected</span>
+    <button class="btn btn-primary"><svg class="ic ic-16"><use href="#i-grid"/></svg>Arrange</button>
+  </nav>
+
+  <div class="grain"></div>
+</div>
+
+<!-- Tabler Icons geometry, inlined as a sprite (no build step in a single file) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 9.5 17 19 7.5"/></symbol>
+  <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></symbol>
+  <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 12A8 8 0 1 1 17.66 6.34"/><path d="M20 4v5h-5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><rect x="9" y="9" width="6" height="6" rx="1"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-notes" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M3.5 5.5 5 7l2.5-2.5M3.5 11.5 5 13l2.5-2.5M3.5 17.5 5 19l2.5-2.5"/><path d="M11 6h9M11 12h9M11 18h9"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-world" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M11.5 3a17 17 0 0 0 0 18M12.5 3a17 17 0 0 1 0 18"/></symbol>
+  <symbol id="i-stack" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5L12 3z"/><path d="M3 12l9 4.5L21 12"/><path d="M3 16.5 12 21l9-4.5"/></symbol>
+  <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M4 17l4.5-4.5 3.5 3.5 3-3L20 17"/></symbol>
+  <symbol id="i-adjust" viewBox="0 0 24 24"><path d="M4 6h6M14 6h6M4 12h10M18 12h2M4 18h2M10 18h10"/><circle cx="12" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 16.6h.01"/><path d="M10.24 4.2 2.6 17.5A2 2 0 0 0 4.33 20.5h15.34a2 2 0 0 0 1.73-3L13.76 4.2a2 2 0 0 0-3.52 0z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5" width="3.6" height="14" rx="1"/><rect x="13.4" y="5" width="3.6" height="14" rx="1"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+</svg>
+
+<script>
+(function () {
+  "use strict";
+
+  // Each space carries its own background. Switching a space switches the
+  // wallpaper, and the UI polarity follows the wallpaper, which is the point:
+  // one set of tokens has to survive light photo, dark photo, light solid, dark solid.
+  var WALLS = {
+    photoLight: {
+      theme: "light",
+      base: "#DAD4C9",
+      css:
+        'linear-gradient(180deg, rgba(250,248,244,.52), rgba(230,226,218,.70)),' +
+        'url("https://picsum.photos/seed/harbour-fog-morning/1800/1100?blur=2"),' +
+        'radial-gradient(120% 92% at 16% 6%, #FBF9F5 0%, #EBE6DD 48%, #DAD4C9 100%)',
+      thumb:
+        'linear-gradient(180deg, rgba(250,248,244,.45), rgba(230,226,218,.65)),' +
+        'url("https://picsum.photos/seed/harbour-fog-morning/120/80?blur=2"),' +
+        'radial-gradient(120% 100% at 20% 10%, #FBF9F5 0%, #E4DED4 100%)'
+    },
+    solidLight: {
+      theme: "light",
+      base: "#E9E5DE",
+      css: "linear-gradient(#E9E5DE,#E9E5DE)",
+      thumb: "linear-gradient(#E9E5DE,#E9E5DE)"
+    },
+    photoDark: {
+      theme: "dark",
+      base: "#0E0D0C",
+      css:
+        'linear-gradient(180deg, rgba(20,19,17,.62), rgba(11,10,9,.78)),' +
+        'url("https://picsum.photos/seed/pine-ridge-dusk/1800/1100?blur=2"),' +
+        'radial-gradient(120% 92% at 18% 4%, #262320 0%, #171613 52%, #0E0D0C 100%)',
+      thumb:
+        'linear-gradient(180deg, rgba(20,19,17,.55), rgba(11,10,9,.72)),' +
+        'url("https://picsum.photos/seed/pine-ridge-dusk/120/80?blur=2"),' +
+        'radial-gradient(120% 100% at 20% 10%, #2A2622 0%, #121110 100%)'
+    },
+    solidDark: {
+      theme: "dark",
+      base: "#191715",
+      css: "linear-gradient(#191715,#191715)",
+      thumb: "linear-gradient(#191715,#191715)"
+    }
+  };
+
+  var WALL_ORDER = ["photoLight", "solidLight", "photoDark", "solidDark"];
+
+  var SPACES = [
+    { name: "Aster rebuild",  wall: "photoLight" },
+    { name: "Thesis ch.4",    wall: "solidLight" },
+    { name: "Vantvej client", wall: "photoDark"  },
+    { name: "Reading",        wall: "solidDark"  }
+  ];
+
+  var root      = document.documentElement;
+  var wallEl    = document.getElementById("wall");
+  var nameEl    = document.getElementById("spaceName");
+  var wallsEl   = document.getElementById("walls");
+  var segLight  = document.getElementById("segLight");
+  var segDark   = document.getElementById("segDark");
+  var spaceBtns = Array.prototype.slice.call(document.querySelectorAll(".space"));
+
+  var current = 0;
+  var lastLight = "photoLight";
+  var lastDark  = "photoDark";
+
+  function applyWall(key) {
+    var w = WALLS[key];
+    root.setAttribute("data-theme", w.theme);
+    wallEl.style.backgroundColor = w.base;
+    wallEl.style.backgroundImage = w.css;
+    if (w.theme === "light") { lastLight = key; } else { lastDark = key; }
+    segLight.setAttribute("aria-pressed", String(w.theme === "light"));
+    segDark.setAttribute("aria-pressed",  String(w.theme === "dark"));
+    Array.prototype.forEach.call(wallsEl.children, function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.wall === key));
+    });
+  }
+
+  function selectSpace(i) {
+    current = i;
+    SPACES.forEach(function (s, n) {
+      spaceBtns[n].setAttribute("aria-current", String(n === i));
+    });
+    nameEl.textContent = SPACES[i].name;
+    applyWall(SPACES[i].wall);
+  }
+
+  // wallpaper swatches
+  WALL_ORDER.forEach(function (key) {
+    var b = document.createElement("button");
+    b.className = "wallswatch";
+    b.dataset.wall = key;
+    b.type = "button";
+    b.setAttribute("aria-label", "Background " + key);
+    b.setAttribute("aria-pressed", "false");
+    b.style.backgroundColor = WALLS[key].base;
+    b.style.backgroundImage = WALLS[key].thumb;
+    b.addEventListener("click", function () {
+      SPACES[current].wall = key;
+      applyWall(key);
+    });
+    wallsEl.appendChild(b);
+  });
+
+  // space tiles get the miniature of their own background
+  spaceBtns.forEach(function (b, i) {
+    b.style.backgroundColor = WALLS[SPACES[i].wall].base;
+    b.style.backgroundImage = WALLS[SPACES[i].wall].thumb;
+    b.addEventListener("click", function () { selectSpace(i); });
+  });
+
+  segLight.addEventListener("click", function () { SPACES[current].wall = lastLight; applyWall(lastLight); });
+  segDark .addEventListener("click", function () { SPACES[current].wall = lastDark;  applyWall(lastDark);  });
+
+  // zoom: the whole widget layer scales, which is what the canvas actually does
+  var layer   = document.getElementById("layer");
+  var zoomVal = document.getElementById("zoomVal");
+  var zoom    = 0.94;
+
+  function setZoom(z) {
+    zoom = Math.min(1.4, Math.max(0.5, Math.round(z * 100) / 100));
+    layer.style.setProperty("--zoom", String(zoom));
+    zoomVal.textContent = Math.round(zoom * 100) + "%";
+  }
+  document.getElementById("zoomIn").addEventListener("click",  function () { setZoom(zoom + 0.08); });
+  document.getElementById("zoomOut").addEventListener("click", function () { setZoom(zoom - 0.08); });
+  document.getElementById("fitBtn").addEventListener("click",  function () { setZoom(0.94); });
+
+  // atmosphere panel toggle
+  var atmoBtn = document.getElementById("atmoBtn");
+  var atmoPanel = document.getElementById("atmoPanel");
+  atmoBtn.addEventListener("click", function () {
+    var open = atmoBtn.getAttribute("aria-pressed") !== "true";
+    atmoBtn.setAttribute("aria-pressed", String(open));
+    atmoPanel.style.display = open ? "" : "none";
+  });
+
+  // faders report their value
+  Array.prototype.forEach.call(document.querySelectorAll(".fader input"), function (input) {
+    var out = input.parentNode.querySelector(".val");
+    input.addEventListener("input", function () { out.textContent = input.value; });
+  });
+
+  selectSpace(0);
+}());
+</script>
+</body>
+</html>

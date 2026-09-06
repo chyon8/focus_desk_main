@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-backdrop="shoreline">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spatial workspace - concept A1</title>
+
+<!-- Type: Instrument Sans (UI) + Geist Mono (numbers, addresses). Not Inter. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Icons: Phosphor, official web distribution. No hand-drawn SVG paths anywhere in this file. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+
+<style>
+/* ===========================================================================
+   DIRECTION: "Objects on a desk, one console."
+   - Widgets are opaque matte plates. No glass, no backdrop-blur, anywhere.
+     Reason: the user picks the backdrop (light photo / dark photo / solid).
+     Translucency is the one material that cannot survive all four.
+   - All shell chrome lives in ONE object at the bottom left. No top bar,
+     no side rail. The middle of the screen stays empty.
+   - Widgets carry no title bar at rest. The bar's 28px is reserved so nothing
+     shifts, and it fades in on hover or when the widget is selected.
+   - Motion dial 3: state transitions and :active only. Nothing moves by itself.
+   =========================================================================== */
+
+/* --- SHAPE LOCK -----------------------------------------------------------
+   Every surface and every control: 4px.
+   Marks smaller than 12px (handles, session ticks, space marks): 0px.
+   Nothing else. No pills, no circles.
+   --- COLOR LOCK ------------------------------------------------------------
+   One neutral family: warm gray, hue ~35. One accent: ink blue.
+   Accent appears on selection, focus rings, checked boxes, load progress,
+   the primary button, session ticks and slider fill. Nowhere else.
+   -------------------------------------------------------------------------- */
+
+:root{
+  --r: 4px;
+  --font: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+[data-theme="light"]{
+  color-scheme: light;
+  --surface:    #f8f7f4;
+  --surface-2:  #eeece7;
+  --surface-3:  #e2dfd8;   /* foreign content plate inside the browser widget */
+  --edge:       #d9d5cd;
+  --edge-2:     #8e8880;
+  --text:       #211f1c;
+  --text-2:     #63605b;
+  --accent:     #2f5f96;
+  --accent-ink: #f8f7f4;
+  --accent-soft:rgba(47,95,150,.13);
+  --shadow: 0 1px 1px rgba(46,38,26,.10), 0 10px 24px -10px rgba(46,38,26,.34);
+  --shadow-shell: 0 1px 1px rgba(46,38,26,.10), 0 16px 34px -14px rgba(46,38,26,.42);
+}
+[data-theme="dark"]{
+  color-scheme: dark;
+  --surface:    #232120;
+  --surface-2:  #2c2a27;
+  --surface-3:  #35322e;
+  --edge:       #403c37;
+  --edge-2:     #7a736a;
+  --text:       #efece7;
+  --text-2:     #a8a29a;
+  --accent:     #7fb2e8;
+  --accent-ink: #16202b;
+  --accent-soft:rgba(127,178,232,.16);
+  --shadow: 0 1px 1px rgba(8,6,4,.34), 0 12px 28px -10px rgba(8,6,4,.66);
+  --shadow-shell: 0 1px 1px rgba(8,6,4,.34), 0 18px 38px -14px rgba(8,6,4,.74);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  min-height:100dvh;
+  font-family:var(--font);
+  font-size:13px;
+  color:var(--text);
+  background:var(--surface);
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input{font:inherit;color:inherit}
+.tnum{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r)}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+
+/* ---------- backdrop: user-chosen, never moves with the canvas ---------- */
+.backdrop{position:fixed;inset:0;background-size:cover;background-position:center;z-index:0}
+[data-backdrop="shoreline"] .backdrop{background-color:#ddc4ac;background-image:url("https://picsum.photos/id/796/2400/1400")}
+[data-backdrop="chalk"]     .backdrop{background-color:#d7d3cb}
+[data-backdrop="pinewood"]  .backdrop{background-color:#433933;background-image:url("https://picsum.photos/id/190/2400/1400")}
+[data-backdrop="ink"]       .backdrop{background-color:#191817}
+
+/* ---------- canvas ---------- */
+.viewport{position:fixed;inset:0;z-index:1;overflow:hidden}
+.canvas{
+  position:absolute;left:50%;top:50%;
+  width:1730px;height:840px;
+  transform:translate(-50%,-50%) translateY(-30px) scale(var(--zoom,.78));
+  transform-origin:center center;
+}
+
+/* ---------- widget plate ---------- */
+.w{
+  position:absolute;
+  display:flex;flex-direction:column;
+  background:var(--surface);
+  border:1px solid var(--edge);
+  border-radius:var(--r);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  transition:box-shadow .16s ease, border-color .16s ease;
+}
+.w.is-sel{
+  border-color:var(--accent);
+  box-shadow:0 0 0 1px var(--accent), var(--shadow);
+}
+.w-bar{
+  flex:none;height:28px;display:flex;align-items:center;gap:6px;
+  padding:0 5px 0 11px;
+  border-bottom:1px solid transparent;
+  opacity:0;transition:opacity .16s ease;
+}
+.w:hover .w-bar, .w.is-sel .w-bar{opacity:1;border-bottom-color:var(--edge)}
+.w-name{font-size:12px;font-weight:500;letter-spacing:-.005em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.iconbtn{
+  width:22px;height:22px;flex:none;display:grid;place-items:center;
+  border-radius:var(--r);color:var(--text-2);font-size:14px;
+  transition:background-color .12s ease,color .12s ease;
+}
+.iconbtn:hover{background:var(--surface-2);color:var(--text)}
+.iconbtn:active{transform:translateY(1px)}
+.iconbtn[disabled]{opacity:.34;pointer-events:none}
+
+/* resize handles, only while selected. 7px marks -> radius 0 */
+.handle{position:absolute;width:7px;height:7px;background:var(--surface);border:1px solid var(--accent);display:none}
+.w.is-sel .handle{display:block}
+.handle.tl{top:-4px;left:-4px;cursor:nwse-resize}
+.handle.tr{top:-4px;right:-4px;cursor:nesw-resize}
+.handle.bl{bottom:-4px;left:-4px;cursor:nesw-resize}
+.handle.br{bottom:-4px;right:-4px;cursor:nwse-resize}
+
+/* ---------- browser widget ---------- */
+.w--browser{left:370px;top:40px;width:900px;height:620px}
+.bw-tabs{flex:none;height:34px;display:flex;align-items:flex-end;gap:2px;padding:0 6px;background:var(--surface-2);border-bottom:1px solid var(--edge)}
+.bw-win{margin:0 0 2px auto;display:flex;gap:2px;opacity:0;transition:opacity .16s ease}
+.w:hover .bw-win, .w.is-sel .bw-win{opacity:1}
+.tab{
+  height:26px;max-width:230px;display:flex;align-items:center;gap:7px;
+  padding:0 9px;border-radius:var(--r) var(--r) 0 0;
+  font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;
+}
+.tab i{font-size:13px}
+.tab span{overflow:hidden;text-overflow:ellipsis}
+.tab.is-on{background:var(--surface);color:var(--text);font-weight:500;box-shadow:0 -1px 0 var(--edge) inset, 1px 0 0 var(--edge) inset, -1px 0 0 var(--edge) inset}
+.tab .close{margin-left:2px;font-size:12px;opacity:.6}
+.bw-toolbar{flex:none;height:38px;display:flex;align-items:center;gap:4px;padding:0 8px}
+.addr{
+  flex:1;height:24px;display:flex;align-items:center;gap:8px;
+  margin:0 4px;padding:0 9px;
+  background:var(--surface-2);border:1px solid var(--edge);border-radius:var(--r);
+  font-family:var(--mono);font-size:11.5px;color:var(--text-2);
+  white-space:nowrap;overflow:hidden;
+}
+.addr b{color:var(--text);font-weight:500}
+.addr i{font-size:12px;flex:none}
+.pagezoom{display:flex;align-items:center;gap:2px;height:24px;padding:0 2px;border:1px solid var(--edge);border-radius:var(--r)}
+.pagezoom span{font-family:var(--mono);font-size:11px;min-width:34px;text-align:center;color:var(--text-2)}
+.pagezoom button{width:18px;height:18px;display:grid;place-items:center;border-radius:var(--r);font-size:11px;color:var(--text-2)}
+.pagezoom button:hover{background:var(--surface-2);color:var(--text)}
+/* determinate load progress. static, no animation. */
+.progress{flex:none;height:2px;background:var(--edge)}
+.progress>i{display:block;height:100%;width:62%;background:var(--accent)}
+/* the page itself is somebody else's site. we draw the frame, not the content. */
+.page-plate{flex:1;background:var(--surface-3);border-top:1px solid var(--edge)}
+
+/* ---------- memo widget ---------- */
+.w--memo{left:1310px;top:0;width:420px;height:460px}
+.memo{padding:16px 18px 0;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.memo h2{font-size:19px;font-weight:600;letter-spacing:-.018em;line-height:1.2}
+.memo p{font-size:13px;line-height:1.6;color:var(--text-2)}
+.checklist{display:flex;flex-direction:column;gap:9px;margin-top:2px}
+.check{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.35}
+.box{
+  flex:none;width:14px;height:14px;margin-top:1px;border-radius:var(--r);
+  border:1px solid var(--edge-2);background:var(--surface);
+  display:grid;place-items:center;font-size:10px;color:transparent;
+}
+.check.done .box{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.check.done span{color:var(--text-2);text-decoration:line-through;text-decoration-color:var(--edge-2)}
+.memo-foot{
+  margin-top:auto;flex:none;height:30px;display:flex;align-items:center;gap:7px;
+  border-top:1px solid var(--edge);margin-left:-18px;margin-right:-18px;padding:0 18px;
+  font-size:11.5px;color:var(--text-2);
+}
+
+/* ---------- todo widget: empty state ---------- */
+.w--todo{left:0;top:250px;width:320px;height:420px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:20px 26px;text-align:center}
+.empty-mark{width:32px;height:32px;display:grid;place-items:center;background:var(--surface-2);border-radius:var(--r);color:var(--text-2);font-size:17px;margin-bottom:2px}
+.empty h3{font-size:13.5px;font-weight:500}
+.empty p{font-size:12.5px;line-height:1.5;color:var(--text-2)}
+
+/* ---------- timer widget ---------- */
+.w--timer{left:1310px;top:500px;width:340px;height:340px}
+.timer{flex:1;display:flex;flex-direction:column;padding:14px 18px 16px}
+.timer-label{font-size:12px;color:var(--text-2)}
+.timer-time{font-family:var(--mono);font-weight:500;font-size:47px;letter-spacing:-.03em;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.ticks{display:flex;align-items:center;gap:5px;margin-top:9px}
+.ticks i{width:11px;height:11px;background:var(--edge-2)}      /* 11px mark -> radius 0 */
+.ticks i.on{background:var(--accent)}
+.ticks span{margin-left:5px;font-size:12px;color:var(--text-2)}
+.timer-actions{display:flex;gap:7px;margin-top:16px}
+.stats{margin-top:auto;padding-top:12px;border-top:1px solid var(--edge);display:flex;flex-direction:column;gap:5px}
+.stat{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-2)}
+.stat b{font-family:var(--mono);font-weight:500;color:var(--text);font-variant-numeric:tabular-nums}
+
+/* ---------- buttons ---------- */
+.btn{
+  height:28px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;
+  border-radius:var(--r);border:1px solid var(--edge);background:var(--surface);
+  font-size:12.5px;font-weight:500;color:var(--text);white-space:nowrap;
+  transition:background-color .12s ease,border-color .12s ease;
+}
+.btn:hover{background:var(--surface-2);border-color:var(--edge-2)}
+.btn:active{transform:translateY(1px)}
+.btn i{font-size:14px}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn--primary:hover{background:var(--accent);border-color:var(--accent);filter:brightness(1.08)}
+.kbd{
+  font-family:var(--mono);font-size:10.5px;line-height:1;
+  padding:3px 5px;border:1px solid var(--edge);border-radius:var(--r);
+  color:var(--text-2);background:var(--surface);
+}
+
+/* ===========================================================================
+   SHELL: one object, bottom left. Panel is attached to the console,
+   so every control on the screen lives in a single place.
+   =========================================================================== */
+.shell{position:fixed;left:20px;bottom:18px;z-index:3;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+
+.panel{
+  width:290px;background:var(--surface);border:1px solid var(--edge);
+  border-radius:var(--r);box-shadow:var(--shadow-shell);overflow:hidden;
+}
+.panel[hidden]{display:none}
+.panel-head{height:34px;display:flex;align-items:center;padding:0 8px 0 12px;border-bottom:1px solid var(--edge)}
+.panel-head h4{flex:1;font-size:12.5px;font-weight:600;letter-spacing:-.005em}
+.panel-body{padding:8px}
+
+.srow{
+  width:100%;display:flex;align-items:center;gap:9px;height:32px;padding:0 8px;
+  border-radius:var(--r);text-align:left;transition:background-color .12s ease;
+}
+.srow:hover{background:var(--surface-2)}
+.srow .mk{width:8px;height:8px;flex:none;background:var(--edge-2)}   /* 8px mark -> radius 0 */
+.srow.is-on{background:var(--surface-2)}
+.srow.is-on .mk{background:var(--accent)}
+.srow.is-on b{font-weight:600}
+.srow b{flex:1;font-size:12.5px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow em{font-style:normal;font-size:11.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
+
+.field{display:flex;flex-direction:column;gap:6px;padding:12px 8px 6px;margin-top:6px;border-top:1px solid var(--edge)}
+.field label{font-size:12px;font-weight:500}
+.field input{
+  height:30px;padding:0 9px;background:var(--surface-2);
+  border:1px solid var(--edge-2);border-radius:var(--r);font-size:12.5px;
+}
+.field input::placeholder{color:var(--text-2)}
+.field input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+.field .help{font-size:11.5px;color:var(--text-2);line-height:1.4}
+.field .btn{align-self:flex-start;margin-top:2px}
+
+.palette{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.pitem{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:var(--r);text-align:left;transition:background-color .12s ease}
+.pitem:hover{background:var(--surface-2)}
+.pitem i{font-size:15px;color:var(--text-2);flex:none}
+.pitem b{font-size:12px;font-weight:400}
+
+.mix{display:flex;flex-direction:column;gap:4px}
+.mixrow{display:grid;grid-template-columns:74px 1fr 34px;align-items:center;gap:8px;height:30px;padding:0 8px}
+.mixrow label{font-size:12.5px}
+.mixrow output{font-family:var(--mono);font-size:11.5px;color:var(--text-2);text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:16px;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--edge-2);border-radius:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-5px;border-radius:var(--r);background:var(--accent);border:none}
+input[type=range]::-moz-range-track{height:2px;background:var(--edge-2)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:var(--r);background:var(--accent);border:none}
+.mix-foot{margin-top:6px;padding:8px 8px 2px;border-top:1px solid var(--edge)}
+
+.console{
+  display:flex;align-items:center;gap:2px;height:46px;padding:0 7px;
+  background:var(--surface);border:1px solid var(--edge);
+  border-radius:var(--r);box-shadow:var(--shadow-shell);
+}
+.cbtn{
+  height:30px;display:inline-flex;align-items:center;gap:7px;padding:0 8px;
+  border-radius:var(--r);font-size:12.5px;color:var(--text);
+  transition:background-color .12s ease;white-space:nowrap;
+}
+.cbtn:hover{background:var(--surface-2)}
+.cbtn:active{transform:translateY(1px)}
+.cbtn i{font-size:16px;color:var(--text-2)}
+.cbtn.is-on{background:var(--surface-2)}
+.cbtn.is-live{background:var(--accent-soft)}
+.cbtn.is-live i{color:var(--accent)}
+.cbtn .mk{width:8px;height:8px;background:var(--accent)}
+.cbtn .t{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--text-2)}
+.sep{width:1px;height:20px;background:var(--edge);margin:0 5px;flex:none}
+.zoom{display:flex;align-items:center;gap:1px}
+.zoom .cbtn{padding:0 6px}
+.zoom .val{font-family:var(--mono);font-size:12px;min-width:40px;text-align:center;color:var(--text-2);font-variant-numeric:tabular-nums}
+.swatches{display:flex;gap:4px;padding:0 2px}
+.sw{width:20px;height:20px;border-radius:var(--r);border:1px solid var(--edge-2);background-size:cover;background-position:center}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--accent)}
+.sw--shoreline{background-color:#ddc4ac;background-image:url("https://picsum.photos/id/796/80/80")}
+.sw--chalk{background-color:#d7d3cb}
+.sw--pinewood{background-color:#433933;background-image:url("https://picsum.photos/id/190/80/80")}
+.sw--ink{background-color:#191817}
+
+/* ---------- toast: transient error ---------- */
+.toast{
+  position:fixed;right:20px;bottom:18px;z-index:3;width:322px;
+  display:flex;gap:10px;padding:12px 12px 12px 13px;
+  background:var(--surface);border:1px solid var(--edge);
+  border-radius:var(--r);box-shadow:var(--shadow-shell);
+}
+.toast[hidden]{display:none}
+.toast>i{font-size:16px;color:var(--accent);flex:none;margin-top:1px}
+.toast .tx{flex:1;display:flex;flex-direction:column;gap:3px}
+.toast b{font-size:12.5px;font-weight:500}
+.toast p{font-size:12px;color:var(--text-2);line-height:1.45}
+.toast .btn{height:24px;padding:0 9px;font-size:12px;margin-top:7px;align-self:flex-start}
+</style>
+</head>
+
+<body>
+<div class="backdrop"></div>
+
+<div class="viewport" id="viewport">
+  <div class="canvas" id="canvas" style="--zoom:.78">
+
+    <!-- ============ TODO: empty state ============ -->
+    <section class="w w--todo" data-w>
+      <header class="w-bar">
+        <span class="w-name">Tasks</span>
+        <button class="iconbtn" aria-label="Maximize"><i class="ph ph-corners-out"></i></button>
+        <button class="iconbtn" aria-label="Close"><i class="ph ph-x"></i></button>
+      </header>
+      <div class="w-body">
+        <div class="empty">
+          <span class="empty-mark"><i class="ph ph-list-checks"></i></span>
+          <h3>No tasks in this space</h3>
+          <p>Add one here, or drag a checked line out of a memo.</p>
+          <button class="btn" style="margin-top:6px">Add task <span class="kbd">N</span></button>
+        </div>
+      </div>
+      <span class="handle tl"></span><span class="handle tr"></span>
+      <span class="handle bl"></span><span class="handle br"></span>
+    </section>
+
+    <!-- ============ BROWSER: loading state ============ -->
+    <section class="w w--browser" data-w>
+      <div class="bw-tabs">
+        <div class="tab is-on"><i class="ph ph-globe"></i><span>Element.animate() - MDN</span><i class="ph ph-x close"></i></div>
+        <div class="tab"><i class="ph ph-globe"></i><span>Figma</span></div>
+        <button class="iconbtn" style="margin:0 0 2px 4px" aria-label="New tab"><i class="ph ph-plus"></i></button>
+        <span class="bw-win">
+          <button class="iconbtn" aria-label="Maximize"><i class="ph ph-corners-out"></i></button>
+          <button class="iconbtn" aria-label="Close"><i class="ph ph-x"></i></button>
+        </span>
+      </div>
+      <div class="bw-toolbar">
+        <button class="iconbtn" aria-label="Back"><i class="ph ph-arrow-left"></i></button>
+        <button class="iconbtn" aria-label="Forward" disabled><i class="ph ph-arrow-right"></i></button>
+        <button class="iconbtn" aria-label="Stop loading"><i class="ph ph-x"></i></button>
+        <div class="addr"><i class="ph ph-globe"></i><span><b>developer.mozilla.org</b>/en-US/docs/Web/API/Element/animate</span></div>
+        <div class="pagezoom">
+          <button aria-label="Zoom page out"><i class="ph ph-minus"></i></button>
+          <span class="tnum">110%</span>
+          <button aria-label="Zoom page in"><i class="ph ph-plus"></i></button>
+        </div>
+        <button class="iconbtn" aria-label="Save to this space"><i class="ph ph-star"></i></button>
+      </div>
+      <div class="progress" role="progressbar" aria-label="Page loading" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+      <!-- Somebody else's page. We draw the frame; the content stays a plate. -->
+      <div class="page-plate"></div>
+      <span class="handle tl"></span><span class="handle tr"></span>
+      <span class="handle bl"></span><span class="handle br"></span>
+    </section>
+
+    <!-- ============ MEMO: selected ============ -->
+    <section class="w w--memo is-sel" data-w>
+      <header class="w-bar">
+        <span class="w-name">Onboarding rewrite</span>
+        <button class="iconbtn" aria-label="Maximize"><i class="ph ph-corners-out"></i></button>
+        <button class="iconbtn" aria-label="Close"><i class="ph ph-x"></i></button>
+      </header>
+      <div class="w-body">
+        <div class="memo">
+          <h2>Onboarding rewrite</h2>
+          <p>Cut the first run down to one question. The space gets made before anything else is explained, and the rest is learned by moving things around on the canvas.</p>
+          <div class="checklist">
+            <div class="check done"><span class="box"><i class="ph ph-check"></i></span><span>Drop the tour overlay</span></div>
+            <div class="check done"><span class="box"><i class="ph ph-check"></i></span><span>Ask for the space name first</span></div>
+            <div class="check"><span class="box"><i class="ph ph-check"></i></span><span>Write the empty canvas copy</span></div>
+            <div class="check"><span class="box"><i class="ph ph-check"></i></span><span>Decide what the second run shows</span></div>
+            <div class="check"><span class="box"><i class="ph ph-check"></i></span><span>Cut the settings step</span></div>
+          </div>
+          <div class="memo-foot"><span class="kbd">/</span> for blocks</div>
+        </div>
+      </div>
+      <span class="handle tl"></span><span class="handle tr"></span>
+      <span class="handle bl"></span><span class="handle br"></span>
+    </section>
+
+    <!-- ============ TIMER: running ============ -->
+    <section class="w w--timer" data-w>
+      <header class="w-bar">
+        <span class="w-name">Focus</span>
+        <button class="iconbtn" aria-label="Maximize"><i class="ph ph-corners-out"></i></button>
+        <button class="iconbtn" aria-label="Close"><i class="ph ph-x"></i></button>
+      </header>
+      <div class="w-body">
+        <div class="timer">
+          <span class="timer-label">Session running</span>
+          <span class="timer-time">24:31</span>
+          <div class="ticks">
+            <i class="on"></i><i class="on"></i><i class="on"></i><i></i>
+            <span>3 of 4</span>
+          </div>
+          <div class="timer-actions">
+            <button class="btn btn--primary"><i class="ph ph-pause"></i>Pause</button>
+            <button class="btn"><i class="ph ph-stop"></i>End</button>
+          </div>
+          <div class="stats">
+            <div class="stat"><span>Today</span><b>3h 12m</b></div>
+            <div class="stat"><span>This week</span><b>14h 05m</b></div>
+          </div>
+        </div>
+      </div>
+      <span class="handle tl"></span><span class="handle tr"></span>
+      <span class="handle bl"></span><span class="handle br"></span>
+    </section>
+
+  </div>
+</div>
+
+<!-- ============ SHELL ============ -->
+<div class="shell">
+
+  <!-- Spaces -->
+  <div class="panel" id="panel-spaces">
+    <div class="panel-head">
+      <h4>Spaces</h4>
+      <button class="iconbtn" data-close aria-label="Close panel"><i class="ph ph-x"></i></button>
+    </div>
+    <div class="panel-body">
+      <button class="srow is-on"><span class="mk"></span><b>Ravel rebrand</b><em>6 widgets</em></button>
+      <button class="srow"><span class="mk"></span><b>Thesis ch. 4</b><em>4 widgets</em></button>
+      <button class="srow"><span class="mk"></span><b>House move</b><em>3 widgets</em></button>
+      <button class="srow"><span class="mk"></span><b>Reading</b><em>9 widgets</em></button>
+      <div class="field">
+        <label for="space-name">Space name</label>
+        <input id="space-name" type="text" placeholder="e.g. Portfolio 2027" aria-describedby="space-help">
+        <span class="help" id="space-help">Shown in the switcher and in search.</span>
+        <button class="btn btn--primary">Create space</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Widget palette -->
+  <div class="panel" id="panel-add" hidden>
+    <div class="panel-head">
+      <h4>Add widget</h4>
+      <button class="iconbtn" data-close aria-label="Close panel"><i class="ph ph-x"></i></button>
+    </div>
+    <div class="panel-body">
+      <div class="palette">
+        <button class="pitem"><i class="ph ph-browser"></i><b>Browser</b></button>
+        <button class="pitem"><i class="ph ph-app-window"></i><b>Web app</b></button>
+        <button class="pitem"><i class="ph ph-note"></i><b>Memo</b></button>
+        <button class="pitem"><i class="ph ph-kanban"></i><b>Kanban</b></button>
+        <button class="pitem"><i class="ph ph-pencil-simple"></i><b>Sketch</b></button>
+        <button class="pitem"><i class="ph ph-list-checks"></i><b>Todo</b></button>
+        <button class="pitem"><i class="ph ph-timer"></i><b>Timer</b></button>
+        <button class="pitem"><i class="ph ph-calendar-blank"></i><b>Calendar</b></button>
+        <button class="pitem"><i class="ph ph-clock"></i><b>Clock</b></button>
+        <button class="pitem"><i class="ph ph-image-square"></i><b>Photo</b></button>
+        <button class="pitem"><i class="ph ph-squares-four"></i><b>App</b></button>
+        <button class="pitem"><i class="ph ph-columns"></i><b>Column</b></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ambience -->
+  <div class="panel" id="panel-sound" hidden>
+    <div class="panel-head">
+      <h4>Ambience</h4>
+      <button class="iconbtn" data-close aria-label="Close panel"><i class="ph ph-x"></i></button>
+    </div>
+    <div class="panel-body">
+      <div class="mix">
+        <div class="mixrow"><label for="mx1">Rain</label><input id="mx1" type="range" min="0" max="100" value="42"><output for="mx1">42%</output></div>
+        <div class="mixrow"><label for="mx2">Room tone</label><input id="mx2" type="range" min="0" max="100" value="18"><output for="mx2">18%</output></div>
+        <div class="mixrow"><label for="mx3">Wind</label><input id="mx3" type="range" min="0" max="100" value="0"><output for="mx3">0%</output></div>
+        <div class="mixrow"><label for="mx4">Fire</label><input id="mx4" type="range" min="0" max="100" value="0"><output for="mx4">0%</output></div>
+      </div>
+      <div class="mix-foot"><button class="btn">Mute all</button></div>
+    </div>
+  </div>
+
+  <!-- Console -->
+  <div class="console">
+    <button class="cbtn" data-panel="panel-spaces"><span class="mk"></span>Ravel rebrand<i class="ph ph-caret-up" style="font-size:12px"></i></button>
+    <span class="sep"></span>
+    <button class="cbtn" data-panel="panel-add" aria-label="Add widget" title="Add widget"><i class="ph ph-plus"></i></button>
+    <button class="cbtn" aria-label="Arrange selection" title="Arrange selection"><i class="ph ph-selection-all"></i></button>
+    <button class="cbtn" id="fit" aria-label="Fit to screen" title="Fit to screen"><i class="ph ph-frame-corners"></i></button>
+    <span class="zoom">
+      <button class="cbtn" id="zout" aria-label="Zoom out"><i class="ph ph-minus"></i></button>
+      <span class="val" id="zval">78%</span>
+      <button class="cbtn" id="zin" aria-label="Zoom in"><i class="ph ph-plus"></i></button>
+    </span>
+    <span class="sep"></span>
+    <span class="swatches" role="group" aria-label="Backdrop">
+      <button class="sw sw--shoreline" data-bd="shoreline" data-mode="light" aria-pressed="true"  title="Shoreline" aria-label="Backdrop: Shoreline"></button>
+      <button class="sw sw--chalk"     data-bd="chalk"     data-mode="light" aria-pressed="false" title="Chalk"     aria-label="Backdrop: Chalk"></button>
+      <button class="sw sw--pinewood"  data-bd="pinewood"  data-mode="dark"  aria-pressed="false" title="Pinewood"  aria-label="Backdrop: Pinewood"></button>
+      <button class="sw sw--ink"       data-bd="ink"       data-mode="dark"  aria-pressed="false" title="Ink"       aria-label="Backdrop: Ink"></button>
+    </span>
+    <span class="sep"></span>
+    <button class="cbtn is-live" data-panel="panel-sound" aria-label="Ambience" title="Ambience"><i class="ph ph-waveform"></i></button>
+    <button class="cbtn" title="Focus session"><i class="ph ph-timer"></i><span class="t">24:31</span></button>
+    <span class="sep"></span>
+    <button class="cbtn"><i class="ph ph-magnifying-glass"></i>Search<span class="kbd">K</span></button>
+  </div>
+</div>
+
+<!-- transient error -->
+<div class="toast" id="toast" role="status">
+  <i class="ph ph-warning-circle"></i>
+  <div class="tx">
+    <b>Could not reach the sync server</b>
+    <p>Everything in this space is saved on this device. Nothing is lost.</p>
+    <button class="btn">Retry</button>
+  </div>
+  <button class="iconbtn" id="toast-x" aria-label="Dismiss"><i class="ph ph-x"></i></button>
+</div>
+
+<script>
+(function () {
+  var root   = document.documentElement;
+  var canvas = document.getElementById('canvas');
+  var zval   = document.getElementById('zval');
+  var CW = 1730, CH = 840, zoom = 0.78;
+
+  function setZoom(z) {
+    zoom = Math.min(1.15, Math.max(0.5, z));
+    canvas.style.setProperty('--zoom', zoom);
+    zval.textContent = Math.round(zoom * 100) + '%';
+  }
+  function fit() {
+    setZoom(Math.min((innerWidth - 96) / CW, (innerHeight - 190) / CH));
+  }
+  fit();
+  addEventListener('resize', fit);
+
+  document.getElementById('fit').onclick  = fit;
+  document.getElementById('zin').onclick  = function () { setZoom(zoom + 0.1); };
+  document.getElementById('zout').onclick = function () { setZoom(zoom - 0.1); };
+
+  // backdrop picker. UI polarity follows the backdrop, so the app is never
+  // light-on-dark or dark-on-light by accident.
+  Array.prototype.forEach.call(document.querySelectorAll('.sw'), function (sw) {
+    sw.onclick = function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.sw'), function (o) {
+        o.setAttribute('aria-pressed', String(o === sw));
+      });
+      root.dataset.backdrop = sw.dataset.bd;
+      root.dataset.theme    = sw.dataset.mode;
+    };
+  });
+
+  // one panel at a time, attached to the console
+  var panels = ['panel-spaces', 'panel-add', 'panel-sound'];
+  function openPanel(id) {
+    panels.forEach(function (p) { document.getElementById(p).hidden = (p !== id); });
+    Array.prototype.forEach.call(document.querySelectorAll('.cbtn[data-panel]'), function (b) {
+      b.classList.toggle('is-on', b.dataset.panel === id);
+    });
+  }
+  function closePanels() { openPanel(null); }
+  openPanel('panel-spaces');
+
+  Array.prototype.forEach.call(document.querySelectorAll('.cbtn[data-panel]'), function (b) {
+    b.onclick = function () {
+      openPanel(document.getElementById(b.dataset.panel).hidden ? b.dataset.panel : null);
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) {
+    b.onclick = closePanels;
+  });
+
+  // selection
+  Array.prototype.forEach.call(document.querySelectorAll('[data-w]'), function (w) {
+    w.addEventListener('mousedown', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-w]'), function (o) {
+        o.classList.toggle('is-sel', o === w);
+      });
+    });
+  });
+  document.getElementById('viewport').addEventListener('mousedown', function (e) {
+    if (e.target.id === 'viewport' || e.target.id === 'canvas') {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-w]'), function (o) {
+        o.classList.remove('is-sel');
+      });
+    }
+  });
+
+  // ambience readouts
+  Array.prototype.forEach.call(document.querySelectorAll('.mixrow input'), function (r) {
+    var out = r.parentNode.querySelector('output');
+    r.oninput = function () { out.textContent = r.value + '%'; };
+  });
+
+  document.getElementById('toast-x').onclick = function () {
+    document.getElementById('toast').hidden = true;
+  };
+  addEventListener('keydown', function (e) { if (e.key === 'Escape') closePanels(); });
+})();
+</script>
+</body>
+</html>
