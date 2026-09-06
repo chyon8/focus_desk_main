@@ -20,7 +20,7 @@ import type { Box } from './layout';
  */
 
 /** The frame's own header, above the column's title strip. Matches `HEADER_HEIGHT` in WidgetFrame. */
-const WIDGET_HEADER = 40;
+const WIDGET_HEADER = 30;
 export const COLUMN_PAD = 10;
 export const COLUMN_GAP = 8;
 /** An empty column still has to be a target big enough to drop something on. */

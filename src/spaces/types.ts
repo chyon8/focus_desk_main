@@ -70,6 +70,12 @@ export interface SpaceDoc {
    * its weather are two choices, not one (D-066).
    */
   particles?: ParticlesChoice | null;
+  /**
+   * 이 공간의 명암 극성. 없으면 배경의 밝기가 정한다 — 단색은 그 색에서, 사진은
+   * 평균 색에서. 밝은 하늘 + 어두운 지면처럼 평균이 틀리는 사진이 있어서 사용자가
+   * Atmosphere에서 뒤집을 수 있고, 뒤집은 값이 여기 남는다.
+   */
+  polarity?: 'light' | 'dark' | null;
   camera: Camera;
   ambience: AmbienceLevels;
   widgets: Record<string, WidgetDoc>;

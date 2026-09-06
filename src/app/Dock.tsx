@@ -8,7 +8,6 @@ import {
   Layers,
   LayoutGrid,
   Minus,
-  MoreHorizontal,
   PanelTop,
   Plus,
   Trash2,
@@ -177,104 +176,6 @@ const ColourMenu: React.FC<{ selectedIds: string[]; onDone: () => void }> = ({
   );
 };
 
-/** Everything that acts on a selection but is not Arrange. */
-const MoreMenu: React.FC<{ selectedIds: string[]; onDone: () => void }> = ({
-  selectedIds,
-  onDone,
-}) => {
-  const isMoveMenuOpen = useUiStore((s) => s.isMoveMenuOpen);
-  const [isColourOpen, setIsColourOpen] = useState(false);
-  const store = () => useSpaceStore.getState();
-
-  const Row: React.FC<{
-    icon: React.ReactNode;
-    label: string;
-    hint?: string;
-    danger?: boolean;
-    on?: boolean;
-    onClick: () => void;
-  }> = ({ icon, label, hint, danger, on, onClick }) => (
-    <button
-      onClick={onClick}
-      className={`row w-full flex items-center gap-3 px-2 py-2 rounded-control ${
-        danger ? 'hover:!text-red-400' : ''
-      } ${on ? 'row-on' : ''}`}
-    >
-      {icon}
-      <span className="flex-1 text-left text-ui font-medium">{label}</span>
-      {hint && <span className="t-soft text-micro">{hint}</span>}
-    </button>
-  );
-
-  return (
-    <>
-      <div className="fixed inset-0 z-[88]" onClick={onDone} />
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 8 }}
-        className="glass-panel absolute bottom-full left-1/2 mb-3 -translate-x-1/2 z-[90] w-56 p-2 rounded-surface"
-      >
-        <div className="relative">
-          <Row
-            icon={<ArrowRightLeft size={15} />}
-            label="Move to space"
-            on={isMoveMenuOpen}
-            onClick={() => {
-              const ui = useUiStore.getState();
-              if (ui.isMoveMenuOpen) ui.closeMoveMenu();
-              else ui.openMoveMenu();
-            }}
-          />
-          <AnimatePresence>
-            {isMoveMenuOpen && <MoveMenu selectedIds={selectedIds} />}
-          </AnimatePresence>
-        </div>
-        <Row
-          icon={<Columns3 size={15} />}
-          label="Put in a column"
-          onClick={() => {
-            store().groupIntoColumn(selectedIds);
-            onDone();
-          }}
-        />
-        <div className="relative">
-          <Row
-            icon={<Circle size={15} />}
-            label="Colour mark"
-            on={isColourOpen}
-            onClick={() => setIsColourOpen((o) => !o)}
-          />
-          <AnimatePresence>
-            {isColourOpen && (
-              <ColourMenu selectedIds={selectedIds} onDone={() => setIsColourOpen(false)} />
-            )}
-          </AnimatePresence>
-        </div>
-        <Row
-          icon={<Copy size={15} />}
-          label="Duplicate"
-          hint="⌘D"
-          onClick={() => {
-            store().duplicateWidgets(selectedIds);
-            onDone();
-          }}
-        />
-        <div className="bg-hair my-1 h-px" />
-        <Row
-          icon={<Trash2 size={15} />}
-          label="Close them"
-          danger
-          onClick={() => {
-            store().removeWidgets(selectedIds);
-            onDone();
-          }}
-        />
-      </motion.div>
-    </>
-  );
-};
-
 /**
  * One place for everything that acts on the canvas: the zoom, the framing, and
  * what to do with whatever is picked out. It used to be three - the sidebar's
@@ -289,7 +190,8 @@ export const Dock: React.FC = () => {
   const isRailOpen = useUiStore((s) => s.isSidebarOpen);
   const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
   const [isArrangeOpen, setIsArrangeOpen] = useState(false);
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isColourOpen, setIsColourOpen] = useState(false);
+  const isMoveMenuOpen = useUiStore((s) => s.isMoveMenuOpen);
   const count = selectedIds.length;
 
   return (
@@ -326,16 +228,59 @@ export const Dock: React.FC = () => {
             </AnimatePresence>
           </div>
 
+          {/* 선택에 거는 동작은 한 줄에 다 편다. ⋯ 하나로 접으면 무엇을 할 수 있는지
+              열어봐야 알고, 색·정렬처럼 여러 개에 연달아 거는 것이 매번 두 번 클릭이 된다. */}
           <div className="relative shrink-0">
-            <Btn label="More" on={isMoreOpen} onClick={() => setIsMoreOpen((o) => !o)}>
-              <MoreHorizontal size={15} />
+            <Btn
+              label="Move to another space"
+              on={isMoveMenuOpen}
+              onClick={() => {
+                const ui = useUiStore.getState();
+                if (ui.isMoveMenuOpen) ui.closeMoveMenu();
+                else ui.openMoveMenu();
+              }}
+            >
+              <ArrowRightLeft size={15} />
             </Btn>
             <AnimatePresence>
-              {isMoreOpen && (
-                <MoreMenu selectedIds={selectedIds} onDone={() => setIsMoreOpen(false)} />
+              {isMoveMenuOpen && <MoveMenu selectedIds={selectedIds} />}
+            </AnimatePresence>
+          </div>
+
+          <Btn
+            label="Put them in a column"
+            onClick={() => useSpaceStore.getState().groupIntoColumn(selectedIds)}
+          >
+            <Columns3 size={15} />
+          </Btn>
+
+          <div className="relative shrink-0">
+            <Btn label="Colour mark" on={isColourOpen} onClick={() => setIsColourOpen((o) => !o)}>
+              <Circle size={15} />
+            </Btn>
+            <AnimatePresence>
+              {isColourOpen && (
+                <ColourMenu selectedIds={selectedIds} onDone={() => setIsColourOpen(false)} />
               )}
             </AnimatePresence>
           </div>
+
+          <Btn
+            label="Duplicate (⌘D)"
+            onClick={() => useSpaceStore.getState().duplicateWidgets(selectedIds)}
+          >
+            <Copy size={15} />
+          </Btn>
+
+          <Btn
+            label="Close them"
+            danger
+            onClick={() => useSpaceStore.getState().removeWidgets(selectedIds)}
+          >
+            <Trash2 size={15} />
+          </Btn>
+
+          <div className="bg-hair mx-0.5 h-5 w-px shrink-0" />
 
           <Btn label="Drop the selection (Esc)" onClick={useUiStore.getState().clearSelection}>
             <X size={15} />

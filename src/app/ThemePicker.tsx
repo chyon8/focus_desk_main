@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Ban, CloudRain, Flame, Moon, Palette, Snowflake, Sparkles, Sun, Upload, type LucideIcon } from 'lucide-react';
+import { Ban, CloudRain, Flame, Snowflake, Sparkles, Upload, type LucideIcon } from 'lucide-react';
 import { assetUrl, MINIMAL_THEMES, SOLID_COLORS } from '../spaces/backgrounds';
 import type { ParticlesChoice } from '../spaces/types';
-import { usePrefsStore } from '../stores/prefsStore';
 import { useSpaceStore } from '../stores/spaceStore';
-import { useUiStore } from '../stores/uiStore';
+import { RAIL_TOP, RAIL_WIDTH, useUiStore } from '../stores/uiStore';
 import { getTheme, THEMES } from '../themes/themes';
+import { useGround } from '../themes/useTheme';
 import type { SceneSpec } from '../themes/types';
 
 function thumbStyle(scene: SceneSpec): React.CSSProperties {
@@ -36,20 +36,33 @@ const WEATHER: { kind: ParticlesChoice['kind']; label: string; icon: LucideIcon 
 // What a kind starts at when the space has no density of its own to carry over.
 const DEFAULT_DENSITY = 0.4;
 
+/**
+ * 단색 배경 전부. `SOLID_COLORS`는 배경색 하나만, `MINIMAL_THEMES`는 글자·테두리까지
+ * 들고 오지만 누르는 쪽에서는 둘 다 "배경을 이 색으로"라 한 줄이다. 같은 색이 두 번
+ * 나오지 않게 값으로 거른다.
+ */
+const SOLID_SWATCHES: { value: string; label: string }[] = [
+  ...SOLID_COLORS.map((value) => ({ value, label: value })),
+  ...MINIMAL_THEMES.map((t) => ({ value: t.bg, label: t.name })),
+].filter((swatch, i, all) => all.findIndex((o) => o.value.toLowerCase() === swatch.value.toLowerCase()) === i);
+
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="t-soft text-micro font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
 );
 
 export const ThemePicker: React.FC = () => {
-  const isOpen = useUiStore((s) => s.openDock === 'theme');
+  const isOpen = useUiStore((s) => s.openDock === 'atmosphere');
   const setTheme = useSpaceStore((s) => s.setTheme);
   const setBackground = useSpaceStore((s) => s.setBackground);
   const setParticles = useSpaceStore((s) => s.setParticles);
   const themeId = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.themeId);
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
-  const paper = usePrefsStore((s) => s.paper);
-  const webDark = usePrefsStore((s) => s.webDark);
+  const polarity = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.polarity);
+  // Auto 버튼이 "배경이 무엇으로 읽히는지"를 써야 하므로, 지금 쓰는 값이 아니라
+  // 뒤집기 전의 값을 읽는다. 뒤집어 놓고 보면 Auto가 무엇으로 돌아갈지가 궁금하다.
+  const { autoLight } = useGround(getTheme(themeId));
+  const setPolarity = useSpaceStore((s) => s.setPolarity);
   const fileInput = useRef<HTMLInputElement>(null);
   const [wallpapers, setWallpapers] = useState<string[]>([]);
   const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
@@ -75,74 +88,26 @@ export const ThemePicker: React.FC = () => {
     selected ? { boxShadow: '0 0 0 2px var(--accent)' } : undefined;
 
   return (
-    // Maximised, the button for this is in the widget's header; only the panel
-    // stays here, hanging under it. Same as the ambience dock.
-    <div className={`fixed z-50 ${isMaximized ? 'top-10 right-3' : 'top-9 right-6'}`}>
-      {!isMaximized && (
-        <button
-          onClick={() => useUiStore.getState().toggleDock('theme')}
-          title="Theme"
-          className="glass chrome-button p-2.5 rounded-control shadow-lg"
-        >
-          <Palette size={18} />
-        </button>
-      )}
+    /* 배경과 소리를 합친 패널 하나. 입구도 하나 — 레일의 Atmosphere 버튼이다.
+       우상단에 소리·팔레트 원형 버튼 두 개가 따로 떠 있어서 같은 설정 묶음의
+       입구가 세 군데였다.
 
+       최대화 중에는 레일이 가려지므로 위젯 헤더의 버튼이 입구이고, 패널은 그
+       헤더 아래에 붙는다. */
+    <div
+      className={`fixed z-50 ${isMaximized ? 'top-10 right-3' : ''}`}
+      style={isMaximized ? undefined : { left: RAIL_WIDTH, top: RAIL_TOP }}
+    >
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="glass-panel absolute right-0 mt-2 w-72 max-h-[calc(100vh-7rem)] overflow-y-auto p-4 rounded-surface shadow-2xl"
+            initial={{ opacity: 0, x: isMaximized ? 0 : -8, y: isMaximized ? -8 : 0 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: isMaximized ? 0 : -8, y: isMaximized ? -8 : 0 }}
+            className={`glass-panel absolute w-72 max-h-[calc(100vh-7rem)] overflow-y-auto p-4 rounded-surface ${
+              isMaximized ? 'right-0 mt-2' : 'left-0 top-0'
+            }`}
           >
-            {/* One answer for the whole app, unlike everything below it. It sits
-                at the top because it is two switches, and what follows is a long
-                browse worth scrolling through. */}
-            <div className="border-hair mb-5 pb-4 border-b">
-              <Label>All spaces</Label>
-
-              <div className="t-faint mb-1.5 text-micro font-medium">Paper</div>
-              <div className="flex items-center gap-1 mb-2">
-                {(
-                  [
-                    { mode: 'theme', label: 'Theme', icon: Moon },
-                    { mode: 'light', label: 'Light', icon: Sun },
-                  ] as const
-                ).map(({ mode, label, icon: Icon }) => (
-                  <button
-                    key={mode}
-                    onClick={() => usePrefsStore.getState().setPaper(mode)}
-                    className={`chrome-button flex-1 h-9 flex items-center justify-center gap-1.5 rounded-control text-meta ${
-                      paper === mode ? 'chrome-button-on' : ''
-                    }`}
-                  >
-                    <Icon size={13} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="t-faint mb-4 px-0.5 text-micro leading-snug">
-                Notes, photos and sketches keep their own sheet. Light gives them white paper
-                whatever the room is doing.
-              </p>
-
-              <div className="t-faint mb-1.5 text-micro font-medium">Web pages</div>
-              <button
-                onClick={() => usePrefsStore.getState().setWebDark(!webDark)}
-                className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-control text-meta ${
-                  webDark ? 'chrome-button-on' : ''
-                }`}
-              >
-                <Moon size={13} />
-                Ask sites for their dark theme
-              </button>
-              <p className="t-faint px-0.5 text-micro leading-snug">
-                Sites with a dark theme of their own will use it. Sites without one look the same
-                either way.
-              </p>
-            </div>
-
             <Label>Theme</Label>
             <div className="grid grid-cols-2 gap-2 mb-5">
               {THEMES.map((theme) => (
@@ -232,49 +197,53 @@ export const ThemePicker: React.FC = () => {
               }}
             />
 
-            <div className="grid grid-cols-6 gap-2 mb-5">
-              {SOLID_COLORS.map((color) => (
+            {/* 단색은 전부 여기 한 줄이다. Minimal 테마를 카드로 따로 두었더니
+                같은 일(배경을 이 색으로)을 하는 목록이 둘로 나뉘어 있었다.
+                Minimal은 글자·테두리 색까지 들고 오는데, 그건 고르면 화면이
+                말해준다 — 이름표와 점 두 개가 할 일이 아니다. */}
+            <Label>Colours</Label>
+            <div className="grid grid-cols-8 gap-1.5">
+              {SOLID_SWATCHES.map(({ value, label }) => (
                 <button
-                  key={color}
-                  onClick={() => setBackground({ type: 'COLOR', value: color })}
-                  className="aspect-square rounded-control transition-transform hover:scale-[1.1]"
-                  style={{ backgroundColor: color, ...ring(override?.value === color) }}
+                  key={value}
+                  onClick={() => setBackground({ type: 'COLOR', value })}
+                  title={label}
+                  aria-label={label}
+                  className="border-hair aspect-square rounded-control border transition-transform hover:scale-[1.12] active:scale-95"
+                  style={{ backgroundColor: value, ...ring(override?.value === value) }}
                 />
               ))}
             </div>
 
-            {/* 단색과 달리 글자·강조·테두리까지 들고 있다. 옆의 점 두 개가 고르기 전에
-                무슨 색이 딸려 오는지 보여준다. */}
-            <Label>Minimal themes</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {MINIMAL_THEMES.map((t) => (
-                <button
-                  key={t.name}
-                  onClick={() => setBackground({ type: 'COLOR', value: t.bg })}
-                  className="border-hair chrome-button flex items-center gap-2.5 p-2 rounded-control border"
-                  style={ring(override?.value === t.bg)}
-                >
-                  <span
-                    className="border-hair w-8 h-8 shrink-0 rounded-control border"
-                    style={{ backgroundColor: t.bg }}
-                  />
-                  <span className="flex flex-col items-start gap-1 min-w-0">
-                    <span className="t-ink text-meta font-medium leading-tight text-left">
-                      {t.name}
-                    </span>
-                    <span className="flex gap-1">
-                      {[t.text, t.border].map((dot) => (
-                        <span
-                          key={dot}
-                          className="w-2 h-2 rounded-mark"
-                          style={{ backgroundColor: dot }}
-                        />
-                      ))}
-                    </span>
-                  </span>
-                </button>
-              ))}
+            {/* 배경을 고르면 UI 밝기는 따라온다 — 사진이면 평균 색에서, 단색이면
+                그 색에서. 그래서 기본은 Auto이고, Auto가 무엇으로 읽었는지를 버튼에
+                써 둔다. 밝은 하늘 + 어두운 지면 같은 사진에서만 손으로 뒤집는다. */}
+            <div className="border-hair mt-5 pt-4 border-t">
+              <Label>UI on this background</Label>
+              <div className="flex items-center gap-1">
+                {(
+                  [
+                    { value: null, label: `Auto (${autoLight ? 'light' : 'dark'})` },
+                    { value: 'light', label: 'Light' },
+                    { value: 'dark', label: 'Dark' },
+                  ] as const
+                ).map(({ value, label }) => (
+                  <button
+                    key={label}
+                    onClick={() => setPolarity(value)}
+                    className={`chrome-button flex-1 h-9 flex items-center justify-center rounded-control text-meta ${
+                      (polarity ?? null) === value ? 'chrome-button-on' : ''
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="t-faint mt-2 px-0.5 text-micro leading-snug">
+                The background decides this. Change it only when a picture is read the wrong way.
+              </p>
             </div>
+
           </motion.div>
         )}
       </AnimatePresence>

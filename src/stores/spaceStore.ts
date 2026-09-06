@@ -79,6 +79,8 @@ interface SpaceState {
   setAmbience: (ambience: AmbienceLevels) => void;
   /** Null hands the weather back to the theme. */
   setParticles: (particles: ParticlesChoice | null) => void;
+  /** Null hands the polarity back to the background's own brightness. */
+  setPolarity: (polarity: 'light' | 'dark' | null) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
   fitToWidgets: () => void;
   /**
@@ -523,6 +525,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   setAmbience: (ambience) => updateActive(set, (space) => ({ ...space, ambience })),
 
   setParticles: (particles) => updateActive(set, (space) => ({ ...space, particles })),
+
+  setPolarity: (polarity) => updateActive(set, (space) => ({ ...space, polarity })),
 
   // Fill the canvas with the widgets in play, then frame the result.
   arrangeWidgets: (mode = 'grid', columns) => {

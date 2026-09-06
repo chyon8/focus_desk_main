@@ -67,9 +67,14 @@ export function isLightBackground(value: string) {
  * Minimal 테마는 자기가 들고 있는 값을 쓰고(배경색으로 찾는다 — 공간 문서에는 색
  * 하나만 저장하면 되고 스키마가 그대로다), 나머지는 배경 밝기에서 뽑는다.
  */
-export function backgroundTokens<T extends ThemeTokens>(value: string, base: T): T {
+export function backgroundTokens<T extends ThemeTokens>(
+  value: string,
+  base: T,
+  /** 사용자가 Atmosphere에서 뒤집었을 때. 없으면 색 밝기가 정한다. */
+  forceLight?: boolean,
+): T {
   const named = MINIMAL_THEMES.find((t) => t.bg.toLowerCase() === value.toLowerCase());
-  const light = isLightBackground(value);
+  const light = forceLight ?? isLightBackground(value);
   const ink = named?.text ?? (light ? '#2b2f36' : '#f4f6fa');
   return {
     ...base,

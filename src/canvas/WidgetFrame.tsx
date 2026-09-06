@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Copy, LogOut, Maximize2, Palette, PanelLeft, Volume2, X } from 'lucide-react';
+import { Copy, Image, LogOut, Maximize2, PanelLeft, Volume2, X } from 'lucide-react';
 import { hostOf } from '../widgets/browserAddress';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { screenToWorld } from './camera';
@@ -8,7 +8,10 @@ import { canvasArea, Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 import { colorOf } from '../widgets/widgetColors';
 
-export const HEADER_HEIGHT = 40;
+export const HEADER_HEIGHT = 30;
+// 최대화한 위젯의 헤더는 앱의 상단 바다 — 맥 창 버튼과 컨트롤을 더 이고 있어서
+// 캔버스 위젯의 헤더보다 한 단 높다.
+const FULL_HEADER_HEIGHT = 40;
 // How far a widget's content may be magnified by dragging the frame. Below 1 it
 // shrinks with the frame, so a widget pulled small stays whole instead of clipping.
 const MIN_CONTENT_SCALE = 0.5;
@@ -112,6 +115,19 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
   const entry = WIDGET_REGISTRY[widget.type];
   const Body = entry.Component;
 
+  /**
+   * 상단바는 바가 할 일이 있는 위젯만 갖는다.
+   *
+   * 브라우저는 어느 페이지인지를 이고 있고, 컬럼은 이름과 개수가 크롬이 아니라
+   * 내용이며, 최대화한 위젯의 헤더는 앱의 상단 바다. 나머지(메모·할 일·타이머·
+   * 시계·웹앱 타일…)에는 이름 말고 들어갈 게 없어서 빈 띠만 남았다 — 한 화면에
+   * 바가 있는 위젯과 없는 위젯이 섞여 보이던 원인이다.
+   *
+   * 바가 없는 위젯은 본문이 프레임을 다 쓰고, 이름·최대화·닫기는 hover할 때만
+   * 본문 위에 겹쳐 뜬다(index.css의 `.widget-header-float`).
+   */
+  const hasHeader = widget.type === 'browser' || widget.type === 'column' || isFull;
+
   const mark = colorOf(widget.color);
   const isMarked = !!mark && !isFull;
 
@@ -129,7 +145,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
     entry.label;
 
   const box = overlay ?? widget;
-  const bodyHeight = box.height - HEADER_HEIGHT;
+  const bodyHeight = box.height - (isFull ? FULL_HEADER_HEIGHT : hasHeader ? HEADER_HEIGHT : 0);
   const contentScale =
     // A browser and a web app show a real page; an app widget is only a label for
     // a real window. All three lay themselves out, so magnifying them just blurs
@@ -234,7 +250,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
         isLastActive && !overlay ? 'widget-last-active' : ''
       }`}
       style={{
-        // On the frame, so the header inside it reads the same value.
+        // 프레임에 건다 — 왼쪽 변 막대를 그리는 .widget-marked::before가 읽는다.
         ...(isMarked && ({ '--mark': mark } as React.CSSProperties)),
         left: box.x,
         top: box.y,
@@ -279,9 +295,11 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
         /* Not a window drag region while maximised, even though it is where the
            titlebar would be: macOS takes the double-click on one for its own
            zoom, and this header's double-click is how the widget is restored. */
-        className={`widget-header group h-10 flex items-center px-3 select-none ${
-          isMarked ? 'widget-header-marked' : ''
-        } ${widget.type === 'column' || isFull ? 'widget-header-always' : ''} ${
+        /* 바를 가진 위젯은 그 바가 늘 무언가를 보여준다 — 브라우저는 어느 페이지인지,
+           컬럼은 이름과 개수. 비어 있는 띠를 깔아두지 않는다. */
+        className={`widget-header group flex items-center px-3 select-none ${
+          hasHeader ? 'widget-header-always' : 'widget-header-float'
+        } ${isFull ? 'widget-header-full' : ''} ${
           overlay ? '' : 'cursor-grab active:cursor-grabbing'
         }`}
         style={isFull && !isSidebarOpen ? { paddingLeft: TRAFFIC_LIGHTS_WIDTH } : undefined}
@@ -373,19 +391,23 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
           )}
 
           <div className="ml-auto shrink-0 flex items-center gap-0.5">
+            {/* 최대화 중에는 레일이 가려지므로 배경·소리의 입구가 여기다. */}
             {isFull && (
               <>
                 <HeaderButton
-                  onClick={() => useUiStore.getState().toggleDock('ambience')}
-                  label="Ambience"
+                  onClick={() => useUiStore.getState().toggleDock('atmosphere')}
+                  label="Background"
+                >
+                  <Image size={14} />
+                </HeaderButton>
+                <HeaderButton
+                  onClick={() => useUiStore.getState().toggleDock('sound')}
+                  label="Sound"
                 >
                   <Volume2
                     size={14}
                     style={isAmbiencePlaying ? { color: 'var(--accent)' } : undefined}
                   />
-                </HeaderButton>
-                <HeaderButton onClick={() => useUiStore.getState().toggleDock('theme')} label="Theme">
-                  <Palette size={14} />
                 </HeaderButton>
               </>
             )}

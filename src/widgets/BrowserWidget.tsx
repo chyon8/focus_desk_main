@@ -68,32 +68,21 @@ const NavButton: React.FC<{
  * A tab that has not been loaded: its logo, its title, and the site's own colour
  * behind both.
  *
- * The colour is what makes a wall of these readable. Twelve cards that differ
- * only by a 32-pixel icon are a list of links — the space they are in has to
- * look like somebody's desk at a glance, from far enough out that no title can
- * be read, and colour is the only thing that carries that far.
+ * 사이트 색으로 카드를 칠하던 것을 뺐다. 위젯 면은 한 값으로만 칠하고 페이지
+ * 자리는 --plate 한 값이다(DESIGN.md 1장). 멀리서 무엇인지 말하는 것은 페이지
+ * 미리보기 그림과 로고이고, 묶음을 말하는 것은 위젯 왼쪽 변의 색 마크다.
  */
 /** Pages already asked about this run. Only what comes back is stored — a failure is about the moment, not the page. */
 const askedFor = new Set<string>();
 
 const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data, onOpen }) => {
-  const tint = data.faviconColor;
   const host = hostOf(data.url);
   return (
     <button
       onClick={onOpen}
       title={`Load ${data.url}`}
       className="t-ink relative h-full w-full flex flex-col overflow-hidden text-left"
-      style={
-        tint
-          ? {
-              // Strong enough to tell two sites apart across the canvas, faint
-              // enough that the title stays the thing being read.
-              background: `linear-gradient(160deg, rgba(${tint}, 0.30), rgba(${tint}, 0.10))`,
-              boxShadow: `inset 0 0 0 1px rgba(${tint}, 0.35)`,
-            }
-          : undefined
-      }
+      style={{ background: 'var(--plate)' }}
     >
       {/* The page's own preview picture, the way a pasted link is drawn
           elsewhere. It takes the room and the icon steps down to the caption:
@@ -108,7 +97,6 @@ const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data
               src={data.favicon}
               alt=""
               className="w-16 h-16 rounded-control object-contain"
-              style={tint ? { filter: `drop-shadow(0 6px 14px rgba(${tint}, 0.55))` } : undefined}
             />
           ) : (
             <span className="glass t-soft w-16 h-16 rounded-control flex items-center justify-center text-display uppercase">

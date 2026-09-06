@@ -21,11 +21,12 @@ import { useWidgetData } from './useWidgetData';
 const askedFor = new Set<string>();
 
 /** A page in a column is a link preview: its picture, its address, its name, its own line. */
-const PagePreview: React.FC<{ widget: WidgetDoc; mark: string | null }> = ({ widget, mark }) => {
+const PagePreview: React.FC<{ widget: WidgetDoc }> = ({ widget }) => {
   const card = cardSummary(widget);
   const Icon = WIDGET_REGISTRY[widget.type].icon;
-  // A page with no picture of its own shows a block of colour. A mark wins over
-  // the site's own tint: the mark was chosen, the tint was averaged off a favicon.
+  // 그림이 없는 페이지는 그림 자리에 --plate를 깐다. 예전에는 마크 색이나 사이트
+  // 색으로 칠했는데, 카드 테두리·면이 이미 마크를 나르고 있어서 한 카드가 색을
+  // 두 번 말했다. 이 자리는 면이 아니라 그림이 앉을 칸이다.
 
   return (
     <div className="h-full w-full flex flex-col text-left">
@@ -42,11 +43,7 @@ const PagePreview: React.FC<{ widget: WidgetDoc; mark: string | null }> = ({ wid
           className="flex w-full shrink-0 items-center justify-center"
           style={{
             height: COLUMN_CARD_IMAGE,
-            background: mark
-              ? `linear-gradient(160deg, color-mix(in srgb, ${mark} 38%, transparent), color-mix(in srgb, ${mark} 12%, transparent))`
-              : card.tint
-                ? `linear-gradient(160deg, rgba(${card.tint}, 0.30), rgba(${card.tint}, 0.10))`
-                : 'color-mix(in srgb, var(--ink) 5%, transparent)',
+            background: 'var(--plate)',
           }}
         >
           {card.icon ? (
@@ -228,7 +225,7 @@ const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => voi
               title="Click to open it"
               onClick={onOpen}
             >
-              <PagePreview widget={widget} mark={mark} />
+              <PagePreview widget={widget} />
             </div>
           ) : (
             <Body id={widget.id} />

@@ -50,6 +50,9 @@
   --halo: rgba(0, 0, 0, 0.42);
   /* 면 한 단 안쪽. 면 위에 놓이는 타일이 쓴다. */
   --surface-2: color-mix(in srgb, var(--ink) 6%, var(--surface));
+  /* 남의 웹페이지가 앉는 자리. 면보다 한 단 더 들어가 있어서 앱이 그린 면과
+     페이지가 구별된다. 웹앱 타일이 쓴다. */
+  --plate: color-mix(in srgb, var(--ink) 11%, var(--surface));
 
   /* 액센트는 번트 앰버 하나다. 극성에 따라 두 값뿐이고, 테마가 무엇이든 같다.
      여기 말고는 화면 어디에도 유채색이 없다 — 기본 버튼 · 활성 공간 표시 ·
@@ -323,19 +326,26 @@ body {
   box-shadow: 0 0 0 1px var(--halo), var(--shadow-float), var(--lip);
 }
 
-/* A marked widget, painted the way a marked card is: the edge, the surface and
-   the bar across the top. `--mark` is set on the element.
+/* 색 마크 — 이 위젯이 어느 묶음인지. 왼쪽 변에 3px 막대 하나다.
+   `--mark`는 위젯 프레임에 걸린다.
 
-   It has to carry at a glance and from far out — the point of a mark is picking
-   one job out of a space holding four of them, often zoomed out. A tint too
-   polite to see is the same as no mark. The tint is laid over the surface as an
-   image so one rule covers every theme. */
-.widget-marked {
-  background-image: linear-gradient(
-    color-mix(in srgb, var(--mark) 18%, transparent),
-    color-mix(in srgb, var(--mark) 18%, transparent)
-  );
-  border-color: color-mix(in srgb, var(--mark) 60%, transparent);
+   면은 칠하지 않는다. 위젯 면은 --surface 하나로만 칠한다(DESIGN.md 1장) —
+   예전에는 헤더에 색 띠를 깔고 본문에 틴트를 얹어서, 한 화면에 상단바 색이
+   위젯마다 다르게 섞여 보였다.
+
+   막대는 크롬이 아니라 상태라 hover 없이 늘 보인다. 줌아웃한 상태에서 묶음을
+   찾는 게 마크의 일이라 숨으면 하는 일이 없어진다. */
+.widget-marked::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--mark);
+  /* 본문이 DOM에서 뒤라 z-index 없이는 막대를 덮는다. 브라우저 위젯의 webview도 마찬가지. */
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* While ⌥ is down, hovering a widget shows the rim it would be picked with, so a
@@ -407,9 +417,11 @@ body {
 
 /* Calm Tech: 헤더는 자리를 지키되 평소에는 비어 있다.
    이름·최대화·닫기는 위젯 하나가 아니라 캔버스 전체에 여섯 벌씩 깔린다 — 늘 보이면
-   화면이 크롬으로 채워진다. 손이 오거나 안에 포커스가 들어오면 나타나고, 자리(40px)는
+   화면이 크롬으로 채워진다. 손이 오거나 안에 포커스가 들어오면 나타나고, 자리(30px)는
    그대로라 나타날 때 레이아웃이 안 튄다. */
 .widget-header {
+  height: 30px;
+  flex: none;
   border-bottom: 1px solid transparent;
   transition: border-color 0.15s;
 }
@@ -430,36 +442,45 @@ body {
 .widget-header-always .widget-chrome {
   opacity: 1;
 }
-/* 최대화한 위젯의 헤더는 앱의 상단 바다. 숨을 자리가 아니다. */
+/* 바가 없는 위젯(메모·할 일·타이머·시계·웹앱 타일…)의 헤더.
+
+   자리를 안 먹는다 — 본문이 프레임을 다 쓰고, 이 띠는 그 위에 겹친다. 평소에는
+   폭만 있고 안 보이는 24px 드래그 손잡이이고(메모의 위쪽 여백 안에 들어간다),
+   hover하면 30px 바가 되어 본문 위에 뜬다. 본문이 안 밀리니 나타날 때 글이 안 튄다.
+
+   빈 띠를 늘 깔아두던 것을 이걸로 바꿨다. 한 화면에 바가 있는 위젯과 없는 위젯이
+   섞여 보였고, 대부분의 위젯에서 그 띠에 들어갈 게 이름 하나뿐이었다. */
+.widget-header-float {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  z-index: 3;
+  border-radius: var(--radius-surface) var(--radius-surface) 0 0;
+}
+.widget-glass:hover > .widget-header-float,
+.widget-glass:focus-within > .widget-header-float {
+  height: 30px;
+  background: var(--surface);
+}
+
+/* 최대화한 위젯의 헤더는 앱의 상단 바다. 숨을 자리가 아니고, 창 버튼과 컨트롤을
+   더 이고 있어서 캔버스 위젯보다 한 단 높다(FULL_HEADER_HEIGHT). */
 .widget-header-always {
   border-bottom-color: var(--panel-border);
 }
-
-/* The bar across the top of a marked widget, the part that is read. It has to
-   sit after `.widget-header` — the two carry the same weight, so the one written
-   last is the one that paints, and from above this the mark did nothing. */
-.widget-header-marked {
-  background: linear-gradient(
-    color-mix(in srgb, var(--mark) 58%, transparent),
-    color-mix(in srgb, var(--mark) 40%, transparent)
-  );
-  border-bottom-color: color-mix(in srgb, var(--mark) 75%, transparent);
+.widget-header-full {
+  height: 40px;
 }
 
-/* A swatch in the colour picker: a widget in miniature, painted with the very
-   paint a marked one wears — the header band across the top, the body tint under
-   it, the marked border around both. A round chip of the raw hue promised a
-   colour the glass then washed out, so what was picked and what landed never
-   matched. `--mark` is set on the element. */
+/* 팔레트의 스와치 — 위젯 축소판이다. 칠했을 때 나오는 그대로 면 위에 왼쪽 막대.
+   순색 동그라미는 고른 색과 나온 색이 달랐다. `--mark`는 이 요소에 걸린다. */
 .mark-swatch {
   background:
-    linear-gradient(
-        color-mix(in srgb, var(--mark) 58%, transparent),
-        color-mix(in srgb, var(--mark) 40%, transparent)
-      )
-      top / 100% 40% no-repeat,
-    color-mix(in srgb, var(--mark) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mark) 60%, transparent);
+    linear-gradient(var(--mark), var(--mark)) left / 4px 100% no-repeat,
+    var(--surface-2);
+  border: 1px solid var(--panel-border);
 }
 
 /* --- 레일 ---------------------------------------------------------------

@@ -70,9 +70,9 @@ function createWindow() {
     // also disables the ⌃⌘F the default menu would otherwise answer with it; the
     // app's own fullscreen is ⇧M.
     fullscreenable: false,
-    // 레일(왼쪽 14px, 폭 60px) 위쪽에 앉힌다. 레일 밖에 두면 신호등만 창 모서리에
-    // 붙어서 셸이 창에서 떠 있다는 규칙이 그 한 군데서 깨진다.
-    trafficLightPosition: { x: 22, y: 20 },
+    // 맥 기본 자리. 레일 위로 옮겨봤더니 폭 52px 신호등이 폭 60px 레일 안에 겹쳐
+    // 앉아서 둘 다 못 눌렀다. 레일이 신호등 아래에서 시작한다(uiStore의 RAIL_TOP).
+    trafficLightPosition: { x: 10, y: 10 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       // App windows sit on top of this one on purpose, and macOS stops sending

@@ -2,6 +2,14 @@ import { create } from 'zustand';
 
 /** The rail floats clear of the window on all four sides. */
 export const RAIL_INSET = 14;
+/**
+ * Where the rail starts.
+ *
+ * macOS draws its window buttons at 10,10 and they are 52px wide, so at the
+ * rail's 14px inset they would sit inside it and neither could be pressed. The
+ * rail starts under them instead.
+ */
+export const RAIL_TOP = 44;
 /** What the rail takes out of the canvas: its inset, its width, and a gap. */
 export const RAIL_WIDTH = RAIL_INSET + 60 + RAIL_INSET;
 // Titlebar drag strip plus the row of floating buttons under it.
@@ -91,7 +99,13 @@ interface UiState {
    * button that opens one is not always in the same component as the panel: a
    * maximised widget's header takes over the top bar and puts its own there.
    */
-  openDock: 'ambience' | 'theme' | null;
+  /** 레일에서 여는 패널. 한 번에 하나만 뜬다. */
+  openDock: 'atmosphere' | 'sound' | null;
+  /**
+   * 그 패널을 연 레일 버튼의 화면 y. 패널이 누른 자리 옆에 뜬다 — 레일 맨 아래
+   * 버튼을 눌렀는데 패널이 맨 위에 뜨면 손이 화면을 세로로 가로지른다.
+   */
+  dockTop: number | null;
   /** Search across everything openable (K). */
   isLauncherOpen: boolean;
   /** The keyboard cheatsheet. */
@@ -150,7 +164,7 @@ interface UiState {
   setDropTarget: (target: { columnId: string; index: number } | null) => void;
   setDropSpot: (spot: { x: number; y: number; width: number; height: number } | null) => void;
   setDraggingWidget: (widgetId: string | null) => void;
-  toggleDock: (dock: 'ambience' | 'theme') => void;
+  toggleDock: (dock: 'atmosphere' | 'sound', top?: number) => void;
   closeDock: () => void;
   openQuickAdd: (screen: Point, world: Point) => void;
   closeQuickAdd: () => void;
@@ -191,6 +205,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   firstStepSpace: '',
   firstStepSampleId: null,
   openDock: null,
+  dockTop: null,
   isLauncherOpen: false,
   isShortcutsOpen: false,
   notice: null,
@@ -245,7 +260,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   setDraggingWidget: (draggingWidgetId) => set({ draggingWidgetId }),
   setDropSpot: (dropSpot) => set({ dropSpot }),
 
-  toggleDock: (dock) => set((s) => ({ openDock: s.openDock === dock ? null : dock })),
+  toggleDock: (dock, top) =>
+    set((s) => ({ openDock: s.openDock === dock ? null : dock, dockTop: top ?? null })),
   closeDock: () => set({ openDock: null }),
 
   openQuickAdd: (screen, world) => set({ quickAdd: { screen, world } }),

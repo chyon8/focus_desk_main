@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { getTheme } from './themes';
-import { backgroundTokens, isLightBackground } from '../spaces/backgrounds';
+import { assetUrl, backgroundTokens, isLightBackground } from '../spaces/backgrounds';
+import { photoTone } from '../spaces/photoTone';
 import type { Theme } from './types';
 
 /**
@@ -20,29 +21,74 @@ export function useActiveTheme(): Theme {
   return getTheme(themeId);
 }
 
+/**
+ * 실제로 화면 뒤에 깔린 사진의 주소. 공간이 고른 것이 테마의 것을 덮는다 —
+ * SceneLayer가 배경을 고르는 것과 같은 순서다.
+ */
+function scenePhoto(
+  background: { type: 'COLOR' | 'IMAGE'; value: string } | null | undefined,
+  theme: Theme,
+): string | null {
+  if (background) return background.type === 'IMAGE' ? assetUrl(background.value) : null;
+  return theme.scene.kind === 'image' ? assetUrl(theme.scene.src) : null;
+}
+
+/**
+ * UI가 실제로 놓인 색과 그 밝기.
+ *
+ * 면·극성·그림자가 다 여기서 나온다. Atmosphere 패널도 "이 배경을 밝다고 읽었는지"를
+ * 보여주려고 같은 값을 읽는다 — 두 군데서 따로 계산하면 언젠가 갈린다.
+ */
+export function useGround(theme: Theme): { ground: string; light: boolean; autoLight: boolean } {
+  const background = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
+  const chosenPolarity = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.polarity);
+
+  // 사진의 평균 색. UI가 놓인 색이 곧 이것이라, 면·극성·그림자를 여기서 뽑는다.
+  const photo = scenePhoto(background, theme);
+  const [photoHex, setPhotoHex] = useState<string | null>(null);
+  useEffect(() => {
+    if (!photo) {
+      setPhotoHex(null);
+      return;
+    }
+    let wanted = true;
+    void photoTone(photo).then((hex) => {
+      if (wanted) setPhotoHex(hex);
+    });
+    return () => {
+      wanted = false;
+    };
+  }, [photo]);
+
+  // UI가 실제로 놓인 색. 단색이면 그 색, 사진이면 그 사진의 평균 색이다.
+  // 사진을 아직 못 읽었으면 테마가 적어둔 면 색으로 버틴다.
+  const ground =
+    background?.type === 'COLOR' ? background.value : (photoHex ?? theme.tokens.surface);
+
+  // 배경이 정하는 값. 사진이면 평균 색의 밝기, 단색이면 그 색의 밝기다.
+  const autoLight =
+    photoHex || background?.type === 'COLOR'
+      ? isLightBackground(ground)
+      : theme.mood === 'light';
+
+  // 실제로 쓰는 값. 사용자가 뒤집었으면 그게 이긴다.
+  // 헤일로·그림자 세기·윗변 빛이 여기서 갈린다.
+  const light = chosenPolarity != null ? chosenPolarity === 'light' : autoLight;
+
+  return { ground, light, autoLight };
+}
+
 /** Publishes the theme's tokens as CSS variables so the whole UI can read them. */
 export function useThemeVariables(theme: Theme) {
-  const background = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
+  const { ground, light } = useGround(theme);
 
-  // 공간이 단색 배경을 골랐으면 UI가 그 색 위에 놓이므로 토큰을 거기서 뽑는다.
-  // 사진 배경은 테마가 자기 사진에 맞춰 정해둔 값이 맞으므로 그대로 둔다.
   const tokens = useMemo(
-    () =>
-      background?.type === 'COLOR'
-        ? backgroundTokens(background.value, theme.tokens)
-        : theme.tokens,
-    [background, theme],
+    () => backgroundTokens(ground, theme.tokens, light),
+    [ground, theme, light],
   );
-
-  // 명암 극성. 헤일로·그림자 세기·윗변 빛이 여기서 갈린다.
-  // 단색을 골랐으면 그 색의 밝기가, 아니면 테마가 자기 사진에 맞춰 적어둔 값이 정한다.
-  const light =
-    background?.type === 'COLOR' ? isLightBackground(background.value) : theme.mood === 'light';
 
   // 그림자 색조는 UI가 실제로 놓인 색에서 뽑는다.
-  const tint = shadowTint(
-    background?.type === 'COLOR' ? background.value : theme.tokens.surface,
-  );
+  const tint = shadowTint(ground);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-polarity', light ? 'light' : 'dark');

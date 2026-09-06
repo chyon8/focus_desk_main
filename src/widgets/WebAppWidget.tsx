@@ -87,12 +87,13 @@ export const WebAppWidget: React.FC<{ id: string }> = ({ id }) => {
 };
 
 /**
- * The closed state, built like a browser card: the site's own icon over the
- * site's own colour, with the name and host along the bottom.
+ * The closed state: the site's own logo on the plate, with the name and host
+ * along the bottom.
  *
- * It used to be the preset emoji floating in the middle of an empty grey panel,
- * which read as unfinished — an envelope is not Gmail, and three panels side by
- * side were three identical grey rectangles.
+ * 사이트 색으로 타일 전체를 칠하던 것을 뺐다. 위젯 면은 --surface 한 값으로만
+ * 칠하고 페이지 자리는 --plate 한 값이다(DESIGN.md 1장) — 사이트마다 다른 색을
+ * 칠하면 캔버스에 위젯 대여섯 개가 서로 다른 색 면으로 서고, 배경 사진 위에서
+ * 한 벌로 안 읽힌다. 무엇인지는 진짜 로고와 이름이 말한다.
  */
 const WebAppTile: React.FC<{
   data: WebAppData;
@@ -102,7 +103,6 @@ const WebAppTile: React.FC<{
 }> = ({ data, onOpen, onEdit, onIcon }) => {
   const address = data.url || data.homeUrl;
   const host = hostOf(address);
-  const tint = data.faviconColor;
 
   // The site's icon, asked for once per host and cached in the main process, so
   // a tile is wearing the real logo a second after it lands. The emoji shows
@@ -135,14 +135,7 @@ const WebAppTile: React.FC<{
       onClick={onOpen}
       title={`Open ${data.name} here`}
       className="t-ink group/tile relative h-full w-full flex flex-col overflow-hidden text-left"
-      style={
-        tint
-          ? {
-              background: `linear-gradient(160deg, rgba(${tint}, 0.30), rgba(${tint}, 0.10))`,
-              boxShadow: `inset 0 0 0 1px rgba(${tint}, 0.35)`,
-            }
-          : undefined
-      }
+      style={{ background: 'var(--plate)' }}
     >
       <div className="flex flex-1 min-h-0 items-center justify-center p-3">
         {data.favicon ? (
@@ -151,7 +144,6 @@ const WebAppTile: React.FC<{
             alt=""
             draggable={false}
             className="w-16 h-16 rounded-control object-contain"
-            style={tint ? { filter: `drop-shadow(0 6px 14px rgba(${tint}, 0.55))` } : undefined}
           />
         ) : (
           <WebAppMark icon={data.icon} name={data.name} size={56} />

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFocusStore } from '../stores/focusStore';
 import { flushSaves, useSpaceStore } from '../stores/spaceStore';
-import { AmbienceDock } from '../ambience/AmbienceDock';
+import { AmbienceEngineHost, SoundPanel } from '../ambience/AmbienceDock';
 import { FocusInsights } from '../focus/FocusInsights';
 import { FocusSessionBar } from '../focus/FocusSessionBar';
 import { useSpaceTimeTracker } from '../focus/useSpaceTimeTracker';
@@ -84,7 +84,8 @@ export const App: React.FC = () => {
       <Canvas />
       <Rail onOpenInsights={() => setShowInsights(true)} />
       <FocusSessionBar />
-      <AmbienceDock />
+      <AmbienceEngineHost />
+      <SoundPanel />
       <ThemePicker />
       <QuickAdd />
       <Launcher />
