@@ -150,7 +150,7 @@ const WebAppTile: React.FC<{
             src={data.favicon}
             alt=""
             draggable={false}
-            className="w-16 h-16 rounded-xl object-contain"
+            className="w-16 h-16 rounded-control object-contain"
             style={tint ? { filter: `drop-shadow(0 6px 14px rgba(${tint}, 0.55))` } : undefined}
           />
         ) : (
@@ -160,8 +160,8 @@ const WebAppTile: React.FC<{
 
       <div className="shrink-0 flex items-center gap-2 px-3 py-2">
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium leading-snug truncate">{data.name}</div>
-          <div className="t-faint text-[10px] truncate">{host}</div>
+          <div className="text-body font-medium leading-snug truncate">{data.name}</div>
+          <div className="t-faint text-micro truncate">{host}</div>
         </div>
         {/* On hover only: changing which app this is belongs with the other
             things a header offers, not in the tile's resting state. */}
@@ -283,7 +283,7 @@ const WebAppPage: React.FC<{
     <div className="h-full w-full flex flex-col">
       <div className="border-hair h-9 shrink-0 flex items-center px-2 gap-1.5 border-b">
         <WebAppMark icon={data.icon} name={data.name} size={16} className="shrink-0" />
-        <span className="t-ink flex-1 min-w-0 text-xs truncate">{data.name}</span>
+        <span className="t-ink flex-1 min-w-0 text-ui truncate">{data.name}</span>
 
         <ToolButton label="Back" disabled={!canGoBack} onClick={() => view.current?.goBack()}>
           <ArrowLeft size={13} />
@@ -302,7 +302,7 @@ const WebAppPage: React.FC<{
             type="button"
             title="Reset zoom (⌘0)"
             onClick={() => update({ zoom: 1 })}
-            className="chrome-button shrink-0 px-1 h-6 rounded-md text-[10px] tabular-nums"
+            className="chrome-button shrink-0 px-1 h-6 rounded-control text-micro tabular-nums"
           >
             {Math.round(zoom * 100)}%
           </button>
@@ -338,7 +338,7 @@ const ToolButton: React.FC<{
     title={label}
     disabled={disabled}
     onClick={onClick}
-    className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-md disabled:opacity-30 disabled:hover:bg-transparent"
+    className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-control disabled:opacity-30 disabled:hover:bg-transparent"
   >
     {children}
   </button>
@@ -412,7 +412,7 @@ const WebAppPicker: React.FC<{
   return (
     <div className="t-ink h-full w-full flex flex-col p-4">
       <div className="flex items-center gap-2 mb-3">
-        <span className="t-soft text-xs font-semibold uppercase tracking-widest">Web app</span>
+        <span className="t-soft text-ui font-semibold uppercase tracking-widest">Web app</span>
         {onClose && (
           <button onClick={onClose} className="t-faint hover:t-ink ml-auto">
             <X size={12} />
@@ -427,7 +427,7 @@ const WebAppPicker: React.FC<{
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your web apps"
           autoFocus
-          className="field flex-1 min-w-0 !bg-transparent outline-none text-sm"
+          className="field flex-1 min-w-0 !bg-transparent outline-none text-body"
         />
       </div>
 
@@ -436,14 +436,14 @@ const WebAppPicker: React.FC<{
           // The row picks, the pencil manages. Editing has to be reachable from
           // here and not only from a tile already standing for it: otherwise a
           // saved web app whose widget was closed can never be renamed or removed.
-          <div key={app.id} className="row group flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
+          <div key={app.id} className="row group flex items-center gap-2.5 px-2 py-1.5 rounded-control">
             <button
               onClick={() => onPick(app)}
               className="!text-[inherit] flex-1 min-w-0 flex items-center gap-2.5 text-left"
             >
               <WebAppMark icon={app.icon} name={app.name} size={20} className="shrink-0" />
-              <span className="flex-1 min-w-0 text-sm truncate">{app.name}</span>
-              <span className="t-faint text-[10px] truncate max-w-[8rem]">{hostOf(app.url)}</span>
+              <span className="flex-1 min-w-0 text-body truncate">{app.name}</span>
+              <span className="t-faint text-micro truncate max-w-[8rem]">{hostOf(app.url)}</span>
             </button>
             <button
               onClick={() => setForm(app)}
@@ -457,7 +457,7 @@ const WebAppPicker: React.FC<{
 
         {presetGroups.map(({ group, items }) => (
           <div key={group}>
-            <div className="t-faint px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest">
+            <div className="t-faint px-2 pt-3 pb-1 text-micro font-bold uppercase tracking-widest">
               {group}
             </div>
             {items.map((preset) => (
@@ -472,10 +472,10 @@ const WebAppPicker: React.FC<{
                       .save({ name: preset.name, url: preset.url, icon: preset.icon })
                   )
                 }
-                className="row !text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left"
+                className="row !text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-control text-left"
               >
                 <WebAppMark icon={preset.icon} name={preset.name} size={20} className="shrink-0" />
-                <span className="flex-1 min-w-0 text-sm truncate">{preset.name}</span>
+                <span className="flex-1 min-w-0 text-body truncate">{preset.name}</span>
               </button>
             ))}
           </div>
@@ -484,7 +484,7 @@ const WebAppPicker: React.FC<{
 
       <button
         onClick={() => setForm({ id: crypto.randomUUID(), name: '', url: '', icon: null })}
-        className="row shrink-0 mt-2 flex items-center justify-center gap-2 py-2 rounded-lg text-xs"
+        className="row shrink-0 mt-2 flex items-center justify-center gap-2 py-2 rounded-control text-ui"
       >
         <Plus size={13} />
         Add a web app

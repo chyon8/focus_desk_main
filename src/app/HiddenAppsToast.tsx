@@ -67,9 +67,9 @@ export const HiddenAppsToast: React.FC = () => {
           exit={{ opacity: 0, y: -10 }}
           /* no-drag: the window's title bar drag strip runs under this, and a
              click meant for one of these buttons must not drag the window. */
-          className="glass-panel no-drag fixed top-7 left-1/2 -translate-x-1/2 z-[95] max-w-[70vw] flex items-center gap-2 pl-4 pr-2 h-9 rounded-full shadow-2xl"
+          className="glass-panel no-drag fixed top-7 left-1/2 -translate-x-1/2 z-[95] max-w-[70vw] flex items-center gap-2 pl-4 pr-2 h-9 rounded-control shadow-2xl"
         >
-          <span className="t-ink shrink-0 text-xs">
+          <span className="t-ink shrink-0 text-ui">
             {apps.length === 1 ? '1 app' : `${apps.length} apps`} hidden so this space stays
             visible
           </span>
@@ -80,7 +80,7 @@ export const HiddenAppsToast: React.FC = () => {
                 key={app.appKey}
                 onClick={() => void window.apps?.unhide(app.appKey)}
                 title={`Bring ${app.name} back`}
-                className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-full"
+                className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-control"
               >
                 {icons[app.appKey] ? (
                   <img
@@ -90,13 +90,13 @@ export const HiddenAppsToast: React.FC = () => {
                     draggable={false}
                   />
                 ) : (
-                  <span className="t-ink text-[9px] uppercase">{app.name[0]}</span>
+                  <span className="t-ink text-micro uppercase">{app.name[0]}</span>
                 )}
               </button>
             ))}
             {rest > 0 && (
               <span
-                className="t-faint shrink-0 px-1 text-[10px]"
+                className="t-faint shrink-0 px-1 text-micro"
                 title={apps.slice(MAX_CHIPS).map((app) => app.name).join(', ')}
               >
                 +{rest}
@@ -104,12 +104,12 @@ export const HiddenAppsToast: React.FC = () => {
             )}
           </div>
 
-          <span className="t-faint shrink-0 text-[11px]">click one, or ⌃⌥D for all</span>
+          <span className="t-faint shrink-0 text-meta">click one, or ⌃⌥D for all</span>
 
           <button
             onClick={() => setDismissedFor(key)}
             title="Dismiss"
-            className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-full"
+            className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-control"
           >
             <X size={11} />
           </button>

@@ -85,14 +85,14 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
         <button
           onClick={() => setIsErasing(false)}
           title="Draw"
-          className={`chrome-button p-1.5 rounded-md ${isErasing ? '' : 'row-on'}`}
+          className={`chrome-button p-1.5 rounded-control ${isErasing ? '' : 'row-on'}`}
         >
           <Pen size={13} />
         </button>
         <button
           onClick={() => setIsErasing(true)}
           title="Erase"
-          className={`chrome-button p-1.5 rounded-md ${isErasing ? 'row-on' : ''}`}
+          className={`chrome-button p-1.5 rounded-control ${isErasing ? 'row-on' : ''}`}
         >
           <Eraser size={13} />
         </button>
@@ -106,7 +106,7 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
               setColor(c);
               setIsErasing(false);
             }}
-            className={`w-4 h-4 rounded-full transition-transform ${
+            className={`w-4 h-4 rounded-mark transition-transform ${
               color === c && !isErasing ? 'scale-110' : ''
             }`}
             style={{
@@ -123,7 +123,7 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
             key={w}
             onClick={() => setWidth(w)}
             title={`${w}px`}
-            className={`chrome-button p-1 rounded ${width === w ? 't-ink' : ''}`}
+            className={`chrome-button p-1 rounded-mark ${width === w ? 't-ink' : ''}`}
           >
             <Minus size={13} strokeWidth={w} />
           </button>
@@ -132,7 +132,7 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
         <button
           onClick={() => update({ strokes: [] })}
           title="Clear"
-          className="t-faint hover:!text-red-400 ml-auto p-1.5 rounded-md transition-colors"
+          className="t-faint hover:!text-red-400 ml-auto p-1.5 rounded-control transition-colors"
         >
           <Trash2 size={13} />
         </button>

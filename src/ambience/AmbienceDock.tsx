@@ -43,7 +43,7 @@ export const AmbienceDock: React.FC = () => {
         <button
           onClick={() => useUiStore.getState().toggleDock('ambience')}
           title="Ambience"
-          className={`p-2.5 rounded-xl border transition-all shadow-lg ${
+          className={`p-2.5 rounded-control border transition-all shadow-lg ${
             isPlaying ? 'chrome-button-on' : 'glass chrome-button'
           }`}
         >
@@ -57,9 +57,9 @@ export const AmbienceDock: React.FC = () => {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="glass-panel absolute right-0 mt-2 w-64 p-4 rounded-2xl shadow-2xl"
+            className="glass-panel absolute right-0 mt-2 w-64 p-4 rounded-surface shadow-2xl"
           >
-            <div className="t-faint text-[10px] font-bold uppercase tracking-widest mb-3">
+            <div className="t-faint text-micro font-bold uppercase tracking-widest mb-3">
               Ambience
             </div>
 
@@ -73,10 +73,10 @@ export const AmbienceDock: React.FC = () => {
                     max={100}
                     value={ambience[key]}
                     onChange={(e) => setAmbience({ ...ambience, [key]: Number(e.target.value) })}
-                    className="ambience-slider flex-1 h-1 rounded-lg appearance-none cursor-pointer"
+                    className="ambience-slider flex-1 h-1 rounded-control appearance-none cursor-pointer"
                     title={label}
                   />
-                  <span className="t-faint w-7 text-right text-[10px] tabular-nums">
+                  <span className="t-faint w-7 text-right text-micro tabular-nums">
                     {ambience[key]}
                   </span>
                 </div>
@@ -86,7 +86,7 @@ export const AmbienceDock: React.FC = () => {
             {isPlaying && (
               <button
                 onClick={() => setAmbience({ ...SILENT_AMBIENCE })}
-                className="row mt-4 w-full py-1.5 rounded-lg text-[10px] font-medium"
+                className="row mt-4 w-full py-1.5 rounded-control text-micro font-medium"
               >
                 Silence
               </button>

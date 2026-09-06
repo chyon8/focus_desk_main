@@ -52,11 +52,11 @@ export const FocusInsights: React.FC<{ onClose: () => void }> = ({ onClose }) =>
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         onClick={(e) => e.stopPropagation()}
-        className="glass-panel w-[520px] max-w-[90vw] max-h-[85vh] overflow-y-auto p-6 rounded-3xl shadow-2xl"
+        className="glass-panel w-[520px] max-w-[90vw] max-h-[85vh] overflow-y-auto p-6 rounded-surface shadow-2xl"
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="t-soft text-sm font-bold uppercase tracking-widest">Focus Insights</h2>
-          <button onClick={onClose} className="chrome-button p-1.5 rounded-lg">
+          <h2 className="t-soft text-body font-bold uppercase tracking-widest">Focus Insights</h2>
+          <button onClick={onClose} className="chrome-button p-1.5 rounded-control">
             <X size={16} />
           </button>
         </div>
@@ -67,17 +67,17 @@ export const FocusInsights: React.FC<{ onClose: () => void }> = ({ onClose }) =>
           <Stat icon={<CheckCircle2 size={14} />} label="Tasks today" value={String(tasksToday)} />
         </div>
 
-        <div className="t-faint text-[10px] font-bold uppercase tracking-widest mb-3">This week</div>
+        <div className="t-faint text-micro font-bold uppercase tracking-widest mb-3">This week</div>
         <div className="flex items-end justify-between gap-2 h-40 mb-8">
           {perDay.map((day) => {
             const isToday = day.date === today;
             return (
               <div key={day.date} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                <span className="t-faint text-[9px] tabular-nums">
+                <span className="t-faint text-micro tabular-nums">
                   {day.seconds > 0 ? formatDuration(day.seconds) : ''}
                 </span>
                 <div
-                  className="w-full rounded-t-md transition-colors"
+                  className="w-full rounded-t-mark transition-colors"
                   style={{
                     height: `${Math.max(2, (day.seconds / peak) * 100)}%`,
                     background: isToday
@@ -85,7 +85,7 @@ export const FocusInsights: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                       : 'color-mix(in srgb, var(--ink) 18%, transparent)',
                   }}
                 />
-                <span className={`text-[10px] ${isToday ? 't-ink' : 't-faint'}`}>
+                <span className={`text-micro ${isToday ? 't-ink' : 't-faint'}`}>
                   {new Date(`${day.date}T00:00:00`).toLocaleDateString([], { weekday: 'short' })}
                 </span>
               </div>
@@ -93,26 +93,26 @@ export const FocusInsights: React.FC<{ onClose: () => void }> = ({ onClose }) =>
           })}
         </div>
 
-        <div className="t-faint text-[10px] font-bold uppercase tracking-widest mb-3">By space</div>
+        <div className="t-faint text-micro font-bold uppercase tracking-widest mb-3">By space</div>
         {bySpace.length === 0 ? (
-          <div className="t-faint text-xs">Nothing recorded yet this week.</div>
+          <div className="t-faint text-ui">Nothing recorded yet this week.</div>
         ) : (
           <div className="space-y-2.5">
             {bySpace.map(({ spaceId, seconds }) => (
               <div key={spaceId}>
                 <div className="flex items-baseline justify-between mb-1">
                   {/* A space deleted mid-week keeps its hours but loses its name. */}
-                  <span className="t-ink text-xs truncate">
+                  <span className="t-ink text-ui truncate">
                     {spaceNames[spaceId]?.name ?? 'Deleted space'}
                   </span>
-                  <span className="t-soft text-[11px] tabular-nums">{formatDuration(seconds)}</span>
+                  <span className="t-soft text-meta tabular-nums">{formatDuration(seconds)}</span>
                 </div>
                 <div
-                  className="h-1.5 rounded-full"
+                  className="h-1.5 rounded-mark"
                   style={{ background: 'color-mix(in srgb, var(--ink) 10%, transparent)' }}
                 >
                   <div
-                    className="h-full rounded-full"
+                    className="h-full rounded-mark"
                     style={{ width: `${(seconds / spaceMax) * 100}%`, background: 'var(--accent)' }}
                   />
                 </div>
@@ -154,8 +154,8 @@ const AppBreakdown: React.FC<{
     <div className="mt-1.5 pl-2.5 space-y-0.5">
       {rows.map((row) => (
         <div key={row.key} className="flex items-baseline justify-between gap-2">
-          <span className="t-faint text-[11px] truncate">{row.label}</span>
-          <span className="t-faint text-[10px] tabular-nums shrink-0">
+          <span className="t-faint text-meta truncate">{row.label}</span>
+          <span className="t-faint text-micro tabular-nums shrink-0">
             {formatDuration(row.seconds)}
           </span>
         </div>
@@ -169,11 +169,11 @@ const Stat: React.FC<{ icon: React.ReactNode; label: string; value: string }> = 
   label,
   value,
 }) => (
-  <div className="glass p-4 rounded-2xl">
+  <div className="glass p-4 rounded-surface">
     <div className="t-accent flex items-center gap-1.5 mb-2">
       {icon}
-      <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{label}</span>
+      <span className="text-micro font-bold uppercase tracking-wider opacity-80">{label}</span>
     </div>
-    <div className="t-ink text-xl font-semibold tabular-nums">{value}</div>
+    <div className="t-ink text-display font-semibold tabular-nums">{value}</div>
   </div>
 );

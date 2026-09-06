@@ -290,7 +290,7 @@ const Confetti: React.FC = () => (
 /** A key as it is drawn on a keyboard, so the letter reads as something to press. */
 const Key: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd
-    className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-md text-[11px] font-semibold"
+    className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-control text-meta font-semibold"
     style={{
       background: "color-mix(in srgb, var(--accent) 22%, transparent)",
       border: "1px solid color-mix(in srgb, var(--accent) 45%, transparent)",
@@ -307,7 +307,7 @@ const Dots: React.FC<{ index: number }> = ({ index }) => (
     {[0, 1, 2].map((i) => (
       <span
         key={i}
-        className="w-1.5 h-1.5 rounded-full"
+        className="w-1.5 h-1.5 rounded-mark"
         style={{
           background:
             i <= index
@@ -470,16 +470,16 @@ export const FirstSteps: React.FC = () => {
                 ? { type: "spring", stiffness: 320, damping: 20 }
                 : { duration: 0.22 }
             }
-            className={`glass-panel rounded-2xl shadow-2xl ${
+            className={`glass-panel rounded-surface shadow-2xl ${
               step === "done" ? "px-6 py-6" : "px-4 py-3"
             }`}
           >
             {step === "add" && (
               <>
-                <p className="t-ink text-[13px] font-medium mb-1">
+                <p className="t-ink text-body font-medium mb-1">
                   Three moves, then the desk is yours.
                 </p>
-                <p className="t-soft text-xs leading-relaxed">
+                <p className="t-soft text-ui leading-relaxed">
                   Double-click the ring — that is how anything comes out onto
                   the desk.
                 </p>
@@ -488,8 +488,8 @@ export const FirstSteps: React.FC = () => {
 
             {step === "tidy" && (
               <>
-                <p className="t-ink text-[13px] font-medium mb-1">Two of three.</p>
-                <p className="t-soft text-xs leading-relaxed">
+                <p className="t-ink text-body font-medium mb-1">Two of three.</p>
+                <p className="t-soft text-ui leading-relaxed">
                   Press <Key>G</Key> to tidy the desk up, or click Arrange.
                 </p>
               </>
@@ -497,10 +497,10 @@ export const FirstSteps: React.FC = () => {
 
             {step === "drag" && (
               <>
-                <p className="t-ink text-[13px] font-medium mb-1">
+                <p className="t-ink text-body font-medium mb-1">
                   Last one — take something off this page.
                 </p>
-                <p className="t-soft text-xs leading-relaxed">
+                <p className="t-soft text-ui leading-relaxed">
                   Right-click the picture — or select some of the text and
                   right-click that. Either one becomes a widget on the desk.
                 </p>
@@ -514,7 +514,7 @@ export const FirstSteps: React.FC = () => {
               <div className="relative text-center px-2 pt-1 pb-2">
                 <Confetti />
                 <motion.span
-                  className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3.5"
+                  className="inline-flex items-center justify-center w-14 h-14 rounded-surface mb-3.5"
                   style={{
                     background:
                       "color-mix(in srgb, var(--accent) 22%, transparent)",
@@ -527,24 +527,24 @@ export const FirstSteps: React.FC = () => {
                 >
                   <Check size={28} className="t-accent" strokeWidth={2.5} />
                 </motion.span>
-                <p className="t-ink text-[22px] font-semibold leading-tight tracking-[-0.02em] mb-1.5">
+                <p className="t-ink text-display font-semibold leading-tight tracking-[-0.02em] mb-1.5">
                   That’s everything.
                 </p>
-                <p className="t-ink text-[15px] font-medium mb-1">
+                <p className="t-ink text-title font-medium mb-1">
                   “{spaceName}” is yours.
                 </p>
-                <p className="t-soft text-xs leading-relaxed">
+                <p className="t-soft text-ui leading-relaxed">
                   Make yourself at home. <Key>K</Key> finds anything.
                 </p>
                 <button
                   onClick={() => useUiStore.getState().endFirstSteps()}
-                  className="pointer-events-auto mt-4 px-5 h-9 rounded-lg text-[13px] font-semibold"
+                  className="pointer-events-auto mt-4 px-5 h-9 rounded-control text-body font-semibold"
                   /* Filled rather than tinted: it is the one button on the one
                      card that is a handover. The ink is fixed dark because every
                      room theme's accent is a light one (#ffb27a · #7fc8d8 ·
                      #a8b8e8 · #b07d4a), and there is no token for text on top
                      of the accent. */
-                  style={{ background: "var(--accent)", color: "#17151b" }}
+                  style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
                 >
                   Start
                 </button>
@@ -556,7 +556,7 @@ export const FirstSteps: React.FC = () => {
                 <Dots index={step === "add" ? 0 : step === "tidy" ? 1 : 2} />
                 <button
                   onClick={() => useUiStore.getState().endFirstSteps()}
-                  className="t-faint hover:t-ink pointer-events-auto flex items-center gap-1 text-[11px] px-2 h-6 rounded-md"
+                  className="t-faint hover:t-ink pointer-events-auto flex items-center gap-1 text-meta px-2 h-6 rounded-control"
                 >
                   <X size={11} />
                   Skip the tour

@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 
-export const SIDEBAR_WIDTH = 256;
+/** The rail floats clear of the window on all four sides. */
+export const RAIL_INSET = 14;
+/** What the rail takes out of the canvas: its inset, its width, and a gap. */
+export const RAIL_WIDTH = RAIL_INSET + 60 + RAIL_INSET;
 // Titlebar drag strip plus the row of floating buttons under it.
 const TOP_CHROME_HEIGHT = 84;
 
@@ -294,12 +297,12 @@ export const useUiStore = create<UiState>((set, get) => ({
 }));
 
 /**
- * The part of the window the canvas owns, in window coordinates. Chrome (sidebar,
- * top strip) sits outside it, so arranging and fitting never park a widget
- * underneath it — the top strip in particular used to clip the first row.
+ * The part of the window the canvas owns, in window coordinates. Chrome (the
+ * rail, the top strip) sits outside it, so arranging and fitting never park a
+ * widget underneath it — the top strip in particular used to clip the first row.
  */
 export function canvasArea(): Rect {
-  const left = useUiStore.getState().isSidebarOpen ? SIDEBAR_WIDTH : 0;
+  const left = useUiStore.getState().isSidebarOpen ? RAIL_WIDTH : 0;
   return {
     x: left,
     y: TOP_CHROME_HEIGHT,

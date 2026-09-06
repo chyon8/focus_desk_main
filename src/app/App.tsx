@@ -20,10 +20,10 @@ import { Launcher } from './Launcher';
 import { QuickAdd } from './QuickAdd';
 import { ShortcutSheet } from './ShortcutSheet';
 import { ThemePicker } from './ThemePicker';
-import { Sidebar } from './Sidebar';
+import { Rail } from './Rail';
 import { HiddenAppsToast } from './HiddenAppsToast';
 import { NoticeToast } from './NoticeToast';
-import { SelectionBar } from './SelectionBar';
+import { Dock } from './Dock';
 import { UndoToast } from './UndoToast';
 
 export const App: React.FC = () => {
@@ -82,14 +82,14 @@ export const App: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 h-6 z-0 titlebar-drag-region" />
       <SceneLayer theme={theme} />
       <Canvas />
-      <Sidebar onOpenInsights={() => setShowInsights(true)} />
+      <Rail onOpenInsights={() => setShowInsights(true)} />
       <FocusSessionBar />
       <AmbienceDock />
       <ThemePicker />
       <QuickAdd />
       <Launcher />
       <ShortcutSheet />
-      <SelectionBar />
+      <Dock />
       <UndoToast />
       <NoticeToast />
       <HiddenAppsToast />

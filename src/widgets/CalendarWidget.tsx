@@ -25,22 +25,22 @@ export const CalendarWidget: React.FC = () => {
   return (
     <div className="t-ink h-full w-full flex flex-col p-5">
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => shiftMonth(-1)} className="chrome-button p-1 rounded-md">
+        <button onClick={() => shiftMonth(-1)} className="chrome-button p-1 rounded-control">
           <ChevronLeft size={16} />
         </button>
 
-        <span className="text-sm font-semibold">
+        <span className="text-body font-semibold">
           {viewMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}
         </span>
 
-        <button onClick={() => shiftMonth(1)} className="chrome-button p-1 rounded-md">
+        <button onClick={() => shiftMonth(1)} className="chrome-button p-1 rounded-control">
           <ChevronRight size={16} />
         </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEKDAYS.map((day, i) => (
-          <div key={i} className="t-faint text-center text-[10px] font-bold">
+          <div key={i} className="t-faint text-center text-micro font-bold">
             {day}
           </div>
         ))}
@@ -58,12 +58,12 @@ export const CalendarWidget: React.FC = () => {
             <div key={i} className="flex items-center justify-center">
               {day !== null && (
                 <span
-                  className={`w-7 h-7 flex items-center justify-center rounded-full text-xs tabular-nums transition-colors ${
+                  className={`w-7 h-7 flex items-center justify-center rounded-control text-ui tabular-nums transition-colors ${
                     isToday ? 'font-semibold' : 't-soft'
                   }`}
                   style={
                     isToday
-                      ? { background: 'var(--accent)', color: 'var(--surface)' }
+                      ? { background: 'var(--accent)', color: 'var(--accent-ink)' }
                       : undefined
                   }
                 >

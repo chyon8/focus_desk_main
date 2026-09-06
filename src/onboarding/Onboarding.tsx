@@ -334,14 +334,14 @@ const Title: React.FC<{ children: React.ReactNode; sub?: React.ReactNode }> = ({
 }) => (
   <div className="mb-7">
     <h1
-      className="text-[36px] font-semibold leading-[1.08] tracking-[-0.03em]"
+      className="text-display font-semibold leading-[1.08] tracking-[-0.03em]"
       style={{ color: '#fff' }}
     >
       {children}
     </h1>
     {sub && (
       <p
-        className="mt-2.5 text-[13.5px] leading-relaxed"
+        className="mt-2.5 text-body leading-relaxed"
         style={{ color: 'rgba(255,255,255,0.72)' }}
       >
         {sub}
@@ -361,7 +361,7 @@ const Go: React.FC<{ onClick: () => void; disabled?: boolean; children: React.Re
     disabled={disabled}
     whileHover={disabled ? undefined : { y: -2 }}
     whileTap={disabled ? undefined : { scale: 0.99 }}
-    className="px-6 py-2.5 rounded-full text-[13px] font-semibold"
+    className="px-6 py-2.5 rounded-control text-body font-semibold"
     style={
       disabled
         ? { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }
@@ -379,7 +379,7 @@ const Quiet: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
 }) => (
   <button
     onClick={onClick}
-    className="text-[12.5px] transition-colors"
+    className="text-ui transition-colors"
     style={{ color: 'rgba(255,255,255,0.4)' }}
     onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.82)')}
     onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
@@ -496,7 +496,7 @@ const RoomCard: React.FC<{
       }
       whileHover={leaving || picked ? undefined : { y: -6 }}
       whileTap={{ scale: 0.985 }}
-      className={`group relative overflow-hidden rounded-[18px] text-left ${
+      className={`group relative overflow-hidden rounded-surface text-left ${
         wide ? 'col-span-2 aspect-[8/3]' : 'aspect-[4/3]'
       }`}
       style={{
@@ -514,7 +514,7 @@ const RoomCard: React.FC<{
         }}
       />
       <span
-        className="absolute bottom-3 left-3.5 text-[13px] font-medium"
+        className="absolute bottom-3 left-3.5 text-body font-medium"
         style={{ color: light ? '#1a1720' : '#fff' }}
       >
         {room.name}
@@ -547,7 +547,7 @@ const Tile: React.FC<{ preset: Pickable; on: boolean; onClick: () => void }> = (
     whileTap={{ scale: 0.95 }}
     transition={{ duration: 0.12 }}
     title={preset.url}
-    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left"
+    className="flex items-center gap-2.5 px-3 py-2.5 rounded-control text-left"
     style={
       on
         ? { background: '#fff' }
@@ -555,7 +555,7 @@ const Tile: React.FC<{ preset: Pickable; on: boolean; onClick: () => void }> = (
     }
   >
     <span
-      className="w-6 h-6 shrink-0 rounded-lg flex items-center justify-center text-[9.5px] font-semibold uppercase tracking-tight"
+      className="w-6 h-6 shrink-0 rounded-control flex items-center justify-center text-micro font-semibold uppercase tracking-tight"
       style={
         on
           ? { background: 'rgba(20,18,26,0.12)', color: '#14121a' }
@@ -565,7 +565,7 @@ const Tile: React.FC<{ preset: Pickable; on: boolean; onClick: () => void }> = (
       {mark(preset.name)}
     </span>
     <span
-      className="text-[12px] truncate"
+      className="text-ui truncate"
       style={{ color: on ? '#14121a' : 'rgba(255,255,255,0.82)' }}
     >
       {preset.name}
@@ -963,7 +963,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                       onClick={() => takeWork(w)}
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.97 }}
-                      className="px-5 py-2.5 rounded-full text-[13px]"
+                      className="px-5 py-2.5 rounded-control text-body"
                       style={{
                         background: 'rgba(255,255,255,0.07)',
                         border: '1px solid rgba(255,255,255,0.14)',
@@ -991,18 +991,18 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     disabled={reading}
                     whileHover={{ y: -3 }}
                     whileTap={{ scale: 0.985 }}
-                    className="flex flex-col items-start gap-3 p-5 rounded-2xl text-left disabled:opacity-60"
+                    className="flex flex-col items-start gap-3 p-5 rounded-surface text-left disabled:opacity-60"
                     style={{
                       background: 'rgba(255,255,255,0.07)',
                       border: '1px solid rgba(255,255,255,0.14)',
                     }}
                   >
                     <Chrome size={22} style={{ color: '#fff' }} />
-                    <span className="text-[13.5px] font-medium" style={{ color: '#fff' }}>
+                    <span className="text-body font-medium" style={{ color: '#fff' }}>
                       {reading ? 'Reading Chrome…' : 'Bring in my Chrome tabs'}
                     </span>
                     <span
-                      className="text-[11.5px] leading-snug"
+                      className="text-meta leading-snug"
                       style={{ color: 'rgba(255,255,255,0.5)' }}
                     >
                       Each window becomes a space of its own.
@@ -1013,18 +1013,18 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     onClick={() => setStep('tools')}
                     whileHover={{ y: -3 }}
                     whileTap={{ scale: 0.985 }}
-                    className="flex flex-col items-start gap-3 p-5 rounded-2xl text-left"
+                    className="flex flex-col items-start gap-3 p-5 rounded-surface text-left"
                     style={{
                       background: 'rgba(255,255,255,0.07)',
                       border: '1px solid rgba(255,255,255,0.14)',
                     }}
                   >
                     <LayoutGrid size={22} style={{ color: '#fff' }} />
-                    <span className="text-[13.5px] font-medium" style={{ color: '#fff' }}>
+                    <span className="text-body font-medium" style={{ color: '#fff' }}>
                       Pick the tools I use
                     </span>
                     <span
-                      className="text-[11.5px] leading-snug"
+                      className="text-meta leading-snug"
                       style={{ color: 'rgba(255,255,255,0.5)' }}
                     >
                       Tap a few and they stand in this room.
@@ -1054,7 +1054,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     return (
                       <div
                         key={choice.id}
-                        className={`flex flex-col gap-1.5 p-3.5 rounded-2xl transition-opacity ${
+                        className={`flex flex-col gap-1.5 p-3.5 rounded-surface transition-opacity ${
                           on ? '' : 'opacity-40'
                         }`}
                         style={{
@@ -1071,7 +1071,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                                 return next;
                               })
                             }
-                            className="w-[18px] h-[18px] shrink-0 rounded-md border flex items-center justify-center"
+                            className="w-[18px] h-[18px] shrink-0 rounded-control border flex items-center justify-center"
                             style={
                               on
                                 ? { background: '#fff', borderColor: '#fff', color: '#14121a' }
@@ -1086,18 +1086,18 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                               setNames((was) => ({ ...was, [choice.id]: e.target.value }))
                             }
                             disabled={!on}
-                            className="flex-1 min-w-0 bg-transparent text-[13px] font-medium outline-none"
+                            className="flex-1 min-w-0 bg-transparent text-body font-medium outline-none"
                             style={{ color: '#fff' }}
                           />
                           <span
-                            className="shrink-0 text-[11px] tabular-nums"
+                            className="shrink-0 text-meta tabular-nums"
                             style={{ color: 'rgba(255,255,255,0.45)' }}
                           >
                             {choice.tabs.length} tabs
                           </span>
                         </div>
                         <div
-                          className="pl-[30px] text-[11px] truncate"
+                          className="pl-[30px] text-meta truncate"
                           style={{ color: 'rgba(255,255,255,0.4)' }}
                         >
                           {choice.tabs
@@ -1140,7 +1140,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     .map(([group, presets]) => (
                       <div key={group} className="mb-4">
                         <div
-                          className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2"
+                          className="text-micro font-semibold uppercase tracking-[0.18em] mb-2"
                           style={{ color: 'rgba(255,255,255,0.35)' }}
                         >
                           {group}
@@ -1177,7 +1177,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     setPicked((was) => [...was, url]);
                     setOwnUrl('');
                   }}
-                  className="flex items-center gap-2 mt-2 px-3.5 py-2 rounded-xl max-w-[34rem]"
+                  className="flex items-center gap-2 mt-2 px-3.5 py-2 rounded-control max-w-[34rem]"
                   style={{
                     background: 'rgba(255,255,255,0.05)',
                     border: '1px solid rgba(255,255,255,0.1)',
@@ -1188,7 +1188,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     value={ownUrl}
                     onChange={(e) => setOwnUrl(e.target.value)}
                     placeholder="Something else you use — paste its address"
-                    className="flex-1 min-w-0 bg-transparent text-[12px] outline-none placeholder:opacity-40"
+                    className="flex-1 min-w-0 bg-transparent text-ui outline-none placeholder:opacity-40"
                     style={{ color: '#fff' }}
                   />
                 </form>
@@ -1212,7 +1212,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     e.preventDefault();
                     finish();
                   }}
-                  className="flex items-center gap-2 p-2 pl-5 rounded-2xl max-w-[30rem]"
+                  className="flex items-center gap-2 p-2 pl-5 rounded-surface max-w-[30rem]"
                   style={{
                     background: 'rgba(255,255,255,0.08)',
                     border: '1px solid rgba(255,255,255,0.16)',
@@ -1223,12 +1223,12 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                     placeholder={(work ?? ANY_WORK).example}
-                    className="flex-1 min-w-0 bg-transparent text-[16px] outline-none placeholder:opacity-35"
+                    className="flex-1 min-w-0 bg-transparent text-title outline-none placeholder:opacity-35"
                     style={{ color: '#fff' }}
                   />
                   <button
                     type="submit"
-                    className="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl"
+                    className="shrink-0 w-10 h-10 flex items-center justify-center rounded-control"
                     style={{ background: '#fff', color: '#14121a' }}
                   >
                     <ArrowRight size={15} />
@@ -1239,7 +1239,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                   <Quiet onClick={finish}>Skip</Quiet>
                   {/* What this app is for happens on the second opening, not this
                       one. Saying so is part of making it happen. */}
-                  <span className="text-[12.5px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  <span className="text-ui" style={{ color: 'rgba(255,255,255,0.35)' }}>
                     Tomorrow you’ll open this exactly as you left it.
                   </span>
                 </div>

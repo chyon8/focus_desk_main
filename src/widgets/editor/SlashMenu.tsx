@@ -146,7 +146,7 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>((props, ref
   if (props.items.length === 0) return null;
 
   return (
-    <div className="glass-panel w-56 max-h-[19rem] overflow-y-auto rounded-2xl shadow-2xl p-1.5">
+    <div className="glass-panel w-56 max-h-[19rem] overflow-y-auto rounded-surface shadow-2xl p-1.5">
       {props.items.map((item, index) => {
         const isActive = index === active;
         // A heading wherever the group changes — the list is already sorted.
@@ -154,7 +154,7 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>((props, ref
         return (
           <React.Fragment key={item.label}>
             {heading && (
-              <div className="t-faint px-2 pt-2 pb-1 text-[9px] font-bold uppercase tracking-[0.12em]">
+              <div className="t-faint px-2 pt-2 pb-1 text-micro font-bold uppercase tracking-[0.12em]">
                 {heading}
               </div>
             )}
@@ -166,7 +166,7 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>((props, ref
               <span className="slash-mark">
                 <item.icon size={13} />
               </span>
-              <span className="flex-1 min-w-0 truncate text-xs">{item.label}</span>
+              <span className="flex-1 min-w-0 truncate text-ui">{item.label}</span>
               {isActive && <CornerDownLeft size={11} className="t-faint shrink-0" />}
             </button>
           </React.Fragment>

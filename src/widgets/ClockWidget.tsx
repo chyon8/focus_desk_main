@@ -78,7 +78,7 @@ export const ClockWidget: React.FC = () => {
         </div>
       </div>
 
-      <div className="t-soft mt-8 text-xs font-medium tracking-widest uppercase">
+      <div className="t-soft mt-8 text-ui font-medium tracking-widest uppercase">
         {time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
       </div>
     </div>

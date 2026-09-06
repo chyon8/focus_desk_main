@@ -84,26 +84,26 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.12 }}
-        className="glass-panel fixed bottom-24 left-4 z-[99] w-[21rem] max-h-[60vh] flex flex-col p-4 rounded-2xl shadow-2xl"
+        className="glass-panel fixed bottom-24 left-4 z-[99] w-[21rem] max-h-[60vh] flex flex-col p-4 rounded-surface shadow-2xl"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className="t-soft text-[11px] font-semibold uppercase tracking-widest truncate">
+          <span className="t-soft text-meta font-semibold uppercase tracking-widest truncate">
             {spaceName} · sign-ins
           </span>
           <button onClick={onClose} className="t-faint hover:t-ink ml-auto shrink-0">
             <X size={12} />
           </button>
         </div>
-        <p className="t-faint mb-3 text-[11px] leading-snug">
+        <p className="t-faint mb-3 text-meta leading-snug">
           This space keeps its own cookies. The same site can be a different account in another
           space, and signing out here leaves the others alone. Sites stay listed after their widget
           is closed — the cookies belong to the space.
         </p>
 
         {sites === null ? (
-          <div className="t-faint text-xs">Reading…</div>
+          <div className="t-faint text-ui">Reading…</div>
         ) : sites.length === 0 ? (
-          <div className="t-faint text-xs leading-snug">
+          <div className="t-faint text-ui leading-snug">
             Not signed in anywhere yet. Open a site in a browser or web app widget in this space and
             it will be listed here.
           </div>
@@ -114,7 +114,7 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
               return (
                 <div
                   key={site}
-                  className={`row group flex items-center gap-2.5 px-2 py-1.5 rounded-lg ${
+                  className={`row group flex items-center gap-2.5 px-2 py-1.5 rounded-control ${
                     open ? '' : 'opacity-50'
                   }`}
                 >
@@ -122,7 +122,7 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                       hand every site the user is signed in to to whichever icon
                       service — from the panel whose whole point is that these
                       sessions are kept apart. */}
-                  <span className="glass t-soft w-4 h-4 shrink-0 rounded-sm flex items-center justify-center text-[9px] uppercase">
+                  <span className="glass t-soft w-4 h-4 shrink-0 rounded-mark flex items-center justify-center text-micro uppercase">
                     {site[0]}
                   </span>
                   <button
@@ -135,8 +135,8 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                     }
                     className="flex-1 min-w-0 flex items-baseline gap-2 text-left disabled:cursor-default"
                   >
-                    <span className="t-ink text-xs truncate">{site}</span>
-                    <span className="t-faint shrink-0 text-[10px]">
+                    <span className="t-ink text-ui truncate">{site}</span>
+                    <span className="t-faint shrink-0 text-micro">
                       {open ? (open > 1 ? `${open} widgets` : '1 widget') : 'no open widget'}
                     </span>
                   </button>
@@ -155,21 +155,21 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
         )}
 
         {confirmingAll ? (
-          <div className="glass border-hair shrink-0 mt-3 p-2.5 rounded-xl border">
-            <p className="t-ink text-[11px] leading-snug mb-2">
+          <div className="glass border-hair shrink-0 mt-3 p-2.5 rounded-control border">
+            <p className="t-ink text-meta leading-snug mb-2">
               Sign “{spaceName}” out of every site? Its cookies, storage and caches are deleted.
               Other spaces keep theirs.
             </p>
             <div className="flex gap-1.5">
               <button
                 onClick={() => setConfirmingAll(false)}
-                className="row flex-1 py-1 rounded-md text-[11px]"
+                className="row flex-1 py-1 rounded-control text-meta"
               >
                 Cancel
               </button>
               <button
                 onClick={() => void signOutAll()}
-                className="chrome-button flex-1 py-1 rounded-md text-[11px] font-medium hover:!text-red-300"
+                className="chrome-button flex-1 py-1 rounded-control text-meta font-medium hover:!text-red-300"
               >
                 Sign out
               </button>
@@ -179,7 +179,7 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
           <button
             onClick={() => setConfirmingAll(true)}
             disabled={!sites || sites.length === 0}
-            className="row shrink-0 mt-3 flex items-center justify-center gap-2 py-1.5 rounded-lg text-[11px] disabled:opacity-40"
+            className="row shrink-0 mt-3 flex items-center justify-center gap-2 py-1.5 rounded-control text-meta disabled:opacity-40"
           >
             <LogOut size={11} />
             Sign out of everything here

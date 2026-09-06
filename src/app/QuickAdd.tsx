@@ -61,9 +61,9 @@ export const QuickAdd: React.FC = () => {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.12 }}
         style={{ left, top, width: PANEL_WIDTH }}
-        className="glass-panel fixed z-[96] p-2 rounded-2xl shadow-2xl"
+        className="glass-panel fixed z-[96] p-2 rounded-surface shadow-2xl"
       >
-        <div className="t-faint px-2 pt-1 pb-2 text-[10px] font-bold uppercase tracking-widest">
+        <div className="t-faint px-2 pt-1 pb-2 text-micro font-bold uppercase tracking-widest">
           Add widget
         </div>
         <div className="grid grid-cols-4 gap-1">
@@ -72,10 +72,10 @@ export const QuickAdd: React.FC = () => {
               key={item.label}
               onClick={() => add(item)}
               title={item.label}
-              className="row flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg active:scale-95"
+              className="row flex flex-col items-center justify-center gap-1 py-2.5 rounded-control active:scale-95"
             >
               <item.icon size={18} />
-              <span className="text-[9px] leading-none tracking-wide">{item.label}</span>
+              <span className="text-micro leading-none tracking-wide">{item.label}</span>
             </button>
           ))}
         </div>

@@ -118,7 +118,7 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
         ref={frame}
         onPointerDown={onPointerDown}
         onDoubleClick={() => update({ zoom: 1, panX: 0, panY: 0 })}
-        className="flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-sm transition-all"
+        className="flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-mark transition-all"
         style={{
           background: 'color-mix(in srgb, var(--ink) 8%, transparent)',
           boxShadow: isDropTarget ? '0 0 0 2px var(--accent)' : undefined,
@@ -147,7 +147,7 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
             className="t-faint hover:opacity-70 flex flex-col items-center gap-2 transition-opacity"
           >
             <ImagePlus size={28} />
-            <span className="text-xs">Drop or choose a photo</span>
+            <span className="text-ui">Drop or choose a photo</span>
           </button>
         )}
       </div>
@@ -157,7 +157,7 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
         value={data.caption}
         onChange={(e) => update({ caption: e.target.value })}
         placeholder={zoom > 1 ? 'Double-click the photo to reset the zoom' : 'Write a caption'}
-        className="field mt-3 mb-1 shrink-0 !bg-transparent text-center text-sm outline-none"
+        className="field mt-3 mb-1 shrink-0 !bg-transparent text-center text-body outline-none"
       />
 
       <input

@@ -53,7 +53,7 @@ const HeaderButton: React.FC<{
     title={label}
     onPointerDown={(e) => e.stopPropagation()}
     onClick={onClick}
-    className={`chrome-button w-7 h-7 flex items-center justify-center rounded-md ${
+    className={`chrome-button w-7 h-7 flex items-center justify-center rounded-control ${
       danger ? 'hover:!text-red-300' : ''
     }`}
   >
@@ -226,7 +226,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
     <div
       /* no-drag: a widget sitting under the window's top drag strip must move
          itself when its header is dragged, not the whole window (App.tsx). */
-      className={`widget-glass no-drag absolute rounded-2xl overflow-hidden ${
+      className={`widget-glass no-drag absolute rounded-surface overflow-hidden ${
         isMarked ? 'widget-marked' : ''
       } ${isAltHeld ? 'alt-pick' : ''} ${isSelected ? 'widget-selected' : ''} ${
         isDropTarget ? 'widget-drop-target' : ''
@@ -246,7 +246,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
           transformOrigin: 'top left',
           // A panel floating over the canvas has to read as lifted off it, or it
           // is just another widget that happens to be in front.
-          boxShadow: isFull ? undefined : '0 24px 60px rgba(0, 0, 0, 0.45)',
+          boxShadow: isFull ? undefined : 'var(--shadow-float)',
         }),
       }}
       onPointerDownCapture={(e) => {
@@ -331,19 +331,19 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
                 onPointerDown={(e) => e.stopPropagation()}
                 placeholder="Untitled"
                 spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-xs tracking-wide outline-none placeholder:opacity-40"
+                className="min-w-0 flex-1 bg-transparent text-ui tracking-wide outline-none placeholder:opacity-40"
                 style={{ color: 'var(--ink)' }}
               />
             ) : (
               <span
                 title="Double-click to rename"
-                className="min-w-0 flex-1 truncate text-xs tracking-wide"
+                className="min-w-0 flex-1 truncate text-ui tracking-wide"
                 style={{ color: columnTitle ? 'var(--ink)' : 'var(--ink-soft)' }}
               >
                 {columnTitle || 'Untitled'}
               </span>
             )}
-            <span className="t-faint shrink-0 text-[10px]">
+            <span className="t-faint shrink-0 text-micro">
               {(widget.data as unknown as ColumnData).children.length}
             </span>
           </>
@@ -352,7 +352,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
             src={page?.favicon || app?.favicon}
             alt=""
             draggable={false}
-            className="shrink-0 w-3.5 h-3.5 rounded-sm object-contain"
+            className="shrink-0 w-3.5 h-3.5 rounded-mark object-contain"
           />
         ) : (
           <entry.icon size={14} className="shrink-0" style={{ color: 'var(--ink-soft)' }} />
@@ -361,7 +361,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
             one stays reachable as a tooltip. */}
         {widget.type !== 'column' && (
           <span
-            className="text-xs tracking-wide truncate min-w-0"
+            className="text-ui tracking-wide truncate min-w-0"
             title={label}
             style={{ color: 'var(--ink)' }}
           >
@@ -390,7 +390,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
             <button
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => useUiStore.getState().clearMaximized()}
-              className="chrome-button mr-1 px-2 h-7 rounded-md text-[11px]"
+              className="chrome-button mr-1 px-2 h-7 rounded-control text-meta"
             >
               Esc to restore
             </button>

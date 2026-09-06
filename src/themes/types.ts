@@ -41,14 +41,9 @@ export interface ThemeTokens {
   ink: string;
   /** Labels and secondary text. */
   inkSoft: string;
-  /** Widget glass fill. */
-  panel: string;
-  /** Opaque version of the same, for windows with no wallpaper behind them. */
+  /** 위젯·패널·독이 깔고 앉는 면. 불투명하다. */
   surface: string;
   panelBorder: string;
-  /** Selection, focus rings, active states. */
-  accent: string;
-  font: 'sans' | 'serif' | 'hand';
 }
 
 export interface Theme {

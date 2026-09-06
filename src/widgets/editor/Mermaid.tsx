@@ -136,7 +136,7 @@ const MermaidView: React.FC<NodeViewProps> = ({ node, updateAttributes, selected
               setIsEditing(false);
             }
           }}
-          className="field w-full min-h-[7rem] p-3 rounded-lg outline-none resize-y font-mono text-xs leading-relaxed"
+          className="field w-full min-h-[7rem] p-3 rounded-control outline-none resize-y font-mono text-ui leading-relaxed"
         />
       ) : (
         <button
@@ -149,7 +149,7 @@ const MermaidView: React.FC<NodeViewProps> = ({ node, updateAttributes, selected
           className="w-full flex justify-center p-2"
         >
           {error ? (
-            <span className="t-faint text-xs">Diagram: {error}</span>
+            <span className="t-faint text-ui">Diagram: {error}</span>
           ) : (
             <span dangerouslySetInnerHTML={{ __html: svg }} />
           )}

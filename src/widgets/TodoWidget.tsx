@@ -44,8 +44,8 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
   return (
     <div className="t-ink h-full w-full flex flex-col p-6">
       <div className="flex gap-2 items-center mb-4">
-        <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--accent)' }} />
-        <span className="t-soft text-xs font-semibold uppercase tracking-widest">
+        <div className="w-2.5 h-2.5 rounded-mark" style={{ background: 'var(--accent)' }} />
+        <span className="t-soft text-ui font-semibold uppercase tracking-widest">
           {remaining} left
         </span>
       </div>
@@ -54,14 +54,14 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
         {data.items.map((item) => (
           <div
             key={item.id}
-            className="row !text-[inherit] group flex items-center gap-3 px-2 py-2 rounded-lg"
+            className="row !text-[inherit] group flex items-center gap-3 px-2 py-2 rounded-control"
           >
             <button
               onClick={() => toggle(item.id)}
-              className="w-5 h-5 shrink-0 rounded-md border flex items-center justify-center transition-all"
+              className="w-5 h-5 shrink-0 rounded-control border flex items-center justify-center transition-all"
               style={
                 item.done
-                  ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--surface)' }
+                  ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--accent-ink)' }
                   : { borderColor: 'var(--panel-border)' }
               }
             >
@@ -79,13 +79,13 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
                   if (e.key === 'Enter') commitEdit();
                   if (e.key === 'Escape') setEditing(null);
                 }}
-                className="field flex-1 min-w-0 !bg-transparent outline-none text-sm leading-snug"
+                className="field flex-1 min-w-0 !bg-transparent outline-none text-body leading-snug"
               />
             ) : (
               <button
                 onClick={() => setEditing({ id: item.id, text: item.text })}
                 title="Click to rewrite"
-                className={`!text-[inherit] flex-1 min-w-0 text-left text-sm leading-snug ${
+                className={`!text-[inherit] flex-1 min-w-0 text-left text-body leading-snug ${
                   item.done ? 't-faint line-through' : ''
                 }`}
               >
@@ -97,7 +97,7 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
               <button
                 onClick={() => useFocusStore.getState().start(item.text)}
                 title="Focus on this task"
-                className="t-faint hover:!text-[var(--accent)] opacity-0 group-hover:opacity-100 p-1 rounded transition-all"
+                className="t-faint hover:!text-[var(--accent)] opacity-0 group-hover:opacity-100 p-1 rounded-mark transition-all"
               >
                 <Play size={13} />
               </button>
@@ -105,7 +105,7 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
 
             <button
               onClick={() => remove(item.id)}
-              className="t-faint hover:!text-red-400 opacity-0 group-hover:opacity-100 p-1 rounded transition-all"
+              className="t-faint hover:!text-red-400 opacity-0 group-hover:opacity-100 p-1 rounded-mark transition-all"
             >
               <X size={14} />
             </button>
@@ -120,7 +120,7 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && add()}
           placeholder="Add a task"
-          className="field flex-1 !bg-transparent outline-none text-sm"
+          className="field flex-1 !bg-transparent outline-none text-body"
         />
       </div>
     </div>

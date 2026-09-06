@@ -1,8 +1,86 @@
 @import "tailwindcss";
 
+/* --- 값 층 (design-ref/DESIGN.md) --------------------------------------
+   색은 테마가 런타임에 심는다(themes/useTheme). 여기 있는 것은 테마와 무관하게
+   고정인 값 — 글꼴, 라디우스, 글자 크기. 스케일 밖의 값은 쓰지 않는다.
+
+   ⚠️ 지금은 Tailwind 기본 스케일(rounded-lg, text-xs …)도 같이 살아 있다.
+   치환이 끝나면 `--radius-*: initial` / `--text-*: initial`로 기본값을 지워
+   스케일 밖을 쓸 수 없게 잠근다.
+
+   `static` — Tailwind는 유틸리티로 안 쓰인 @theme 변수를 지운다. 이 값들은 손으로
+   쓴 CSS에서도 var()로 읽으므로 항상 내보내야 한다. --- */
+@theme static {
+  /* 한글은 Instrument Sans에 없다. 시스템 한글 글꼴로 떨어뜨린다. */
+  --font-ui: 'Instrument Sans Variable', system-ui, -apple-system, 'Apple SD Gothic Neo',
+    'Noto Sans KR', sans-serif;
+  /* 숫자 전용 — 타이머·줌 배율·볼륨. tabular-nums와 같이 쓴다. */
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* 라디우스 3단. 면 / 컨트롤 / 인라인 표식. */
+  --radius-surface: 16px;
+  --radius-control: 8px;
+  --radius-mark: 4px;
+
+  /* 글자 6단. 위계는 크기가 아니라 굵기·색으로 잡으므로 작은 쪽이 촘촘하다. */
+  --text-micro: 10px;   /* 대문자 트래킹 라벨·뱃지·단축키 */
+  --text-meta: 11px;    /* 메타·보조 */
+  --text-ui: 12px;      /* UI 기본 — 버튼·행·입력 */
+  --text-body: 14px;    /* 본문·카드 */
+  --text-title: 17px;   /* 위젯·패널 제목 */
+  --text-display: 34px; /* 타이머·큰 숫자 */
+}
+
+/* 그림자는 순수 검정을 안 쓴다 — 밝은 배경에서 회색 얼룩이 된다. 색조는 테마가
+   자기 배경에서 뽑아 `--shadow-tint`(r, g, b)로 덮어쓴다. 광원은 하나, 위에서 아래. */
+:root {
+  --shadow-tint: 46, 38, 28;
+
+  /* 어두운 배경이 기본. 밝은 쪽은 아래 [data-polarity='light']가 덮어쓴다.
+     어두운 배경에서는 그림자가 잘 안 보이므로 더 진하게 깐다. */
+  --shadow-lift: 0 1px 2px rgba(var(--shadow-tint), 0.36);
+  --shadow-float:
+    0 1px 2px rgba(var(--shadow-tint), 0.36),
+    0 12px 26px -10px rgba(var(--shadow-tint), 0.55),
+    0 34px 70px -30px rgba(var(--shadow-tint), 0.62);
+  /* 면의 윗변에 닿는 빛. 두께 1px. */
+  --lip: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  /* 면 바깥에 두르는 한 겹. 안쪽 테두리(--panel-border)는 잉크색이라 같은 극성
+     배경에서 면을 떼어내고, 이 헤일로는 반대색이라 사진의 얼룩에서 떼어낸다. */
+  --halo: rgba(0, 0, 0, 0.42);
+  /* 면 한 단 안쪽. 면 위에 놓이는 타일이 쓴다. */
+  --surface-2: color-mix(in srgb, var(--ink) 6%, var(--surface));
+
+  /* 액센트는 번트 앰버 하나다. 극성에 따라 두 값뿐이고, 테마가 무엇이든 같다.
+     여기 말고는 화면 어디에도 유채색이 없다 — 기본 버튼 · 활성 공간 표시 ·
+     타이머 진행 막대 · 체크된 체크박스 · 로딩 막대 · 볼륨 캡 · 포커스 링. */
+  --accent: #e9a75f;
+  --accent-hover: #f2b673;
+  /* 액센트를 배경으로 깔았을 때 그 위에 얹는 글자색. */
+  --accent-ink: #231f1a;
+  --accent-soft: rgba(233, 167, 95, 0.15);
+}
+
+/* 극성은 배경이 정한다. themes/useTheme가 data-polarity를 단다. */
+:root[data-polarity='light'] {
+  --shadow-lift: 0 1px 2px rgba(var(--shadow-tint), 0.1);
+  --shadow-float:
+    0 1px 2px rgba(var(--shadow-tint), 0.1),
+    0 10px 22px -8px rgba(var(--shadow-tint), 0.2),
+    0 28px 56px -26px rgba(var(--shadow-tint), 0.3);
+  --lip: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --halo: rgba(255, 255, 255, 0.55);
+  --accent: #a9581b;
+  --accent-hover: #944c15;
+  --accent-ink: #fff7ef;
+  --accent-soft: rgba(169, 88, 27, 0.12);
+}
+
 body {
   margin: 0;
   overflow: hidden;
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* --- Backdrop finishing passes (see themes/SceneLayer) --- */
@@ -69,22 +147,27 @@ body {
    Every surface, text colour and control in the app reads from these, so a theme
    change repaints the whole thing. Raw colours are only for danger states. --- */
 
-/* A floating bar or dock. */
+/* --- 면 -------------------------------------------------------------------
+   글자를 이고 있는 면은 전부 불투명하다. 반투명은 배경 휘도를 그대로 물려받는데,
+   이 앱의 배경은 밝은 사진 / 어두운 사진 / 밝은 단색 / 어두운 단색 네 가지라
+   한 벌로 성립하지 않는다 — 사진의 밝은 얼룩마다 글자 대비가 달라진다.
+   배경과 분리되는 문제는 이중 테두리(안쪽 잉크색 + 바깥 헤일로)와 배경 색조로
+   틴트한 그림자로 푼다. --- */
+
+/* A filled tile sitting inside a surface: a favicon square, a stat box, a card
+   in a list. One step in from the surface under it, and no shadow — it is not
+   floating, it is part of the thing it is drawn on. */
 .glass {
-  background: var(--panel);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
-  backdrop-filter: blur(20px) saturate(1.2);
 }
 
-/* A popover or dialog, where content has to stay readable over a busy backdrop.
-   The same tint is laid down twice, which compounds its alpha without needing a
-   second, hand-maintained token per theme. */
+/* A popover, dialog or dock: it floats over the canvas, so it takes the halo
+   and the three-layer shadow. */
 .glass-panel {
-  background-image:
-    linear-gradient(var(--panel), var(--panel)),
-    linear-gradient(var(--panel), var(--panel));
+  background: var(--surface);
   border: 1px solid var(--panel-border);
-  backdrop-filter: blur(30px) saturate(1.25);
+  box-shadow: 0 0 0 1px var(--halo), var(--shadow-float), var(--lip);
 }
 
 .t-ink {
@@ -197,6 +280,14 @@ body {
   --paper-edge: rgba(255, 255, 255, 0.07);
 }
 
+:root[data-paper='light'] .memo-paper,
+:root[data-paper='light'] .photo-paper {
+  --accent: #a9581b;
+  --accent-hover: #944c15;
+  --accent-ink: #fff7ef;
+  --accent-soft: rgba(169, 88, 27, 0.12);
+}
+
 :root[data-paper='light'] {
   --paper: #fbfaf6;
   --paper-ink: #22212a;
@@ -214,9 +305,7 @@ body {
 /* The clock is a physical face, lifted slightly off the glass behind it. */
 .clock-face {
   background: color-mix(in srgb, var(--ink) 6%, transparent);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.08),
-    0 20px 40px -10px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--lip), 0 20px 40px -10px rgba(var(--shadow-tint), 0.4);
 }
 
 /* A volume slider. All three layers used to have their own hue; they now share
@@ -229,25 +318,9 @@ body {
 /* --- Widget chrome --- */
 
 .widget-glass {
-  background: var(--panel);
+  background: var(--surface);
   border: 1px solid var(--panel-border);
-  /* Saturation lifts the backdrop so the glass looks lit, not just blurred. */
-  backdrop-filter: blur(26px) saturate(1.25);
-  box-shadow:
-    0 28px 64px -16px rgba(0, 0, 0, 0.55),
-    0 2px 10px rgba(0, 0, 0, 0.22),
-    /* The lit top edge is what reads as a real pane of glass. */
-    inset 0 1px 0 rgba(255, 255, 255, 0.09);
-}
-
-/* 단색 배경에는 blur가 흐릴 것이 없다. Chromium은 그래도 blur 반경(26px)만큼 안쪽
-   가장자리를 밝게 칠해서, 위젯 안에 띠 하나를 그린다. 다시 그려질 때마다 나타났다
-   사라지므로 깜빡이는 것으로 보인다. 사진 배경에서는 blur가 실제로 일을 하므로 켜둔다.
-   (useTheme.ts가 data-flat-bg를 단다.) */
-:root[data-flat-bg] .widget-glass,
-:root[data-flat-bg] .glass,
-:root[data-flat-bg] .glass-panel {
-  backdrop-filter: none;
+  box-shadow: 0 0 0 1px var(--halo), var(--shadow-float), var(--lip);
 }
 
 /* A marked widget, painted the way a marked card is: the edge, the surface and
@@ -255,8 +328,8 @@ body {
 
    It has to carry at a glance and from far out — the point of a mark is picking
    one job out of a space holding four of them, often zoomed out. A tint too
-   polite to see is the same as no mark. The tint is laid over the panel colour
-   as an image so the glass underneath still shows the room through it. */
+   polite to see is the same as no mark. The tint is laid over the surface as an
+   image so one rule covers every theme. */
 .widget-marked {
   background-image: linear-gradient(
     color-mix(in srgb, var(--mark) 18%, transparent),
@@ -304,7 +377,7 @@ body {
    by --zoom so it stays the same weight on screen at any zoom. */
 .drop-spot {
   border: calc(2px / var(--zoom, 1)) dashed var(--accent);
-  border-radius: calc(12px / var(--zoom, 1));
+  border-radius: calc(var(--radius-surface) / var(--zoom, 1));
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
@@ -312,7 +385,7 @@ body {
    Drawn where the card would start, so it says a position rather than a target. */
 .drop-line {
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
   background: var(--accent);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
@@ -325,12 +398,11 @@ body {
   box-shadow:
     0 0 0 calc(2px / var(--zoom, 1)) color-mix(in srgb, var(--accent) 80%, transparent),
     /* The accent alone washes out against a wallpaper of its own colour. */
-    0 0 0 calc(4px / var(--zoom, 1)) rgba(0, 0, 0, 0.45),
+    0 0 0 calc(4px / var(--zoom, 1)) rgba(var(--shadow-tint), 0.55),
     0 0 calc(26px / var(--zoom, 1)) calc(2px / var(--zoom, 1))
       color-mix(in srgb, var(--accent) 32%, transparent),
-    0 28px 64px -16px rgba(0, 0, 0, 0.55),
-    0 2px 10px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    var(--shadow-float),
+    var(--lip);
 }
 
 .widget-header {
@@ -363,6 +435,136 @@ body {
       top / 100% 40% no-repeat,
     color-mix(in srgb, var(--mark) 18%, transparent);
   border: 1px solid color-mix(in srgb, var(--mark) 60%, transparent);
+}
+
+/* --- 레일 ---------------------------------------------------------------
+   화면에 늘 떠 있는 유일한 것이라 제품의 첫 번째 축 하나만 나른다 — 어느 공간에
+   있는가. 공간은 자기 배경의 축소판으로 그린다. 이름보다 빠르고, 누른 뒤 화면을
+   채우는 그림과 같은 그림이라 버튼과 결과가 맞는다. --- */
+.rail-space {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--lip);
+  opacity: 0.55;
+  transition: opacity 0.16s, transform 0.08s;
+}
+.rail-space:hover {
+  opacity: 0.85;
+}
+.rail-space:active {
+  transform: translateY(1px);
+}
+.rail-space-on {
+  opacity: 1;
+}
+/* 활성 표시는 링이 아니라 레일 바깥으로 나온 막대다. 38px 타일에 링을 두르면
+   그림을 먹고, 링은 이미 "골라 놓은 위젯"이라는 뜻으로 쓰이고 있다. */
+.rail-space-on::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: var(--radius-mark);
+  background: var(--accent);
+}
+
+.rail-add {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: var(--radius-control);
+  color: var(--ink-soft);
+  transition: color 0.15s, border-color 0.15s;
+}
+.rail-add:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.rail-tool {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-control);
+  color: var(--ink-soft);
+  transition: background-color 0.15s, color 0.15s, transform 0.08s;
+}
+.rail-tool:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.rail-tool:active {
+  transform: translateY(1px);
+}
+.rail-tool-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.rail-sep {
+  width: 24px;
+  height: 1px;
+  flex: none;
+  background: var(--panel-border);
+}
+
+/* 스크롤은 되지만 막대는 안 그린다. 60px 안에서 막대는 타일을 밀어낸다. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* 기본 버튼. 액센트를 깔고 그 위에 --accent-ink를 얹는다. 화면에 한 번에 하나만
+   나온다 — 지금 해야 할 일이 무엇인지 말하는 자리다. */
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  transition: background-color 0.15s, transform 0.08s;
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+/* --- 상태 ---------------------------------------------------------------
+   키보드로 왔을 때만 링이 뜬다. 마우스로 누른 것에는 안 뜬다. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-mark);
+}
+
+/* 누르면 1px 내려간다. 눌렸다는 것을 화면이 알려주는 유일한 신호다. */
+.chrome-button:active,
+.chrome-button-on:active,
+.row:active {
+  transform: translateY(1px);
+}
+
+/* 움직임을 줄여 달라고 한 사람에게는 전부 멈춘다. 배경 글로우가 11초 주기로
+   계속 돌고 있었고 끄는 길이 없었다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Electron frameless window drag region */
@@ -402,7 +604,7 @@ body {
      widget rather than being pasted over it. */
   box-shadow:
     inset 0 1px 0 var(--paper-edge),
-    inset 0 12px 22px -16px rgba(26, 24, 36, 0.45);
+    inset 0 12px 22px -16px rgba(var(--shadow-tint), 0.45);
 }
 
 /* A memo is a document now. Everything here reads its colour from the theme
@@ -410,7 +612,7 @@ body {
 .memo-doc {
   outline: none;
   color: var(--ink);
-  font-size: 0.95rem;
+  font-size: var(--text-body);
   line-height: 1.65;
   /* A measure, so pulling the widget wide gives more page rather than longer
      lines than anyone reads. */
@@ -453,13 +655,13 @@ body {
 }
 .memo-doc code {
   padding: 0.1em 0.3em;
-  border-radius: 4px;
+  border-radius: var(--radius-mark);
   background: color-mix(in srgb, var(--ink) 10%, transparent);
   font-size: 0.9em;
 }
 .memo-doc pre {
   padding: 0.7em 0.85em;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--ink) 8%, transparent);
   overflow-x: auto;
 }
@@ -539,7 +741,7 @@ body {
 }
 .mermaid-selected {
   outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
 }
 
 /* The `/` menu inside a note. It is drawn in the page, over the paper, so it
@@ -550,7 +752,7 @@ body {
   gap: 0.5rem;
   width: 100%;
   padding: 0.3rem 0.4rem;
-  border-radius: 0.6rem;
+  border-radius: var(--radius-control);
   color: var(--ink-soft);
   text-align: left;
   transition: background-color 0.12s, color 0.12s;
@@ -570,7 +772,7 @@ body {
   width: 1.5rem;
   height: 1.5rem;
   flex-shrink: 0;
-  border-radius: 0.45rem;
+  border-radius: var(--radius-mark);
   border: 1px solid var(--panel-border);
   background: color-mix(in srgb, var(--ink) 6%, transparent);
 }

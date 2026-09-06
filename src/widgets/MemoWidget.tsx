@@ -54,7 +54,7 @@ export const MemoWidget: React.FC<{ id: string }> = ({ id }) => {
     <div className="memo-paper h-full w-full flex flex-col">
       <div className="relative flex-1 min-h-0 overflow-y-auto px-6 py-5">
         {state?.isEmpty && (
-          <span className="t-faint pointer-events-none absolute text-base">
+          <span className="t-faint pointer-events-none absolute text-title">
             Write, or press / for a table, a diagram, a list…
           </span>
         )}
@@ -104,7 +104,7 @@ const TableButton: React.FC<{
   <button
     title={label}
     onClick={onClick}
-    className="chrome-button h-6 px-1.5 flex items-center gap-0.5 rounded-md text-[10px]"
+    className="chrome-button h-6 px-1.5 flex items-center gap-0.5 rounded-control text-micro"
   >
     {children}
   </button>

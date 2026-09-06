@@ -50,7 +50,7 @@ const PagePreview: React.FC<{ widget: WidgetDoc; mark: string | null }> = ({ wid
           }}
         >
           {card.icon ? (
-            <img src={card.icon} alt="" className="w-11 h-11 rounded-lg object-contain" />
+            <img src={card.icon} alt="" className="w-11 h-11 rounded-control object-contain" />
           ) : (
             <Icon size={24} style={{ color: 'var(--ink-soft)' }} />
           )}
@@ -62,12 +62,12 @@ const PagePreview: React.FC<{ widget: WidgetDoc; mark: string | null }> = ({ wid
       <div className="min-h-0 flex-1 px-3 py-2 flex flex-col gap-1">
         <div className="flex items-center gap-1.5">
           {card.icon && (
-            <img src={card.icon} alt="" className="shrink-0 w-3.5 h-3.5 rounded object-contain" />
+            <img src={card.icon} alt="" className="shrink-0 w-3.5 h-3.5 rounded-mark object-contain" />
           )}
-          <span className="t-faint truncate text-[10px]">{card.subtitle}</span>
+          <span className="t-faint truncate text-micro">{card.subtitle}</span>
         </div>
-        <div className="t-ink truncate text-[12px] font-semibold leading-tight">{card.title}</div>
-        {card.body && <p className="t-faint text-[10px] leading-snug line-clamp-2">{card.body}</p>}
+        <div className="t-ink truncate text-ui font-semibold leading-tight">{card.title}</div>
+        {card.body && <p className="t-faint text-micro leading-snug line-clamp-2">{card.body}</p>}
       </div>
     </div>
   );
@@ -183,7 +183,7 @@ const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => voi
 
   return (
     <div
-      className={`group card-tile relative w-full shrink-0 overflow-hidden rounded-xl ${
+      className={`group card-tile relative w-full shrink-0 overflow-hidden rounded-control ${
         mark ? 'card-tile-marked' : ''
       } ${isDragging ? 'opacity-40' : ''}`}
       style={{
@@ -210,7 +210,7 @@ const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => voi
           onPointerCancel={onPointerUp}
         >
           <div
-            className="h-[2px] w-6 rounded-full"
+            className="h-[2px] w-6 rounded-mark"
             style={{
               background: mark
                 ? 'rgba(255, 255, 255, 0.55)'
@@ -336,7 +336,7 @@ export const ColumnWidget: React.FC<{ id: string }> = ({ id }) => {
         style={{ gap: COLUMN_GAP, padding: COLUMN_PAD }}
       >
         {children.length === 0 && dropAt === null ? (
-          <div className="t-faint flex flex-1 items-center justify-center text-center text-[11px] leading-relaxed">
+          <div className="t-faint flex flex-1 items-center justify-center text-center text-meta leading-relaxed">
             Drag a widget in
           </div>
         ) : (

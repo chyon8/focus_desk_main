@@ -37,7 +37,7 @@ const WEATHER: { kind: ParticlesChoice['kind']; label: string; icon: LucideIcon 
 const DEFAULT_DENSITY = 0.4;
 
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="t-soft text-[10px] font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
+  <div className="t-soft text-micro font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
 );
 
 export const ThemePicker: React.FC = () => {
@@ -82,7 +82,7 @@ export const ThemePicker: React.FC = () => {
         <button
           onClick={() => useUiStore.getState().toggleDock('theme')}
           title="Theme"
-          className="glass chrome-button p-2.5 rounded-xl shadow-lg"
+          className="glass chrome-button p-2.5 rounded-control shadow-lg"
         >
           <Palette size={18} />
         </button>
@@ -94,7 +94,7 @@ export const ThemePicker: React.FC = () => {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="glass-panel absolute right-0 mt-2 w-72 max-h-[calc(100vh-7rem)] overflow-y-auto p-4 rounded-2xl shadow-2xl"
+            className="glass-panel absolute right-0 mt-2 w-72 max-h-[calc(100vh-7rem)] overflow-y-auto p-4 rounded-surface shadow-2xl"
           >
             {/* One answer for the whole app, unlike everything below it. It sits
                 at the top because it is two switches, and what follows is a long
@@ -102,7 +102,7 @@ export const ThemePicker: React.FC = () => {
             <div className="border-hair mb-5 pb-4 border-b">
               <Label>All spaces</Label>
 
-              <div className="t-faint mb-1.5 text-[10px] font-medium">Paper</div>
+              <div className="t-faint mb-1.5 text-micro font-medium">Paper</div>
               <div className="flex items-center gap-1 mb-2">
                 {(
                   [
@@ -113,7 +113,7 @@ export const ThemePicker: React.FC = () => {
                   <button
                     key={mode}
                     onClick={() => usePrefsStore.getState().setPaper(mode)}
-                    className={`chrome-button flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-[11px] ${
+                    className={`chrome-button flex-1 h-9 flex items-center justify-center gap-1.5 rounded-control text-meta ${
                       paper === mode ? 'chrome-button-on' : ''
                     }`}
                   >
@@ -122,22 +122,22 @@ export const ThemePicker: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <p className="t-faint mb-4 px-0.5 text-[10px] leading-snug">
+              <p className="t-faint mb-4 px-0.5 text-micro leading-snug">
                 Notes, photos and sketches keep their own sheet. Light gives them white paper
                 whatever the room is doing.
               </p>
 
-              <div className="t-faint mb-1.5 text-[10px] font-medium">Web pages</div>
+              <div className="t-faint mb-1.5 text-micro font-medium">Web pages</div>
               <button
                 onClick={() => usePrefsStore.getState().setWebDark(!webDark)}
-                className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-lg text-[11px] ${
+                className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-control text-meta ${
                   webDark ? 'chrome-button-on' : ''
                 }`}
               >
                 <Moon size={13} />
                 Ask sites for their dark theme
               </button>
-              <p className="t-faint px-0.5 text-[10px] leading-snug">
+              <p className="t-faint px-0.5 text-micro leading-snug">
                 Sites with a dark theme of their own will use it. Sites without one look the same
                 either way.
               </p>
@@ -149,12 +149,12 @@ export const ThemePicker: React.FC = () => {
                 <button
                   key={theme.id}
                   onClick={() => setTheme(theme.id)}
-                  className="group rounded-xl overflow-hidden text-left transition-transform hover:scale-[1.03]"
+                  className="group rounded-control overflow-hidden text-left transition-transform hover:scale-[1.03]"
                   style={ring(themeId === theme.id && !override)}
                 >
                   <div className="aspect-[4/3] w-full" style={thumbStyle(theme.scene)} />
                   <div
-                    className="t-ink px-2 py-1.5 text-[11px] font-medium"
+                    className="t-ink px-2 py-1.5 text-meta font-medium"
                     style={{ background: 'color-mix(in srgb, var(--surface) 80%, transparent)' }}
                   >
                     {theme.name}
@@ -176,7 +176,7 @@ export const ThemePicker: React.FC = () => {
                     })
                   }
                   title={label}
-                  className={`chrome-button flex-1 h-9 flex items-center justify-center rounded-lg ${
+                  className={`chrome-button flex-1 h-9 flex items-center justify-center rounded-control ${
                     weather.kind === kind ? 'chrome-button-on' : ''
                   }`}
                 >
@@ -195,9 +195,9 @@ export const ThemePicker: React.FC = () => {
                   setParticles({ kind: weather.kind, density: Number(e.target.value) / 100 })
                 }
                 title="How much of it"
-                className="ambience-slider flex-1 h-1 rounded-lg appearance-none cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                className="ambience-slider flex-1 h-1 rounded-control appearance-none cursor-pointer disabled:opacity-30 disabled:cursor-default"
               />
-              <span className="t-faint w-7 text-right text-[10px] tabular-nums">
+              <span className="t-faint w-7 text-right text-micro tabular-nums">
                 {weather.kind === 'none' ? '—' : Math.round(weather.density * 100)}
               </span>
             </div>
@@ -208,14 +208,14 @@ export const ThemePicker: React.FC = () => {
                 <button
                   key={url}
                   onClick={() => setBackground({ type: 'IMAGE', value: url })}
-                  className="aspect-video rounded-lg bg-cover bg-center transition-transform hover:scale-[1.06]"
+                  className="aspect-video rounded-control bg-cover bg-center transition-transform hover:scale-[1.06]"
                   style={{ backgroundImage: `url(${assetUrl(url)})`, ...ring(override?.value === url) }}
                 />
               ))}
               <button
                 onClick={() => fileInput.current?.click()}
                 title="Use your own image"
-                className="border-hair t-soft aspect-video rounded-lg border border-dashed flex items-center justify-center transition-colors"
+                className="border-hair t-soft aspect-video rounded-control border border-dashed flex items-center justify-center transition-colors"
               >
                 <Upload size={13} />
               </button>
@@ -237,7 +237,7 @@ export const ThemePicker: React.FC = () => {
                 <button
                   key={color}
                   onClick={() => setBackground({ type: 'COLOR', value: color })}
-                  className="aspect-square rounded-lg transition-transform hover:scale-[1.1]"
+                  className="aspect-square rounded-control transition-transform hover:scale-[1.1]"
                   style={{ backgroundColor: color, ...ring(override?.value === color) }}
                 />
               ))}
@@ -251,22 +251,22 @@ export const ThemePicker: React.FC = () => {
                 <button
                   key={t.name}
                   onClick={() => setBackground({ type: 'COLOR', value: t.bg })}
-                  className="border-hair chrome-button flex items-center gap-2.5 p-2 rounded-xl border"
+                  className="border-hair chrome-button flex items-center gap-2.5 p-2 rounded-control border"
                   style={ring(override?.value === t.bg)}
                 >
                   <span
-                    className="border-hair w-8 h-8 shrink-0 rounded-full border"
+                    className="border-hair w-8 h-8 shrink-0 rounded-control border"
                     style={{ backgroundColor: t.bg }}
                   />
                   <span className="flex flex-col items-start gap-1 min-w-0">
-                    <span className="t-ink text-[11px] font-medium leading-tight text-left">
+                    <span className="t-ink text-meta font-medium leading-tight text-left">
                       {t.name}
                     </span>
                     <span className="flex gap-1">
-                      {[t.text, t.accent].map((dot) => (
+                      {[t.text, t.border].map((dot) => (
                         <span
                           key={dot}
-                          className="w-2 h-2 rounded-full"
+                          className="w-2 h-2 rounded-mark"
                           style={{ backgroundColor: dot }}
                         />
                       ))}

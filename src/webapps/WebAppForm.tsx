@@ -36,7 +36,7 @@ export const WebAppForm: React.FC<{
   return (
     <div className="t-ink h-full w-full flex flex-col p-4">
       <div className="flex items-center gap-2 mb-3">
-        <span className="t-soft text-xs font-semibold uppercase tracking-widest">
+        <span className="t-soft text-ui font-semibold uppercase tracking-widest">
           {onDelete ? 'Edit web app' : 'New web app'}
         </span>
         <button onClick={onCancel} className="t-faint hover:t-ink ml-auto">
@@ -46,36 +46,36 @@ export const WebAppForm: React.FC<{
 
       <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-3">
         <label className="block">
-          <span className="t-faint block text-[10px] uppercase tracking-widest mb-1">Address</span>
+          <span className="t-faint block text-micro uppercase tracking-widest mb-1">Address</span>
           <input
             autoFocus
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && save()}
             placeholder="figma.com/files"
-            className="field border-hair w-full !bg-transparent border-b text-sm pb-1 outline-none"
+            className="field border-hair w-full !bg-transparent border-b text-body pb-1 outline-none"
           />
         </label>
 
         <label className="block">
-          <span className="t-faint block text-[10px] uppercase tracking-widest mb-1">Name</span>
+          <span className="t-faint block text-micro uppercase tracking-widest mb-1">Name</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && save()}
             placeholder={address ? hostOf(address) : 'Figma'}
-            className="field border-hair w-full !bg-transparent border-b text-sm pb-1 outline-none"
+            className="field border-hair w-full !bg-transparent border-b text-body pb-1 outline-none"
           />
         </label>
 
         <div>
           <div className="flex items-baseline gap-2 mb-1.5">
-            <span className="t-faint text-[10px] uppercase tracking-widest">Icon</span>
-            {!icon && <span className="t-faint text-[10px]">the site’s own, once it loads</span>}
+            <span className="t-faint text-micro uppercase tracking-widest">Icon</span>
+            {!icon && <span className="t-faint text-micro">the site’s own, once it loads</span>}
             {icon && (
               <button
                 onClick={() => setIcon(null)}
-                className="t-faint hover:t-ink ml-auto text-[10px]"
+                className="t-faint hover:t-ink ml-auto text-micro"
               >
                 Clear
               </button>
@@ -88,7 +88,7 @@ export const WebAppForm: React.FC<{
                 <button
                   key={char}
                   onClick={() => setIcon({ kind: 'emoji', char })}
-                  className={`flex items-center justify-center h-7 rounded-md text-base ${
+                  className={`flex items-center justify-center h-7 rounded-control text-title ${
                     on ? 'chrome-button-on' : 'row'
                   }`}
                 >
@@ -101,20 +101,20 @@ export const WebAppForm: React.FC<{
       </div>
 
       {confirmingDelete ? (
-        <div className="glass border-hair shrink-0 mt-3 p-2.5 rounded-xl border">
-          <p className="t-ink text-[11px] leading-snug mb-2">
+        <div className="glass border-hair shrink-0 mt-3 p-2.5 rounded-control border">
+          <p className="t-ink text-meta leading-snug mb-2">
             Remove “{draft.name}” from your web apps? Widgets already standing for it keep working.
           </p>
           <div className="flex gap-1.5">
             <button
               onClick={() => setConfirmingDelete(false)}
-              className="row flex-1 py-1 rounded-md text-[11px]"
+              className="row flex-1 py-1 rounded-control text-meta"
             >
               Cancel
             </button>
             <button
               onClick={onDelete}
-              className="chrome-button flex-1 py-1 rounded-md text-[11px] font-medium hover:!text-red-300"
+              className="chrome-button flex-1 py-1 rounded-control text-meta font-medium hover:!text-red-300"
             >
               Remove
             </button>
@@ -126,18 +126,18 @@ export const WebAppForm: React.FC<{
             <button
               onClick={() => setConfirmingDelete(true)}
               title="Remove from your web apps"
-              className="row px-2 py-1.5 rounded-lg hover:!text-red-300"
+              className="row px-2 py-1.5 rounded-control hover:!text-red-300"
             >
               <Trash2 size={12} />
             </button>
           )}
-          <button onClick={onCancel} className="row flex-1 py-1.5 rounded-lg text-xs">
+          <button onClick={onCancel} className="row flex-1 py-1.5 rounded-control text-ui">
             Cancel
           </button>
           <button
             onClick={save}
             disabled={!valid}
-            className="chrome-button-on flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
+            className="chrome-button-on flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-control text-ui font-medium disabled:opacity-40"
           >
             <Check size={12} />
             Save

@@ -5,7 +5,7 @@ import { WIDGET_DRAG_TYPE, WidgetDragPayload } from '../app/WidgetPalette';
 import { useSpaceStore } from '../stores/spaceStore';
 import type { ColumnData, WidgetDoc } from '../spaces/types';
 import { peekRect } from './columns';
-import { canvasArea, SIDEBAR_WIDTH, useUiStore } from '../stores/uiStore';
+import { canvasArea, RAIL_WIDTH, useUiStore } from '../stores/uiStore';
 import { screenToWorld } from './camera';
 import { addDroppedContent, addDroppedFiles, SUPPORTED_DROPS } from './fileDrop';
 import { useCameraControls } from './useCameraControls';
@@ -274,7 +274,7 @@ export const Canvas: React.FC = () => {
       data-canvas-viewport=""
       className="absolute top-0 bottom-0 right-0 overflow-hidden transition-[left] duration-300"
       style={{
-        left: isSidebarOpen ? SIDEBAR_WIDTH : 0,
+        left: isSidebarOpen ? RAIL_WIDTH : 0,
         cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default',
       }}
       onPointerDown={onPointerDown}
@@ -360,7 +360,7 @@ export const Canvas: React.FC = () => {
 
       {marquee && (
         <div
-          className="absolute pointer-events-none rounded-sm"
+          className="absolute pointer-events-none rounded-mark"
           style={{
             left: Math.min(marquee.x0, marquee.x1),
             top: Math.min(marquee.y0, marquee.y1),
@@ -378,21 +378,21 @@ export const Canvas: React.FC = () => {
       {refused && (
         <div
           onClick={() => setRefused(null)}
-          className="glass-panel absolute left-1/2 top-1/2 z-[94] w-[26rem] max-w-[80%] -translate-x-1/2 -translate-y-1/2 p-5 rounded-2xl shadow-2xl text-center cursor-default"
+          className="glass-panel absolute left-1/2 top-1/2 z-[94] w-[26rem] max-w-[80%] -translate-x-1/2 -translate-y-1/2 p-5 rounded-surface shadow-2xl text-center cursor-default"
         >
           <FileQuestion size={26} className="t-faint mx-auto mb-3" />
-          <p className="t-ink text-sm font-medium mb-1">Not supported yet</p>
-          <p className="t-faint text-xs leading-relaxed break-all">
+          <p className="t-ink text-body font-medium mb-1">Not supported yet</p>
+          <p className="t-faint text-ui leading-relaxed break-all">
             {refused.length === 1 ? refused[0] : `${refused.length} files`}
           </p>
-          <p className="t-faint mt-3 text-[11px] leading-relaxed">
+          <p className="t-faint mt-3 text-meta leading-relaxed">
             Focus Desk can show {SUPPORTED_DROPS}.
             <br />
             Word, Excel, PowerPoint and Keynote are not in yet.
           </p>
           <button
             onClick={() => setRefused(null)}
-            className="chrome-button-on mt-4 px-4 py-1.5 rounded-lg text-xs font-medium"
+            className="chrome-button-on mt-4 px-4 py-1.5 rounded-control text-ui font-medium"
           >
             OK
           </button>

@@ -34,8 +34,8 @@ export const BrowserStartPage: React.FC<{ onOpen: (url: string) => void }> = ({ 
     <div className="t-ink h-full w-full overflow-y-auto p-6">
       {empty ? (
         <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center">
-          <span className="t-soft text-sm">Type an address or a search above.</span>
-          <span className="t-faint text-xs max-w-[34ch]">
+          <span className="t-soft text-body">Type an address or a search above.</span>
+          <span className="t-faint text-ui max-w-[34ch]">
             Sites you visit show up here, and so do the web apps you save.
           </span>
         </div>
@@ -60,7 +60,7 @@ export const BrowserStartPage: React.FC<{ onOpen: (url: string) => void }> = ({ 
                   onOpen={() => onOpen(site.url)}
                   onForget={() => useSiteVisitStore.getState().forget(site.host)}
                 >
-                  <span className="glass t-ink w-7 h-7 rounded-[22%] flex items-center justify-center text-sm uppercase">
+                  <span className="glass t-ink w-7 h-7 rounded-mark flex items-center justify-center text-body uppercase">
                     {site.host[0]}
                   </span>
                 </Tile>
@@ -75,7 +75,7 @@ export const BrowserStartPage: React.FC<{ onOpen: (url: string) => void }> = ({ 
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="mb-5">
-    <div className="t-faint mb-2 text-[10px] font-bold uppercase tracking-widest">{title}</div>
+    <div className="t-faint mb-2 text-micro font-bold uppercase tracking-widest">{title}</div>
     <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1.5">{children}</div>
   </div>
 );
@@ -91,10 +91,10 @@ const Tile: React.FC<{
     <button
       onClick={onOpen}
       title={label}
-      className="row w-full flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-xl active:scale-95"
+      className="row w-full flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-control active:scale-95"
     >
       {children}
-      <span className="text-[10px] leading-none truncate max-w-full">{label}</span>
+      <span className="text-micro leading-none truncate max-w-full">{label}</span>
     </button>
     {onForget && (
       <button

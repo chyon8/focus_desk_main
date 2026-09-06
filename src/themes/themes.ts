@@ -16,11 +16,8 @@ export const THEMES: Theme[] = [
     tokens: {
       ink: '#fff3e6',
       inkSoft: 'rgba(255, 243, 230, 0.6)',
-      panel: 'rgba(50, 28, 26, 0.46)',
       surface: '#2e1c1a',
       panelBorder: 'rgba(255, 208, 168, 0.17)',
-      accent: '#ffb27a',
-      font: 'sans',
     },
   },
   {
@@ -41,11 +38,8 @@ export const THEMES: Theme[] = [
     tokens: {
       ink: '#e8f2f6',
       inkSoft: 'rgba(232, 242, 246, 0.5)',
-      panel: 'rgba(13, 29, 38, 0.5)',
       surface: '#101f28',
       panelBorder: 'rgba(168, 220, 240, 0.15)',
-      accent: '#7fc8d8',
-      font: 'sans',
     },
   },
   {
@@ -65,11 +59,8 @@ export const THEMES: Theme[] = [
     tokens: {
       ink: '#eef1f8',
       inkSoft: 'rgba(238, 241, 248, 0.5)',
-      panel: 'rgba(21, 27, 45, 0.5)',
       surface: '#161c2e',
       panelBorder: 'rgba(200, 214, 245, 0.15)',
-      accent: '#a8b8e8',
-      font: 'sans',
     },
   },
   {
@@ -85,11 +76,8 @@ export const THEMES: Theme[] = [
     tokens: {
       ink: '#3b3128',
       inkSoft: 'rgba(59, 49, 40, 0.55)',
-      panel: 'rgba(255, 252, 244, 0.7)',
       surface: '#fbf6ea',
       panelBorder: 'rgba(90, 70, 50, 0.14)',
-      accent: '#b07d4a',
-      font: 'hand',
     },
   },
 ];

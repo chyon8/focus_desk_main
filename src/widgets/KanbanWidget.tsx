@@ -51,25 +51,25 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
 
   return (
     <div className="t-ink h-full w-full flex flex-col p-5">
-      <span className="t-soft text-xs font-semibold uppercase tracking-widest mb-4">Board</span>
+      <span className="t-soft text-ui font-semibold uppercase tracking-widest mb-4">Board</span>
 
       <div className="flex-1 grid grid-cols-3 gap-3 min-h-0">
         {COLUMNS.map(({ key, label, dot }) => (
           <div key={key} className="flex flex-col min-h-0">
             <div className="flex items-center gap-2 mb-2">
               <div
-                className="w-1.5 h-1.5 rounded-full"
+                className="w-1.5 h-1.5 rounded-mark"
                 style={{ background: 'var(--accent)', opacity: dot }}
               />
-              <span className="t-soft text-[10px] font-bold uppercase tracking-wider">{label}</span>
-              <span className="t-faint text-[10px] ml-auto">{data.columns[key].length}</span>
+              <span className="t-soft text-micro font-bold uppercase tracking-wider">{label}</span>
+              <span className="t-faint text-micro ml-auto">{data.columns[key].length}</span>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
               {data.columns[key].map((card) => (
                 <div
                   key={card.id}
-                  className="glass group rounded-lg px-2.5 py-2 text-xs leading-snug transition-colors"
+                  className="glass group rounded-control px-2.5 py-2 text-ui leading-snug transition-colors"
                 >
                   <div className="flex items-start gap-1">
                     <span className="flex-1">{card.text}</span>
@@ -84,7 +84,7 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
                     {key !== 'todo' && (
                       <button
                         onClick={() => moveCard(key, card.id, -1)}
-                        className="chrome-button text-[10px] px-1 rounded"
+                        className="chrome-button text-micro px-1 rounded-mark"
                       >
                         ←
                       </button>
@@ -92,7 +92,7 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
                     {key !== 'done' && (
                       <button
                         onClick={() => moveCard(key, card.id, 1)}
-                        className="chrome-button text-[10px] px-1 rounded ml-auto"
+                        className="chrome-button text-micro px-1 rounded-mark ml-auto"
                       >
                         →
                       </button>
@@ -109,7 +109,7 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
                 onChange={(e) => setDrafts({ ...drafts, [key]: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && addCard(key)}
                 placeholder="Add"
-                className="field flex-1 min-w-0 !bg-transparent outline-none text-xs"
+                className="field flex-1 min-w-0 !bg-transparent outline-none text-ui"
               />
             </div>
           </div>

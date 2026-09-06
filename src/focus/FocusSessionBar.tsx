@@ -44,28 +44,28 @@ export const FocusSessionBar: React.FC = () => {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="chrome-button-on flex items-center gap-3 pl-4 pr-2 py-2 rounded-full border shadow-lg"
+            className="chrome-button-on flex items-center gap-3 pl-4 pr-2 py-2 rounded-control border shadow-lg"
           >
             <span
-              className={`w-2 h-2 rounded-full ${isRunning ? 'animate-pulse' : 'opacity-40'}`}
+              className={`w-2 h-2 rounded-mark ${isRunning ? 'animate-pulse' : 'opacity-40'}`}
               style={{ background: 'currentColor' }}
             />
-            <span className="t-ink text-sm font-mono font-semibold tabular-nums">
+            <span className="t-ink text-body font-mono font-semibold tabular-nums">
               {formatClock(elapsed)}
             </span>
-            {taskName && <span className="t-soft text-xs max-w-40 truncate">{taskName}</span>}
+            {taskName && <span className="t-soft text-ui max-w-40 truncate">{taskName}</span>}
 
             <button
               onClick={isRunning ? pause : resume}
               title={isRunning ? 'Pause' : 'Resume'}
-              className="chrome-button p-1.5 rounded-full"
+              className="chrome-button p-1.5 rounded-control"
             >
               {isRunning ? <Pause size={13} /> : <Play size={13} />}
             </button>
             <button
               onClick={stop}
               title="Finish and record"
-              className="chrome-button p-1.5 rounded-full"
+              className="chrome-button p-1.5 rounded-control"
             >
               <Square size={13} />
             </button>

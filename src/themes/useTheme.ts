@@ -1,14 +1,19 @@
 import { useEffect, useMemo } from 'react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { getTheme } from './themes';
-import { backgroundTokens } from '../spaces/backgrounds';
+import { backgroundTokens, isLightBackground } from '../spaces/backgrounds';
 import type { Theme } from './types';
 
-const FONT_STACKS: Record<Theme['tokens']['font'], string> = {
-  sans: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  serif: "'Iowan Old Style', Palatino, 'Palatino Linotype', ui-serif, Georgia, serif",
-  hand: "'Bradley Hand', 'Snell Roundhand', 'Segoe Script', cursive",
-};
+/**
+ * 그림자 색조. 배경색을 그대로 어둡게 눌러서 쓴다 — 순수 검정 그림자는 밝은 테마에서
+ * 회색 얼룩이 된다. 색조를 유지하려면 채널을 같은 비율로 낮추는 것으로 충분하다.
+ */
+function shadowTint(hex: string): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? [...h].map((c) => c + c).join('') : h;
+  const ch = [0, 2, 4].map((i) => Math.round(parseInt(full.slice(i, i + 2), 16) * 0.18));
+  return ch.join(', ');
+}
 
 export function useActiveTheme(): Theme {
   const themeId = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.themeId);
@@ -29,24 +34,30 @@ export function useThemeVariables(theme: Theme) {
     [background, theme],
   );
 
-  // 단색 배경 위에서는 유리의 blur가 흐릴 것이 없다. 대신 Chromium이 blur 반경만큼
-  // 가장자리를 밝게 칠해서 위젯 안쪽에 25px짜리 테두리 띠가 생긴다 — 다시 그릴 때마다
-  // 나타났다 사라져 깜빡인다. 사진 배경에서는 blur가 실제로 일을 하므로 그대로 둔다.
-  const flat = background?.type === 'COLOR';
+  // 명암 극성. 헤일로·그림자 세기·윗변 빛이 여기서 갈린다.
+  // 단색을 골랐으면 그 색의 밝기가, 아니면 테마가 자기 사진에 맞춰 적어둔 값이 정한다.
+  const light =
+    background?.type === 'COLOR' ? isLightBackground(background.value) : theme.mood === 'light';
+
+  // 그림자 색조는 UI가 실제로 놓인 색에서 뽑는다.
+  const tint = shadowTint(
+    background?.type === 'COLOR' ? background.value : theme.tokens.surface,
+  );
 
   useEffect(() => {
-    document.documentElement.toggleAttribute('data-flat-bg', flat);
-  }, [flat]);
+    document.documentElement.setAttribute('data-polarity', light ? 'light' : 'dark');
+  }, [light]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--shadow-tint', tint);
+  }, [tint]);
 
   useEffect(() => {
     const { style } = document.documentElement;
-    const { ink, inkSoft, panel, surface, panelBorder, accent, font } = tokens;
+    const { ink, inkSoft, surface, panelBorder } = tokens;
     style.setProperty('--ink', ink);
     style.setProperty('--ink-soft', inkSoft);
-    style.setProperty('--panel', panel);
     style.setProperty('--surface', surface);
     style.setProperty('--panel-border', panelBorder);
-    style.setProperty('--accent', accent);
-    style.setProperty('--font-ui', FONT_STACKS[font]);
   }, [tokens]);
 }

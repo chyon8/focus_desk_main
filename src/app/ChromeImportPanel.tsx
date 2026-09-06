@@ -81,10 +81,10 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.12 }}
-        className="glass-panel fixed left-1/2 top-1/2 z-[99] w-[28rem] max-h-[70vh] -translate-x-1/2 -translate-y-1/2 flex flex-col p-5 rounded-2xl shadow-2xl"
+        className="glass-panel fixed left-1/2 top-1/2 z-[99] w-[28rem] max-h-[70vh] -translate-x-1/2 -translate-y-1/2 flex flex-col p-5 rounded-surface shadow-2xl"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className="t-soft text-[11px] font-semibold uppercase tracking-widest">
+          <span className="t-soft text-meta font-semibold uppercase tracking-widest">
             Import from Chrome
           </span>
           <button onClick={onClose} className="t-faint hover:t-ink ml-auto shrink-0">
@@ -94,28 +94,28 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
 
         {state.step === 'intro' && (
           <>
-            <p className="t-ink mt-2 text-xs leading-relaxed">
+            <p className="t-ink mt-2 text-ui leading-relaxed">
               Focus Desk can read the windows and tabs open in Chrome and lay each window out as a
               space.
             </p>
-            <p className="t-soft mt-2 text-[11px] leading-relaxed">
+            <p className="t-soft mt-2 text-meta leading-relaxed">
               Your tabs stay in Chrome. Nothing is closed and nothing is moved — only the addresses
               and titles are read. macOS will ask to let Focus Desk “control” Chrome, which is the
               only permission it has for this.
             </p>
             <button
               onClick={() => void read()}
-              className="chrome-button mt-4 py-1.5 rounded-lg text-[11px] font-medium"
+              className="chrome-button mt-4 py-1.5 rounded-control text-meta font-medium"
             >
               Read my Chrome windows
             </button>
           </>
         )}
 
-        {state.step === 'reading' && <div className="t-faint mt-3 text-xs">Reading Chrome…</div>}
+        {state.step === 'reading' && <div className="t-faint mt-3 text-ui">Reading Chrome…</div>}
 
         {state.step === 'none' && (
-          <p className="t-soft mt-2 text-xs leading-relaxed">
+          <p className="t-soft mt-2 text-ui leading-relaxed">
             No open Chrome windows with web pages in them. Open the windows you want and try again,
             or pick the tools you use instead.
           </p>
@@ -123,10 +123,10 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
 
         {state.step === 'denied' && (
           <>
-            <p className="t-ink mt-2 text-xs leading-relaxed">
+            <p className="t-ink mt-2 text-ui leading-relaxed">
               macOS is not letting Focus Desk read Chrome.
             </p>
-            <p className="t-soft mt-2 text-[11px] leading-relaxed">
+            <p className="t-soft mt-2 text-meta leading-relaxed">
               It only asks once, so this has to be turned on by hand: System Settings → Privacy &
               Security → Automation → Focus Desk → Google Chrome.
             </p>
@@ -134,7 +134,7 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
               onClick={() =>
                 void window.chromeImport?.showAutomationSettings()
               }
-              className="chrome-button mt-4 flex items-center justify-center gap-2 py-1.5 rounded-lg text-[11px] font-medium"
+              className="chrome-button mt-4 flex items-center justify-center gap-2 py-1.5 rounded-control text-meta font-medium"
             >
               <ExternalLink size={11} />
               Open System Settings
@@ -143,14 +143,14 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
         )}
 
         {state.step === 'failed' && (
-          <p className="t-soft mt-2 text-xs leading-relaxed">
+          <p className="t-soft mt-2 text-ui leading-relaxed">
             Chrome could not be read. {state.message}
           </p>
         )}
 
         {state.step === 'choose' && (
           <>
-            <p className="t-soft mt-1 mb-3 text-[11px] leading-snug">
+            <p className="t-soft mt-1 mb-3 text-meta leading-snug">
               {state.choices.length === 1
                 ? 'One Chrome window. It becomes one space — your tabs stay in Chrome.'
                 : `${state.choices.length} Chrome windows. Each becomes a space — your tabs stay in Chrome.`}
@@ -162,7 +162,7 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                 return (
                   <div
                     key={choice.id}
-                    className={`row flex flex-col gap-1.5 p-2.5 rounded-xl ${on ? '' : 'opacity-50'}`}
+                    className={`row flex flex-col gap-1.5 p-2.5 rounded-control ${on ? '' : 'opacity-50'}`}
                   >
                     <div className="flex items-center gap-2.5">
                       <button
@@ -174,7 +174,7 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                           })
                         }
                         title={on ? 'Leave this window out' : 'Bring this window in'}
-                        className={`glass w-4 h-4 shrink-0 rounded-[4px] flex items-center justify-center ${
+                        className={`glass w-4 h-4 shrink-0 rounded-mark flex items-center justify-center ${
                           on ? 't-ink' : 't-faint'
                         }`}
                       >
@@ -187,13 +187,13 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                         }
                         disabled={!on}
                         title="What this space will be called"
-                        className="t-ink flex-1 min-w-0 bg-transparent text-xs outline-none"
+                        className="t-ink flex-1 min-w-0 bg-transparent text-ui outline-none"
                       />
-                      <span className="t-faint shrink-0 text-[10px] tabular-nums">
+                      <span className="t-faint shrink-0 text-micro tabular-nums">
                         {choice.tabs.length} tabs
                       </span>
                     </div>
-                    <div className="t-faint pl-[26px] text-[10px] truncate">
+                    <div className="t-faint pl-[26px] text-micro truncate">
                       {choice.tabs
                         .slice(0, 5)
                         .map((t) => hostOf(t.url))
@@ -201,7 +201,7 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                       {choice.tabs.length > 5 && ' …'}
                     </div>
                     {choice.dropped > 0 && (
-                      <div className="t-faint pl-[26px] text-[10px]">
+                      <div className="t-faint pl-[26px] text-micro">
                         {choice.dropped} more tabs in this window are left in Chrome.
                       </div>
                     )}
@@ -213,7 +213,7 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
             <button
               onClick={bring}
               disabled={chosen.length === 0}
-              className="chrome-button shrink-0 mt-3 py-1.5 rounded-lg text-[11px] font-medium disabled:opacity-40"
+              className="chrome-button shrink-0 mt-3 py-1.5 rounded-control text-meta font-medium disabled:opacity-40"
             >
               {chosen.length === 1
                 ? 'Bring in 1 space'

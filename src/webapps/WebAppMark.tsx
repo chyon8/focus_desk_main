@@ -35,7 +35,7 @@ export const WebAppMark: React.FC<{
         alt=""
         draggable={false}
         onError={() => setBroken(true)}
-        className={`object-contain rounded-[22%] ${className}`}
+        className={`object-contain rounded-mark ${className}`}
         style={{ width: size, height: size }}
       />
     );
@@ -43,7 +43,7 @@ export const WebAppMark: React.FC<{
 
   return (
     <span
-      className={`glass t-ink inline-flex items-center justify-center rounded-[22%] uppercase ${className}`}
+      className={`glass t-ink inline-flex items-center justify-center rounded-mark uppercase ${className}`}
       style={{ width: size, height: size, fontSize: size * 0.5 }}
     >
       {name.trim()[0] ?? '?'}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { usePrefsStore } from '../stores/prefsStore';
 import { useUiStore } from '../stores/uiStore';
-import { FolderOpen, Download, Upload, AppWindow, X } from 'lucide-react';
+import { AppWindow, Chrome, Download, FolderOpen, KeyRound, Upload, X } from 'lucide-react';
 
 /**
  * The app's own settings, as opposed to how anything looks — brightness lives
@@ -13,7 +13,7 @@ import { FolderOpen, Download, Upload, AppWindow, X } from 'lucide-react';
  * (D-094).
  */
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="t-soft text-[10px] font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
+  <div className="t-soft text-micro font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
 );
 
 const Row: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void }> = ({
@@ -23,14 +23,20 @@ const Row: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void 
 }) => (
   <button
     onClick={onClick}
-    className="row flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-[12px]"
+    className="row flex items-center gap-2.5 w-full px-2.5 py-2 rounded-control text-ui"
   >
     {icon}
     <span className="t-ink">{label}</span>
   </button>
 );
 
-export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const SettingsPanel: React.FC<{
+  onClose: () => void;
+  /** Bring in the windows open in Chrome. */
+  onOpenImport: () => void;
+  /** What this space is signed in to. */
+  onOpenSessions: () => void;
+}> = ({ onClose, onOpenImport, onOpenSessions }) => {
   const attachApps = usePrefsStore((s) => s.attachApps);
   const [accessibility, setAccessibility] = useState(true);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
@@ -82,10 +88,10 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.12 }}
-        className="glass-panel fixed bottom-24 left-4 z-[99] w-[21rem] max-h-[70vh] overflow-y-auto p-4 rounded-2xl shadow-2xl"
+        className="glass-panel fixed bottom-4 left-[88px] z-[99] w-[21rem] max-h-[70vh] overflow-y-auto p-4 rounded-surface"
       >
         <div className="flex items-center gap-2 mb-4">
-          <span className="t-soft text-[11px] font-semibold uppercase tracking-widest">
+          <span className="t-soft text-meta font-semibold uppercase tracking-widest">
             Settings
           </span>
           <button onClick={onClose} className="t-faint hover:t-ink ml-auto shrink-0">
@@ -93,24 +99,29 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
           </button>
         </div>
 
+        <Label>This space</Label>
+        <Row icon={<Chrome size={14} />} label="Bring in what Chrome has open" onClick={onOpenImport} />
+        <Row icon={<KeyRound size={14} />} label="What this space is signed in to" onClick={onOpenSessions} />
+        <div className="mb-5" />
+
         <Label>Apps</Label>
         <button
           onClick={toggleAttachApps}
-          className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-lg text-[11px] ${
+          className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-control text-meta ${
             attachApps ? 'chrome-button-on' : ''
           }`}
         >
           <AppWindow size={13} />
           Sit app windows in the space
         </button>
-        <p className="t-faint mb-2 px-0.5 text-[10px] leading-snug">
+        <p className="t-faint mb-2 px-0.5 text-micro leading-snug">
           On, an app widget brings the real window to its slot and holds the other applications
           out of the way, which macOS asks you to allow. Off, it is a tile that opens the app.
         </p>
         {attachApps && !accessibility && (
           <button
             onClick={() => void window.apps?.showAccessibilitySettings()}
-            className="chrome-button w-full py-1.5 mb-5 rounded-lg text-[11px]"
+            className="chrome-button w-full py-1.5 mb-5 rounded-control text-meta"
           >
             Allow Focus Desk to move windows…
           </button>
@@ -118,7 +129,7 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
         {(!attachApps || accessibility) && <div className="mb-5" />}
 
         <Label>Data</Label>
-        <p className="t-faint mb-2 px-0.5 text-[10px] leading-snug">
+        <p className="t-faint mb-2 px-0.5 text-micro leading-snug">
           Everything is on this mac only. A backup is a plain folder — spaces, pictures and
           settings. Sign-ins are not in it.
         </p>
@@ -139,14 +150,14 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             onClick={() => void importFrom()}
           />
         </div>
-        <p className="t-faint mb-1.5 px-2.5 text-[10px]">
+        <p className="t-faint mb-1.5 px-2.5 text-micro">
           {lastBackup ? `Last automatic copy: ${lastBackup}` : 'No automatic copy yet.'}
         </p>
-        {note && <p className="t-soft mb-2 px-2.5 text-[10px] leading-snug">{note}</p>}
+        {note && <p className="t-soft mb-2 px-2.5 text-micro leading-snug">{note}</p>}
         {imported && (
           <button
             onClick={() => void window.backup?.reload()}
-            className="chrome-button-on w-full py-1.5 rounded-lg text-[11px] font-medium"
+            className="chrome-button-on w-full py-1.5 rounded-control text-meta font-medium"
           >
             Show them
           </button>

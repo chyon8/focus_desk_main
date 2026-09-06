@@ -17,10 +17,10 @@ const Mark: React.FC<{ mark: LauncherMark }> = ({ mark }) => {
     return mark.src ? (
       <img src={mark.src} alt="" className="w-[18px] h-[18px] shrink-0" draggable={false} />
     ) : (
-      <div className="glass w-[18px] h-[18px] rounded shrink-0" />
+      <div className="glass w-[18px] h-[18px] rounded-mark shrink-0" />
     );
   return (
-    <span className="glass t-ink w-[18px] h-[18px] rounded-[22%] flex items-center justify-center text-[10px] uppercase shrink-0">
+    <span className="glass t-ink w-[18px] h-[18px] rounded-mark flex items-center justify-center text-micro uppercase shrink-0">
       {mark.text}
     </span>
   );
@@ -102,14 +102,14 @@ export const Launcher: React.FC = () => {
   return (
     <>
       <div
-        className="fixed inset-0 z-[97] bg-black/30 backdrop-blur-[2px]"
+        className="scrim-overlay fixed inset-0 z-[97] backdrop-blur-[2px]"
         onClick={() => useUiStore.getState().closeLauncher()}
       />
       <motion.div
         initial={{ opacity: 0, y: -8, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.12 }}
-        className="glass-panel fixed left-1/2 top-[16vh] z-[98] w-[560px] max-w-[92vw] -translate-x-1/2 overflow-hidden rounded-2xl shadow-2xl"
+        className="glass-panel fixed left-1/2 top-[16vh] z-[98] w-[560px] max-w-[92vw] -translate-x-1/2 overflow-hidden rounded-surface shadow-2xl"
       >
         <div className="border-hair flex items-center gap-2.5 px-4 h-12 border-b">
           <Search size={15} className="t-faint shrink-0" />
@@ -122,17 +122,17 @@ export const Launcher: React.FC = () => {
             onKeyDown={onKeyDown}
             placeholder="Go to a tool, or open a new one"
             autoFocus
-            className="field flex-1 min-w-0 !bg-transparent outline-none text-sm"
+            className="field flex-1 min-w-0 !bg-transparent outline-none text-body"
           />
         </div>
 
         <div ref={listRef} className="max-h-[46vh] overflow-y-auto p-2">
           {flat.length === 0 ? (
-            <div className="t-faint px-2 py-6 text-center text-xs">Nothing matches.</div>
+            <div className="t-faint px-2 py-6 text-center text-ui">Nothing matches.</div>
           ) : (
             sections.map((section) => (
               <div key={section.title} className="mb-1.5 last:mb-0">
-                <div className="t-faint px-2 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest">
+                <div className="t-faint px-2 pt-1.5 pb-1 text-micro font-bold uppercase tracking-widest">
                   {section.title}
                 </div>
                 {section.items.map((item) => {
@@ -144,14 +144,14 @@ export const Launcher: React.FC = () => {
                       data-active={isActive}
                       onMouseMove={captureRow(setActive, row)}
                       onClick={() => run(item)}
-                      className={`!text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left ${
+                      className={`!text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-control text-left ${
                         isActive ? 'chrome-button-on' : 'row'
                       }`}
                     >
                       <Mark mark={item.mark} />
-                      <span className="flex-1 min-w-0 text-sm truncate">{item.name}</span>
+                      <span className="flex-1 min-w-0 text-body truncate">{item.name}</span>
                       {item.hint && (
-                        <span className="t-faint text-[10px] truncate max-w-[10rem]">
+                        <span className="t-faint text-micro truncate max-w-[10rem]">
                           {item.hint}
                         </span>
                       )}

@@ -34,11 +34,11 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
 
   return (
     <div className="h-full w-full flex flex-col p-6 items-center justify-center relative">
-      <div className="t-soft absolute top-4 w-full px-6 flex justify-between items-center text-xs font-medium tracking-wider uppercase">
+      <div className="t-soft absolute top-4 w-full px-6 flex justify-between items-center text-ui font-medium tracking-wider uppercase">
         <span>{data.mode === 'BREAK' ? 'On Break' : 'Timer'}</span>
         <button
           onClick={() => switchMode(data.mode === 'FOCUS' ? 'BREAK' : 'FOCUS')}
-          className="chrome-button flex items-center gap-1 px-2 py-1 rounded-md"
+          className="chrome-button flex items-center gap-1 px-2 py-1 rounded-control"
         >
           {data.mode === 'FOCUS' ? (
             <>
@@ -64,13 +64,13 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
           <div className="absolute -right-8 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => adjust(1)}
-              className="chrome-button p-1 rounded"
+              className="chrome-button p-1 rounded-mark"
             >
               <ChevronUp size={16} />
             </button>
             <button
               onClick={() => adjust(-1)}
-              className="chrome-button p-1 rounded"
+              className="chrome-button p-1 rounded-mark"
             >
               <ChevronDown size={16} />
             </button>
@@ -81,7 +81,7 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
       <div className="flex gap-6 items-center">
         <button
           onClick={() => update({ isRunning: !data.isRunning })}
-          className={`w-16 h-16 flex items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-lg ${
+          className={`w-16 h-16 flex items-center justify-center rounded-surface border transition-all active:scale-95 shadow-lg ${
             data.isRunning ? 'chrome-button-on' : 'glass chrome-button'
           }`}
         >
@@ -94,7 +94,7 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
 
         <button
           onClick={() => update({ isRunning: false, timeLeft: data.duration })}
-          className="glass chrome-button w-12 h-12 flex items-center justify-center rounded-xl active:scale-95"
+          className="glass chrome-button w-12 h-12 flex items-center justify-center rounded-control active:scale-95"
           title="Reset"
         >
           <RotateCcw size={20} />

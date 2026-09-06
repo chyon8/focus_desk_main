@@ -73,12 +73,12 @@ export const UndoToast: React.FC = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
-          className={`glass-panel fixed ${hasSelection ? 'bottom-20' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-2xl shadow-2xl`}
+          className={`glass-panel fixed ${hasSelection ? 'bottom-20' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-surface shadow-2xl`}
         >
-          <span className="t-ink text-xs">{entry.label}</span>
+          <span className="t-ink text-ui">{entry.label}</span>
           <button
             onClick={entry.undo}
-            className="chrome-button-on flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-medium"
+            className="chrome-button-on flex items-center gap-1.5 px-3 h-7 rounded-control text-meta font-medium"
           >
             <Undo2 size={13} />
             Undo

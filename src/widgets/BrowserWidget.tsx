@@ -50,7 +50,7 @@ const NavButton: React.FC<{
     title={label}
     disabled={disabled}
     onClick={onClick}
-    className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-md disabled:opacity-30 disabled:hover:bg-transparent"
+    className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-control disabled:opacity-30 disabled:hover:bg-transparent"
   >
     {children}
   </button>
@@ -107,11 +107,11 @@ const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data
             <img
               src={data.favicon}
               alt=""
-              className="w-16 h-16 rounded-xl object-contain"
+              className="w-16 h-16 rounded-control object-contain"
               style={tint ? { filter: `drop-shadow(0 6px 14px rgba(${tint}, 0.55))` } : undefined}
             />
           ) : (
-            <span className="glass t-soft w-16 h-16 rounded-xl flex items-center justify-center text-xl uppercase">
+            <span className="glass t-soft w-16 h-16 rounded-control flex items-center justify-center text-display uppercase">
               {host[0] ?? '?'}
             </span>
           )}
@@ -120,13 +120,13 @@ const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data
 
       <div className="shrink-0 flex items-center gap-2 px-3 py-2">
         {data.thumbnail && data.favicon && (
-          <img src={data.favicon} alt="" className="shrink-0 w-4 h-4 rounded object-contain" />
+          <img src={data.favicon} alt="" className="shrink-0 w-4 h-4 rounded-mark object-contain" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium leading-snug truncate">
+          <div className="text-body font-medium leading-snug truncate">
             {data.title || host}
           </div>
-          <div className="t-faint text-[10px] truncate">{host}</div>
+          <div className="t-faint text-micro truncate">{host}</div>
         </div>
       </div>
     </button>
@@ -471,7 +471,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
             }
           }}
           placeholder="Search, or enter an address"
-          className="field flex-1 min-w-0 rounded-md px-2 py-1 text-xs outline-none"
+          className="field flex-1 min-w-0 rounded-control px-2 py-1 text-ui outline-none"
         />
 
         <NavButton
@@ -486,7 +486,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
             type="button"
             title="Reset zoom (⌘0)"
             onClick={() => update({ zoom: 1 })}
-            className="chrome-button shrink-0 px-1 h-6 rounded-md text-[10px] tabular-nums"
+            className="chrome-button shrink-0 px-1 h-6 rounded-control text-micro tabular-nums"
           >
             {Math.round(zoom * 100)}%
           </button>
@@ -519,14 +519,14 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
 
         {failure && (
           <div className="glass-panel absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
-            <span className="t-ink text-sm">This page didn’t load</span>
-            <span className="t-faint text-xs max-w-[40ch]">{failure}</span>
+            <span className="t-ink text-body">This page didn’t load</span>
+            <span className="t-faint text-ui max-w-[40ch]">{failure}</span>
             <button
               onClick={() => {
                 setFailure(null);
                 view.current?.reload();
               }}
-              className="chrome-button mt-1 px-3 h-8 rounded-md text-sm"
+              className="chrome-button mt-1 px-3 h-8 rounded-control text-body"
             >
               Try again
             </button>
