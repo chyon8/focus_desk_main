@@ -74,7 +74,7 @@ export const BrowserStartPage: React.FC<{ onOpen: (url: string) => void }> = ({ 
 };
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="mb-5">
+  <div className="mb-4">
     <div className="t-faint mb-2 text-micro font-bold uppercase tracking-widest">{title}</div>
     <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1.5">{children}</div>
   </div>
@@ -91,7 +91,7 @@ const Tile: React.FC<{
     <button
       onClick={onOpen}
       title={label}
-      className="row w-full flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-control active:scale-95"
+      className="row press w-full flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-control"
     >
       {children}
       <span className="text-micro leading-none truncate max-w-full">{label}</span>
@@ -100,7 +100,7 @@ const Tile: React.FC<{
       <button
         onClick={onForget}
         title={`Forget ${label}`}
-        className="t-faint hover:!text-red-300 absolute top-1 right-1 opacity-0 group-hover:opacity-100"
+        className="t-faint t-danger press absolute top-1 right-1 opacity-0 group-hover:opacity-100"
       >
         <X size={10} />
       </button>

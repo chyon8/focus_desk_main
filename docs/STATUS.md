@@ -99,19 +99,23 @@
 | 컨트롤 위치 | 조작 지점이 몇 군데로 흩어져 있는가 |
 | 다중 위젯 내성 | 위젯 4~6개를 열었을 때 견디는가 |
 
-### 9-4. 시안이 안 다룬 면 ← 지금 여기
+### 9-4. 시안이 안 다룬 면 ← 지금 여기 (위젯 12종은 2026-09-06에 끝났다)
 
 시안은 위젯 3개를 그렸고 앱에는 이만큼 있다.
 
-| 묶음 | 개수 |
-|---|---|
-| 위젯 | 12종 (Memo는 Tiptap 에디터 · `/` 블록메뉴 · 표 · Mermaid까지) |
-| 패널 | Background · Sound · Settings · Launcher · ChromeImport · Sessions · Shortcuts · QuickAdd · Arrange |
-| 토스트 | Undo · Notice · HiddenApps |
-| 온보딩 | 방 고르기 / 용도 / 소스 / 툴 / 이름 + FirstSteps 투어 3단계 |
-| 상태 | 빈 · 로딩 · 에러 — **지금 하나도 없다** |
+| 묶음 | 개수 | 상태 |
+|---|---|---|
+| 위젯 | 12종 (Memo는 Tiptap 에디터 · `/` 블록메뉴 · 표 · Mermaid까지) | ✅ |
+| 패널 | Background · Sound · Settings · Launcher · ChromeImport · Sessions · Shortcuts · QuickAdd · Arrange | 남음 |
+| 토스트 | Undo · Notice · HiddenApps | 남음 |
+| 온보딩 | 방 고르기 / 용도 / 소스 / 툴 / 이름 + FirstSteps 투어 3단계 | 남음 |
+| 상태 | 빈 · 로딩 · 에러 · 촉감 | 위젯만 ✅ |
 
 **끝난 기준**: 위젯 12종·패널 9개가 DESIGN.md 하나만 보고 그려진다.
+
+**남은 것은 패널 9개 · 토스트 3개 · 온보딩이다.** 위젯에 깐 규칙을 그대로 쓴다 —
+`--danger`(위험색) · `.press`(촉감) · `.skeleton`(로딩) · `.load-bar`(페이지 받는 중).
+넷 다 [index.css](../src/index.css)의 "상태" 절에 있다.
 
 `full-output-enforcement` 스킬을 켠다([.claude/skills](../.claude/skills/full-output-enforcement/SKILL.md)). 일괄 수정이라 **"나머지는 같은 패턴"으로 끝내는 게 가장 큰 실패 방식이다.** `design-taste-frontend`도 깔려 있지만 랜딩페이지용이라 [design-ref/criteria.md](../design-ref/criteria.md)의 "쓴다 / 버린다" 목록대로만 쓴다.
 
@@ -120,18 +124,27 @@
 - **컬럼 카드 안 위젯 스케일을 실기로 못 봤다.** 2026-09-06에 카드 본문을 기본 크기로 그린 뒤 배율로 줄이게 바꿨는데(타이머가 제 헤더를 덮고 메모 한글이 세로줄이 되던 문제), 어두운 배경 한 번만 확인했다. 위젯 12종 다 확인할 것
 - **메모 카드가 세로줄로 보이던 건 내용 자체일 수 있다.** 스케일을 고친 뒤에도 그대로다 — 실제 메모 내용을 열어서 확인할 것
 
-- **Add Widget 팝오버가 창 밖으로 잘린다.** 클릭 지점에 그대로 열고 화면 안으로 접지 않아 마지막 줄(Music·Table·Diagram)이 안 보인다
-- **웹앱 타일 2글자 약자가 겹친다.** MI = Miro·Midjourney / CA = Canva·Calendar / DR = Drive·Dropbox / NO = NotebookLM·Notion
-- **엠대시 `—`를 UI 문자열에 쓴다.** 온보딩 문구 3곳
+- **Add Widget 팝오버가 창 밖으로 잘린다.** 클릭 지점에 그대로 열고 화면 안으로 접지 않아 마지막 줄(Music·Table·Diagram)이 안 보인다. **2026-09-06에 실기로 다시 봤다 — 그대로다**
+- **웹앱 타일 2글자 약자가 겹친다.** MI = Miro·Midjourney / CA = Canva·Calendar·CapCut / DR = Drive·Dropbox / NO = NotebookLM·Notion. **온보딩 툴 고르기 화면에서 넷 다 확인했다**
+- **엠대시 `—`를 UI 문자열에 쓴다.** 온보딩 문구 3곳. **위젯 쪽 4곳은 2026-09-06에 없앴다**
 - **[SceneLayer.tsx](../src/themes/SceneLayer.tsx)의 비네트가 아직 `theme.mood`를 본다.** 배경 그림 위 장식이라 UI 색과 달리 급하지 않지만, 오버라이드 사진(Meadow·Cabin)에서는 틀린 값을 쓴다. `useGround`를 읽게 하면 된다
 - **독이 한 줄에 컨트롤 8개다**(2026-09-06 R-3). 창을 좁히면 넘치는지 안 봤다
-- **DESIGN.md의 `TBD` 3개**: 위험 상태 색 / 위젯 색 마크(`--mark`)를 액센트 계열에서 뽑을 것인지 / 사진 배경 토큰 — 셋째는 R-7이 답했으니 지우면 된다
+- **DESIGN.md의 `TBD` 2개**: 위젯 색 마크(`--mark`)를 액센트 계열에서 뽑을 것인지 / 사진 배경 토큰(R-7이 답했으니 지우면 된다). **위험 상태 색은 2026-09-06에 정했다 — `--danger`**
+- **DESIGN.md 3장이 타이머를 42px이라고 쓴다.** 글자 6단의 `--text-display`는 34px이고 위젯은 그 값을 쓴다. 42px은 A2 시안에서 남은 숫자다 — 6단이 맞으니 문서 쪽을 고칠 것
 
 ### 디자인 시스템 현황
 
 **있다**: CSS 변수 + 토큰 클래스 12개(`.glass` `.t-ink` `.field` `.row` `.card-tile` `.chrome-button` …). 배경을 바꾸면 전부 따라온다. **이 구조는 좋으니 갈아엎지 말 것.** 라디우스 3단 · 타입 6단 · 그림자 3종 · 포커스 링 · `prefers-reduced-motion`도 들어갔다.
 
-**없다**: 스페이싱 스케일 · **상태 규칙(loading / empty / error)** · 컴포넌트 계약(버튼·입력·패널이 컴포넌트가 아니라 클래스 조합). **9-4가 채울 것이 이것이다.**
+**2026-09-06에 더한 것**: 스페이싱 7단 · **상태 4개(빈/로딩/에러/촉감)** — `--danger` `.press` `.skeleton` `.load-bar`.
+
+**아직 없다**: 컴포넌트 계약(버튼·입력·패널이 컴포넌트가 아니라 클래스 조합). 위젯에서는 클래스 조합으로 버텼다 — 패널 9개까지 같은 조합을 반복하게 되면 그때 컴포넌트로 뽑는다.
+
+**위젯 12종에 적용한 것**(2026-09-06, 실기 확인함):
+- 빈 상태 3개를 새로 만들었다 — Todo · Kanban · Sketch. Photo·Memo·Column·BrowserStartPage·App·WebApp은 이미 있었다
+- 로딩 2개 — App 목록 스켈레톤, 페이지 받는 중 막대(Browser·WebApp). **원형 스피너는 안 쓴다**
+- 에러 2개 — Photo(이미지 아닌 파일·저장 실패), WebApp 페이지. Browser는 이미 있었다. Todo·Kanban·Memo·Timer·Clock·Calendar·Sketch는 로컬 상태라 실패할 게 없어서 안 만들었다
+- 촉감은 위젯의 모든 버튼에 붙였다(`.press`, `:active`에 1px)
 
 ### 손대지 않기로 한 것
 

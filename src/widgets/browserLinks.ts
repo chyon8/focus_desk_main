@@ -11,6 +11,14 @@
 export const NEW_TAB_FRAME = 'focusdesk-newtab';
 
 /**
+ * A load the user cancelled, which is not a failure worth a page about.
+ *
+ * Here rather than in one widget because both webview widgets read `did-fail-load`
+ * and both have to ignore this code.
+ */
+export const ERR_ABORTED = -3;
+
+/**
  * Spread onto a `<webview>` to let pages open popups.
  *
  * Written as a string because React drops `allowpopups={true}`: it is not an

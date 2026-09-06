@@ -39,7 +39,7 @@ const Btn: React.FC<{
     aria-pressed={on}
     disabled={disabled}
     className={`chrome-button flex items-center gap-1.5 px-2 h-8 rounded-control text-meta font-medium disabled:opacity-40 ${
-      danger ? 'hover:!text-red-400' : ''
+      danger ? 't-danger' : ''
     } ${on ? 'row-on' : ''}`}
   >
     {children}

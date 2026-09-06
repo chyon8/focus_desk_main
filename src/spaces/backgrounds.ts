@@ -98,12 +98,19 @@ export function backgroundTokens<T extends ThemeTokens>(
     /**
      * 면은 글자를 이고 있으므로 불투명하고, **극성이 정한 바탕**에서 출발한다.
      * 예전에는 배경색에 흰색을 섞어서 만들었는데(어두우면 7%, 밝으면 70%), 그러면
-     * 밝은 배경에 Dark를 걸어도 흰색을 조금 섞은 밝은 면이 나온다. 배경색은 이제
-     * 색조로만 14% 섞여서, 면이 배경에서 떨어지면서도 그 공간의 색을 띤다.
+     * 밝은 배경에 Dark를 걸어도 흰색을 조금 섞은 밝은 면이 나온다.
+     *
+     * **배경색을 35% 섞는다.** 처음엔 14%였는데 그러면 공간을 바꿔도 사이드바가
+     * 극성 두 값(밝음/어두움)으로만 보였다 — 사이드바가 그 공간의 색을 띠는 것이
+     * 이 앱에서 공간을 바꿨다는 걸 가장 먼저 알려주는 신호다.
+     *
+     * 35%가 상한이다. 이 값에서 실제 배경 12종(단색 4 · 사진 평균색 4 · Minimal 4)
+     * 전부 글자 대비가 AA를 넘고, 가장 빠듯한 것이 밝은 사진에 Dark를 건 경우로
+     * 4.62:1이다. 40%로 올리면 그게 3.97로 떨어져 본문 기준(4.5)을 깬다.
      */
     surface:
       named?.surface ??
-      `color-mix(in srgb, ${light ? LIGHT_SURFACE : DARK_SURFACE} 86%, ${value})`,
+      `color-mix(in srgb, ${light ? LIGHT_SURFACE : DARK_SURFACE} 65%, ${value})`,
     panelBorder:
       named?.border ?? (light ? 'rgba(30, 28, 25, 0.16)' : 'rgba(255, 255, 255, 0.14)'),
   };

@@ -146,7 +146,7 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>((props, ref
   if (props.items.length === 0) return null;
 
   return (
-    <div className="glass-panel w-56 max-h-[19rem] overflow-y-auto rounded-surface shadow-2xl p-1.5">
+    <div className="glass-panel w-56 max-h-[19rem] overflow-y-auto rounded-surface p-1.5">
       {props.items.map((item, index) => {
         const isActive = index === active;
         // A heading wherever the group changes — the list is already sorted.

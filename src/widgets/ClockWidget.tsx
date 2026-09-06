@@ -34,20 +34,22 @@ export const ClockWidget: React.FC = () => {
         })}
 
         <div
-          className="absolute w-1.5 h-14 rounded-full origin-bottom z-10 shadow-sm"
+          className="absolute w-1.5 h-14 rounded-full origin-bottom z-10"
           style={{
             bottom: '50%',
             left: 'calc(50% - 3px)',
             background: 'var(--ink)',
+            boxShadow: 'var(--shadow-lift)',
             transform: `rotate(${hoursRatio * 360}deg)`,
           }}
         />
         <div
-          className="absolute w-1 h-20 rounded-full origin-bottom z-10 shadow-sm"
+          className="absolute w-1 h-20 rounded-full origin-bottom z-10"
           style={{
             bottom: '50%',
             left: 'calc(50% - 2px)',
             background: 'var(--ink-soft)',
+            boxShadow: 'var(--shadow-lift)',
             transform: `rotate(${minutesRatio * 360}deg)`,
           }}
         />
@@ -58,7 +60,6 @@ export const ClockWidget: React.FC = () => {
             left: 'calc(50% - 1px)',
             background: 'var(--accent)',
             transform: `rotate(${secondsRatio * 360}deg)`,
-            filter: 'drop-shadow(0 0 4px var(--accent))',
           }}
         >
           <div
@@ -68,8 +69,8 @@ export const ClockWidget: React.FC = () => {
         </div>
 
         <div
-          className="absolute w-3 h-3 rounded-full z-30 shadow-md"
-          style={{ background: 'var(--ink)' }}
+          className="absolute w-3 h-3 rounded-full z-30"
+          style={{ background: 'var(--ink)', boxShadow: 'var(--shadow-lift)' }}
         >
           <div
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full"

@@ -57,7 +57,7 @@ const HeaderButton: React.FC<{
     onPointerDown={(e) => e.stopPropagation()}
     onClick={onClick}
     className={`chrome-button w-7 h-7 flex items-center justify-center rounded-control ${
-      danger ? 'hover:!text-red-300' : ''
+      danger ? 't-danger' : ''
     }`}
   >
     {children}

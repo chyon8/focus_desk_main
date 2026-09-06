@@ -62,6 +62,12 @@
   /* 액센트를 배경으로 깔았을 때 그 위에 얹는 글자색. */
   --accent-ink: #231f1a;
   --accent-soft: rgba(233, 167, 95, 0.15);
+
+  /* 위험. 액센트가 아니라 상태 색이다 — 지우기·실패에만 쓰고 그 밖에는 안 나온다.
+     액센트와 같은 따뜻한 계열에서 뽑아 한 화면에 두 색 온도가 안 섞이게 했다
+     (어두운 값은 액센트 #e9a75f와 빨강 채널이 같다).
+     대비: 어두움 6.67:1 / 밝음 6.91:1 (면 위, AA 본문 4.5 기준). */
+  --danger: #e98b78;
 }
 
 /* 극성은 배경이 정한다. themes/useTheme가 data-polarity를 단다. */
@@ -77,6 +83,7 @@
   --accent-hover: #944c15;
   --accent-ink: #fff7ef;
   --accent-soft: rgba(169, 88, 27, 0.12);
+  --danger: #a3231a;
 }
 
 body {
@@ -259,6 +266,73 @@ body {
 .row-on {
   background: color-mix(in srgb, var(--ink) 12%, transparent);
   color: var(--ink);
+}
+
+/* --- 상태 (DESIGN.md 6장) -------------------------------------------------
+   빈·에러는 무엇을 쓸지가 위젯마다 달라 클래스가 없다. 로딩과 촉감은 모양이
+   어디서나 같으므로 여기 한 벌로 둔다. --- */
+
+/* 지우는 컨트롤. 가리키기 전에는 나머지와 똑같이 조용하다 — 타일마다 빨간 ✕가
+   붙어 있으면 경고가 늘어선 것으로 읽힌다. .chrome-button:hover·.row:hover와
+   특이도가 같아서 그 뒤에 와야 이긴다. */
+.t-danger:hover {
+  color: var(--danger);
+}
+
+/* 눌리는 느낌. 누른 순간 1px 내려가고 뗄 때 바로 올라온다. 트랜지션을 안 거는
+   이유는 두 가지다 — 손가락 반응은 즉시여야 하고, .press가 트랜지션을 걸면
+   같은 요소의 .chrome-button hover 페이드를 덮어쓴다(둘 다 레이어 밖이라
+   나중에 선언된 쪽이 이긴다). */
+.press:active {
+  transform: translateY(1px);
+}
+
+/* 로딩 자리. 원형 스피너가 아니라 들어올 내용의 모양이다 — 다 받고 나면
+   글이 같은 자리에 앉으므로 레이아웃이 안 튄다. 맥동은 이 앱의 유일한
+   자동 루프이고, 기다리는 동안에만 돈다. */
+.skeleton {
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+  border-radius: var(--radius-mark);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* 페이지를 받는 동안 위쪽 변에 붙는 막대. 진행률을 모르므로(webview는 알려주지
+   않는다) 왼쪽에서 오른쪽으로 훑는다. 페이지 자리 안에 있어서 위젯 헤더를
+   가리지 않는다. */
+.load-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+.load-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: var(--accent);
+  animation: load-sweep 1.1s ease-in-out infinite;
+}
+@keyframes load-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
 }
 
 /* The dimmer behind a modal. Tinted from the theme's own surface, so a light
@@ -626,6 +700,13 @@ textarea:focus-visible,
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* 훑는 막대는 멈추면 화면 밖에 서서 아무것도 안 알린다. 움직임 대신
+     변 전체를 옅게 채워서 "받는 중"을 그대로 남긴다. */
+  .load-bar::after {
+    width: 100%;
+    opacity: 0.55;
+  }
 }
 
 /* Electron frameless window drag region */
@@ -810,13 +891,18 @@ textarea:focus-visible,
 .slash-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   width: 100%;
-  padding: 0.3rem 0.4rem;
+  /* 4.8 / 6.4px였다. 스페이싱 7단(2/4/6/8/12/16/24)에 없는 값이고, rem이라
+     사용자 글꼴 크기에 따라 눈금이 또 어긋났다. 여기는 문서가 아니라 앱 메뉴다. */
+  padding: 4px 6px;
   border-radius: var(--radius-control);
   color: var(--ink-soft);
   text-align: left;
   transition: background-color 0.12s, color 0.12s;
+}
+.slash-row:active {
+  transform: translateY(1px);
 }
 .slash-row:hover {
   color: var(--ink);
@@ -830,8 +916,8 @@ textarea:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   border-radius: var(--radius-mark);
   border: 1px solid var(--panel-border);

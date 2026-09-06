@@ -22,7 +22,7 @@ const PLACE_PROBLEMS: Record<PlaceFailure, string> = {
   fullscreen:
     'It is fullscreen, which macOS gives a desktop of its own. Leave fullscreen (⌃⌘F) and click again.',
   otherSpace:
-    'That window is on another desktop, which macOS hides from other apps. Bring it to this desktop — or assign a different window — then click again.',
+    'That window is on another desktop, which macOS hides from other apps. Bring it to this desktop, or assign a different window, then click again.',
   notRunning: 'It would not start.',
   noWindow: 'It has no window open yet.',
   minimized: 'Its window is minimised.',
@@ -115,7 +115,7 @@ const AppFace: React.FC<{
             </span>
             <button
               onClick={() => void window.apps?.showAccessibilitySettings()}
-              className="chrome-button mt-1 px-3 h-8 rounded-control text-body"
+              className="chrome-button press mt-1 px-3 h-8 rounded-control text-body"
             >
               Open Accessibility settings
             </button>
@@ -131,7 +131,7 @@ const AppFace: React.FC<{
                 user from the app they asked for. */}
             <button
               onClick={() => void window.apps?.launch(data.appKey)}
-              className="chrome-button mt-1 px-3 h-8 rounded-control text-body"
+              className="chrome-button press mt-1 px-3 h-8 rounded-control text-body"
             >
               Open it anyway
             </button>
@@ -154,14 +154,14 @@ const AppFace: React.FC<{
           <>
             <span className="t-ink text-title">{data.name} is out of its slot</span>
             <span className="t-faint text-body max-w-[34ch]">
-              Its window will not stay here — the app keeps moving it back.
+              Its window will not stay here. The app keeps moving it back.
             </span>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 bringBack();
               }}
-              className="chrome-button mt-1 px-3 h-8 rounded-control text-body"
+              className="chrome-button press mt-1 px-3 h-8 rounded-control text-body"
             >
               Bring it back here
             </button>
@@ -177,7 +177,7 @@ const AppFace: React.FC<{
                 e.stopPropagation();
                 bringBack();
               }}
-              className="chrome-button mt-1 px-3 h-8 rounded-control text-body"
+              className="chrome-button press mt-1 px-3 h-8 rounded-control text-body"
             >
               Bring it back
             </button>
@@ -228,7 +228,7 @@ const AppFace: React.FC<{
           ui.toggleAppOpen(id);
         }}
         title={attachApps ? `Open ${data.name} here, at this size` : `Switch to ${data.name}`}
-        className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2.5"
+        className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2"
       >
         {data.icon ? (
           <img src={data.icon} alt="" className="w-16 h-16" draggable={false} />
@@ -246,7 +246,7 @@ const AppFace: React.FC<{
       <button
         onClick={() => setPicking(true)}
         title="Choose which window this widget opens"
-        className="row t-faint hover:t-ink px-1.5 py-0.5 rounded-control text-meta flex items-center gap-1 min-w-0"
+        className="row t-faint press hover:t-ink px-1.5 py-0.5 rounded-control text-meta flex items-center gap-1 min-w-0"
       >
         <Layers size={10} className="shrink-0" />
         <span className="truncate">{data.windowTitle ?? 'Any window'}</span>
@@ -266,12 +266,12 @@ const AppFace: React.FC<{
             <button
               onClick={() => void window.apps?.launch(data.appKey)}
               title={`Switch to ${data.name} outside Focus Desk`}
-              className="t-faint hover:t-ink"
+              className="t-faint press hover:t-ink"
             >
               <ArrowUpRight size={12} />
             </button>
           )}
-          <button onClick={onClear} title="Pick a different app" className="t-faint hover:t-ink">
+          <button onClick={onClear} title="Pick a different app" className="t-faint press hover:t-ink">
             <RotateCcw size={10} />
           </button>
         </div>
@@ -317,7 +317,7 @@ const WindowPicker: React.FC<{
         <span className="t-soft text-meta font-semibold uppercase tracking-widest truncate">
           {name} windows
         </span>
-        <button onClick={onClose} className="t-faint hover:t-ink ml-auto shrink-0">
+        <button onClick={onClose} className="t-faint press hover:t-ink ml-auto shrink-0">
           <X size={12} />
         </button>
       </div>
@@ -328,7 +328,7 @@ const WindowPicker: React.FC<{
         <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-0.5">
           <button
             onClick={() => onPick(undefined)}
-            className={`row !text-[inherit] w-full px-2 py-1.5 rounded-control text-left text-ui truncate ${
+            className={`row press !text-[inherit] w-full px-2 py-1.5 rounded-control text-left text-ui truncate ${
               current ? '' : 't-ink font-medium'
             }`}
           >
@@ -340,7 +340,7 @@ const WindowPicker: React.FC<{
               <button
                 key={entry.title + index}
                 onClick={() => onPick(entry.title ?? undefined)}
-                className={`row !text-[inherit] w-full px-2 py-1.5 rounded-control text-left text-ui truncate ${
+                className={`row press !text-[inherit] w-full px-2 py-1.5 rounded-control text-left text-ui truncate ${
                   entry.title === current ? 't-ink font-medium' : ''
                 }`}
               >
@@ -363,7 +363,7 @@ const WindowPicker: React.FC<{
           {state.elsewhere > 0 && (
             <div className="t-faint px-2 pt-2 text-meta leading-snug">
               {state.elsewhere} more on another desktop or in fullscreen. macOS hides those from
-              other apps — move them to this desktop, then open this list again.
+              other apps. Move them to this desktop, then open this list again.
             </div>
           )}
         </div>
@@ -400,7 +400,7 @@ const AppPicker: React.FC<{ onPick: (app: AppData) => void }> = ({ onPick }) => 
   }, [catalog, query]);
 
   return (
-    <div className="t-ink h-full w-full flex flex-col p-5">
+    <div className="t-ink h-full w-full flex flex-col p-4">
       <span className="t-soft text-ui font-semibold uppercase tracking-widest mb-3">App</span>
 
       <div className="border-hair flex items-center gap-2 pb-2 mb-2 border-b">
@@ -415,7 +415,17 @@ const AppPicker: React.FC<{ onPick: (app: AppData) => void }> = ({ onPick }) => 
       </div>
 
       {catalog === null ? (
-        <div className="t-faint text-ui">Looking for apps…</div>
+        // 들어올 목록의 모양 그대로. 글 한 줄("Looking for apps…")이었는데,
+        // 목록이 도착하면 그 줄이 사라지고 행 스무 개가 밀고 들어와 화면이
+        // 튀었다. 스켈레톤은 같은 자리에 같은 크기로 앉는다(DESIGN.md 6장).
+        <div className="flex-1 space-y-0.5" aria-busy>
+          {Array.from({ length: 7 }, (_, i) => (
+            <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+              <div className="skeleton w-5 h-5 shrink-0" />
+              <div className="skeleton h-3" style={{ width: `${45 + ((i * 13) % 40)}%` }} />
+            </div>
+          ))}
+        </div>
       ) : matches.length === 0 ? (
         // Coming up empty is the one moment the search is worth explaining: an
         // app macOS has not indexed is invisible here however hard the user
@@ -431,7 +441,7 @@ const AppPicker: React.FC<{ onPick: (app: AppData) => void }> = ({ onPick }) => 
           </span>
           <button
             onClick={() => void window.apps?.showSpotlightSettings()}
-            className="chrome-button mt-0.5 px-3 h-7 rounded-control text-meta"
+            className="chrome-button press mt-0.5 px-3 h-7 rounded-control text-meta"
           >
             Open Spotlight settings
           </button>
@@ -442,7 +452,7 @@ const AppPicker: React.FC<{ onPick: (app: AppData) => void }> = ({ onPick }) => 
             <button
               key={app.appKey}
               onClick={() => onPick(app)}
-              className="row !text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-control text-left"
+              className="row press !text-[inherit] w-full flex items-center gap-2 px-2 py-1.5 rounded-control text-left"
             >
               {app.icon ? (
                 <img src={app.icon} alt="" className="w-5 h-5 shrink-0" draggable={false} />

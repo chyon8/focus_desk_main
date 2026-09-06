@@ -31,6 +31,11 @@ function panLimits(img: HTMLImageElement | null, frame: DOMRect | undefined, zoo
 export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
   const [data, update] = useWidgetData<PhotoData>(id);
   const [isDropTarget, setIsDropTarget] = useState(false);
+  // 파일을 앱 폴더로 복사하는 동안, 그리고 실패했을 때. 둘 다 조용히 아무 일도
+  // 안 일어나던 자리다 — PDF를 떨어뜨리면 위젯이 그대로 비어 있었고, 사용자는
+  // 드롭을 못 받은 건지 사진이 안 되는 건지 알 수 없었다(DESIGN.md 6장).
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const picture = useRef<HTMLImageElement>(null);
@@ -42,9 +47,21 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
   // Images are copied into the app's own folder and referenced by URL, so a
   // space document never carries megabytes of base64.
   const store = async (file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    const url = await window.images?.save(await file.arrayBuffer(), file.name);
-    if (url) update({ url, zoom: 1, panX: 0, panY: 0 });
+    if (!file.type.startsWith('image/')) {
+      setFailure(`${file.name} is not an image.`);
+      return;
+    }
+    setFailure(null);
+    setSaving(true);
+    try {
+      const url = await window.images?.save(await file.arrayBuffer(), file.name);
+      if (url) update({ url, zoom: 1, panX: 0, panY: 0 });
+      else setFailure('That image could not be saved.');
+    } catch {
+      setFailure('That image could not be saved.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Pinch on the trackpad zooms the picture inside its frame; the widget keeps
@@ -118,14 +135,17 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
         ref={frame}
         onPointerDown={onPointerDown}
         onDoubleClick={() => update({ zoom: 1, panX: 0, panY: 0 })}
-        className="flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-mark transition-all"
+        className="relative flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-mark transition-all"
         style={{
           background: 'color-mix(in srgb, var(--ink) 8%, transparent)',
           boxShadow: isDropTarget ? '0 0 0 2px var(--accent)' : undefined,
           cursor: data.url && zoom > 1 ? 'grab' : undefined,
         }}
       >
-        {data.url ? (
+        {saving ? (
+          // 들어올 사진이 앉을 자리 그대로. 원형 스피너를 쓰지 않는다.
+          <div className="skeleton w-full h-full" />
+        ) : data.url ? (
           <img
             ref={picture}
             src={data.url}
@@ -144,11 +164,33 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
         ) : (
           <button
             onClick={() => fileInput.current?.click()}
-            className="t-faint hover:opacity-70 flex flex-col items-center gap-2 transition-opacity"
+            className="t-faint press hover:opacity-70 flex flex-col items-center gap-2 transition-opacity"
           >
             <ImagePlus size={28} />
             <span className="text-ui">Drop or choose a photo</span>
           </button>
+        )}
+
+        {/* 실패는 사진을 치우지 않고 그 위에 얹는다 — 사진이 걸린 위젯에 PDF를
+            떨어뜨렸다고 걸려 있던 사진까지 사라지면 안 된다. */}
+        {failure && !saving && (
+          <div
+            className="absolute inset-x-0 bottom-0 flex items-center gap-2 px-3 py-2"
+            style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-lift)' }}
+          >
+            <span className="min-w-0 flex-1 text-ui" style={{ color: 'var(--danger)' }}>
+              {failure}
+            </span>
+            <button
+              onClick={() => {
+                setFailure(null);
+                fileInput.current?.click();
+              }}
+              className="chrome-button press shrink-0 px-2 h-6 rounded-control text-ui"
+            >
+              Choose another
+            </button>
+          </div>
         )}
       </div>
 

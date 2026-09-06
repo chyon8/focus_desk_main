@@ -146,7 +146,7 @@ const MermaidView: React.FC<NodeViewProps> = ({ node, updateAttributes, selected
             setDraft(code);
             setIsEditing(true);
           }}
-          className="w-full flex justify-center p-2"
+          className="press w-full flex justify-center p-2"
         >
           {error ? (
             <span className="t-faint text-ui">Diagram: {error}</span>

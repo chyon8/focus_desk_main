@@ -8,7 +8,7 @@ import type { WebAppPreset } from '../webapps/presets';
 import { WebAppForm } from '../webapps/WebAppForm';
 import { WebAppMark } from '../webapps/WebAppMark';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
-import { ALLOW_POPUPS, LINK_SHIM } from './browserLinks';
+import { ALLOW_POPUPS, ERR_ABORTED, LINK_SHIM } from './browserLinks';
 import { openTabBeside, sendToCanvas } from './newTab';
 import { useWidgetData } from './useWidgetData';
 
@@ -165,7 +165,7 @@ const WebAppTile: React.FC<{
             onEdit();
           }}
           title="Change which web app this is"
-          className="t-faint hover:t-ink shrink-0 opacity-0 group-hover/tile:opacity-100"
+          className="t-faint press hover:t-ink shrink-0 opacity-0 group-hover/tile:opacity-100"
         >
           <Pencil size={12} />
         </span>
@@ -182,6 +182,10 @@ const WebAppPage: React.FC<{
 }> = ({ id, data, update }) => {
   const spaceId = useSpaceStore((s) => s.activeSpaceId);
   const [canGoBack, setCanGoBack] = useState(false);
+  // 브라우저 위젯과 같은 두 상태(DESIGN.md 6장). 같은 webview를 쓰는데 한쪽만
+  // 실패를 알리면 위젯 종류마다 다른 걸 배워야 한다.
+  const [isLoading, setIsLoading] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const view = useRef<Electron.WebviewTag>(null);
   // Set once: after this the page navigates itself, and a changing src would
   // yank it back to where it started.
@@ -199,6 +203,7 @@ const WebAppPage: React.FC<{
     const remember = (url: string) => {
       update({ url });
       setCanGoBack(el.canGoBack());
+      setFailure(null);
     };
     const onNavigate = (e: Electron.DidNavigateEvent) => remember(e.url);
     // Single-page sites change page with history.pushState, which surfaces only
@@ -208,6 +213,12 @@ const WebAppPage: React.FC<{
       else setCanGoBack(el.canGoBack());
     };
     // Every load gets a fresh page, so the shims go in on every dom-ready.
+    const onStart = () => setIsLoading(true);
+    const onStop = () => setIsLoading(false);
+    const onFail = (e: Electron.DidFailLoadEvent) => {
+      if (!e.isMainFrame || e.errorCode === ERR_ABORTED) return;
+      setFailure(e.errorDescription || 'The page could not be loaded.');
+    };
     const onDomReady = () => {
       contentsId.current = el.getWebContentsId();
       el.setZoomFactor(zoomRef.current);
@@ -227,11 +238,17 @@ const WebAppPage: React.FC<{
     el.addEventListener('did-navigate', onNavigate);
     el.addEventListener('did-navigate-in-page', onNavigateInPage);
     el.addEventListener('page-favicon-updated', onFavicon);
+    el.addEventListener('did-start-loading', onStart);
+    el.addEventListener('did-stop-loading', onStop);
+    el.addEventListener('did-fail-load', onFail);
     return () => {
       el.removeEventListener('dom-ready', onDomReady);
       el.removeEventListener('did-navigate', onNavigate);
       el.removeEventListener('did-navigate-in-page', onNavigateInPage);
       el.removeEventListener('page-favicon-updated', onFavicon);
+      el.removeEventListener('did-start-loading', onStart);
+      el.removeEventListener('did-stop-loading', onStop);
+      el.removeEventListener('did-fail-load', onFail);
     };
   }, [update, appId]);
 
@@ -294,27 +311,47 @@ const WebAppPage: React.FC<{
             type="button"
             title="Reset zoom (⌘0)"
             onClick={() => update({ zoom: 1 })}
-            className="chrome-button shrink-0 px-1 h-6 rounded-control text-micro tabular-nums"
+            className="chrome-button press shrink-0 px-1 h-6 rounded-control text-micro tabular-nums"
           >
             {Math.round(zoom * 100)}%
           </button>
         )}
         {/* Back to the tile. The address is kept, so opening it again lands where
             the user left off. */}
-        <ToolButton label="Close — back to the icon" onClick={() => update({ open: false })}>
+        <ToolButton label="Close and go back to the icon" onClick={() => update({ open: false })}>
           <X size={13} />
         </ToolButton>
       </div>
 
-      <webview
-        ref={view}
-        src={initialUrl.current}
-        // The space's own cookie jar, so the same site can be signed in as a
-        // different account in each space (D-074).
-        partition={`persist:space-${spaceId}`}
-        {...ALLOW_POPUPS}
-        className="web-page flex-1 w-full"
-      />
+      <div className="relative flex-1 min-h-0">
+        {isLoading && <div className="load-bar" />}
+
+        <webview
+          ref={view}
+          src={initialUrl.current}
+          // The space's own cookie jar, so the same site can be signed in as a
+          // different account in each space (D-074).
+          partition={`persist:space-${spaceId}`}
+          {...ALLOW_POPUPS}
+          className="web-page absolute inset-0 h-full w-full"
+        />
+
+        {failure && (
+          <div className="glass-panel absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
+            <span className="t-ink text-body">{data.name} didn’t load</span>
+            <span className="t-faint text-ui max-w-[40ch]">{failure}</span>
+            <button
+              onClick={() => {
+                setFailure(null);
+                view.current?.reload();
+              }}
+              className="chrome-button press mt-1 px-3 h-8 rounded-control text-body"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -330,7 +367,7 @@ const ToolButton: React.FC<{
     title={label}
     disabled={disabled}
     onClick={onClick}
-    className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-control disabled:opacity-30 disabled:hover:bg-transparent"
+    className="chrome-button press shrink-0 w-6 h-6 flex items-center justify-center rounded-control disabled:opacity-30 disabled:hover:bg-transparent"
   >
     {children}
   </button>
@@ -406,7 +443,7 @@ const WebAppPicker: React.FC<{
       <div className="flex items-center gap-2 mb-3">
         <span className="t-soft text-ui font-semibold uppercase tracking-widest">Web app</span>
         {onClose && (
-          <button onClick={onClose} className="t-faint hover:t-ink ml-auto">
+          <button onClick={onClose} className="t-faint press hover:t-ink ml-auto">
             <X size={12} />
           </button>
         )}
@@ -428,10 +465,10 @@ const WebAppPicker: React.FC<{
           // The row picks, the pencil manages. Editing has to be reachable from
           // here and not only from a tile already standing for it: otherwise a
           // saved web app whose widget was closed can never be renamed or removed.
-          <div key={app.id} className="row group flex items-center gap-2.5 px-2 py-1.5 rounded-control">
+          <div key={app.id} className="row group flex items-center gap-2 px-2 py-1.5 rounded-control">
             <button
               onClick={() => onPick(app)}
-              className="!text-[inherit] flex-1 min-w-0 flex items-center gap-2.5 text-left"
+              className="press !text-[inherit] flex-1 min-w-0 flex items-center gap-2 text-left"
             >
               <WebAppMark icon={app.icon} name={app.name} size={20} className="shrink-0" />
               <span className="flex-1 min-w-0 text-body truncate">{app.name}</span>
@@ -440,7 +477,7 @@ const WebAppPicker: React.FC<{
             <button
               onClick={() => setForm(app)}
               title={`Edit or remove ${app.name}`}
-              className="t-faint hover:t-ink shrink-0 opacity-0 group-hover:opacity-100"
+              className="t-faint press hover:t-ink shrink-0 opacity-0 group-hover:opacity-100"
             >
               <Pencil size={11} />
             </button>
@@ -464,7 +501,7 @@ const WebAppPicker: React.FC<{
                       .save({ name: preset.name, url: preset.url, icon: preset.icon })
                   )
                 }
-                className="row !text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-control text-left"
+                className="row press !text-[inherit] w-full flex items-center gap-2 px-2 py-1.5 rounded-control text-left"
               >
                 <WebAppMark icon={preset.icon} name={preset.name} size={20} className="shrink-0" />
                 <span className="flex-1 min-w-0 text-body truncate">{preset.name}</span>
@@ -476,7 +513,7 @@ const WebAppPicker: React.FC<{
 
       <button
         onClick={() => setForm({ id: crypto.randomUUID(), name: '', url: '', icon: null })}
-        className="row shrink-0 mt-2 flex items-center justify-center gap-2 py-2 rounded-control text-ui"
+        className="row press shrink-0 mt-2 flex items-center justify-center gap-2 py-2 rounded-control text-ui"
       >
         <Plus size={13} />
         Add a web app

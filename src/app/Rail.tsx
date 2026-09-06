@@ -264,7 +264,7 @@ const SpaceMenu: React.FC<{ top: number; onClose: () => void; onOpenInsights: ()
                     onClose();
                     useSpaceStore.getState().removeSpace(id);
                   }}
-                  className="chrome-button flex-1 py-1 rounded-control text-meta font-medium hover:!text-red-300"
+                  className="chrome-button flex-1 py-1 rounded-control text-meta font-medium t-danger"
                 >
                   Delete
                 </button>
@@ -273,7 +273,7 @@ const SpaceMenu: React.FC<{ top: number; onClose: () => void; onOpenInsights: ()
           ) : (
             <button
               onClick={() => setIsConfirming(true)}
-              className="row w-full flex items-center gap-2 px-2 py-2 rounded-control text-ui hover:!text-red-300"
+              className="row w-full flex items-center gap-2 px-2 py-2 rounded-control text-ui t-danger"
             >
               <Trash2 size={14} />
               <span className="flex-1 text-left">Delete this space</span>

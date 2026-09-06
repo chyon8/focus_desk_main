@@ -144,7 +144,7 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                     onClick={() => void signOutSite(site)}
                     disabled={busy === site}
                     title={`Sign this space out of ${site}`}
-                    className="t-faint hover:!text-red-300 shrink-0 opacity-0 group-hover:opacity-100 disabled:opacity-40"
+                    className="t-faint t-danger shrink-0 opacity-0 group-hover:opacity-100 disabled:opacity-40"
                   >
                     <LogOut size={11} />
                   </button>
@@ -169,7 +169,7 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
               </button>
               <button
                 onClick={() => void signOutAll()}
-                className="chrome-button flex-1 py-1 rounded-control text-meta font-medium hover:!text-red-300"
+                className="chrome-button flex-1 py-1 rounded-control text-meta font-medium t-danger"
               >
                 Sign out
               </button>

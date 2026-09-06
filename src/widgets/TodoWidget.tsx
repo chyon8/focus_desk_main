@@ -51,6 +51,17 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-1 -mx-2 px-2">
+        {/* 빈 상태. 할 일이 없다는 사실보다 어디에 쓰는지가 필요한 정보라
+            아래 입력칸을 가리킨다(DESIGN.md 6장). */}
+        {data.items.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center gap-1 text-center">
+            <span className="t-soft text-body">Nothing to do here yet</span>
+            <span className="t-faint text-ui max-w-[30ch]">
+              Write your first task in the box below.
+            </span>
+          </div>
+        )}
+
         {data.items.map((item) => (
           <div
             key={item.id}
@@ -58,7 +69,7 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
           >
             <button
               onClick={() => toggle(item.id)}
-              className="w-5 h-5 shrink-0 rounded-control border flex items-center justify-center transition-all"
+              className="press w-5 h-5 shrink-0 rounded-control border flex items-center justify-center transition-all"
               style={
                 item.done
                   ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--accent-ink)' }
@@ -97,7 +108,7 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
               <button
                 onClick={() => useFocusStore.getState().start(item.text)}
                 title="Focus on this task"
-                className="t-faint hover:!text-[var(--accent)] opacity-0 group-hover:opacity-100 p-1 rounded-mark transition-all"
+                className="t-faint press hover:!text-[var(--accent)] opacity-0 group-hover:opacity-100 p-1 rounded-mark transition-all"
               >
                 <Play size={13} />
               </button>
@@ -105,7 +116,7 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
 
             <button
               onClick={() => remove(item.id)}
-              className="t-faint hover:!text-red-400 opacity-0 group-hover:opacity-100 p-1 rounded-mark transition-all"
+              className="t-faint t-danger press opacity-0 group-hover:opacity-100 p-1 rounded-mark transition-all"
             >
               <X size={14} />
             </button>

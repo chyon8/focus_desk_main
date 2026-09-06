@@ -23,9 +23,9 @@ export const CalendarWidget: React.FC = () => {
   ];
 
   return (
-    <div className="t-ink h-full w-full flex flex-col p-5">
+    <div className="t-ink h-full w-full flex flex-col p-4">
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => shiftMonth(-1)} className="chrome-button p-1 rounded-control">
+        <button onClick={() => shiftMonth(-1)} className="chrome-button press p-1 rounded-control">
           <ChevronLeft size={16} />
         </button>
 
@@ -33,7 +33,7 @@ export const CalendarWidget: React.FC = () => {
           {viewMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}
         </span>
 
-        <button onClick={() => shiftMonth(1)} className="chrome-button p-1 rounded-control">
+        <button onClick={() => shiftMonth(1)} className="chrome-button press p-1 rounded-control">
           <ChevronRight size={16} />
         </button>
       </div>

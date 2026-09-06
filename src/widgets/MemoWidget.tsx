@@ -56,7 +56,7 @@ export const MemoWidget: React.FC<{ id: string }> = ({ id }) => {
           받으므로, 마지막 줄 아래 빈 곳을 누르면 아무 일도 안 일어났다 —
           한 줄짜리 메모에서는 눌러야 할 데가 그 한 줄뿐이었다. */}
       <div
-        className="relative flex-1 min-h-0 overflow-y-auto px-6 py-5 cursor-text"
+        className="relative flex-1 min-h-0 overflow-y-auto px-6 py-4 cursor-text"
         onMouseDown={(e) => {
           if (e.target !== e.currentTarget || !editor) return;
           e.preventDefault();
@@ -114,7 +114,7 @@ const TableButton: React.FC<{
   <button
     title={label}
     onClick={onClick}
-    className="chrome-button h-6 px-1.5 flex items-center gap-0.5 rounded-control text-micro"
+    className="chrome-button press h-6 px-1.5 flex items-center gap-0.5 rounded-control text-micro"
   >
     {children}
   </button>

@@ -49,9 +49,19 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
     });
   };
 
+  const empty = COLUMNS.every(({ key }) => data.columns[key].length === 0);
+
   return (
-    <div className="t-ink h-full w-full flex flex-col p-5">
+    <div className="t-ink h-full w-full flex flex-col p-4">
       <span className="t-soft text-ui font-semibold uppercase tracking-widest mb-4">Board</span>
+
+      {/* 빈 상태는 보드 전체가 비었을 때만. 컬럼마다 넣으면 빈 보드에 같은 말이
+          셋 서고, 컬럼 하나만 비는 건 정상이라 알릴 게 없다(DESIGN.md 6장). */}
+      {empty && (
+        <div className="t-faint mb-3 text-ui">
+          Nothing on this board yet. Add a card under To Do to start.
+        </div>
+      )}
 
       <div className="flex-1 grid grid-cols-3 gap-3 min-h-0">
         {COLUMNS.map(({ key, label, dot }) => (
@@ -69,13 +79,13 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
               {data.columns[key].map((card) => (
                 <div
                   key={card.id}
-                  className="glass group rounded-control px-2.5 py-2 text-ui leading-snug transition-colors"
+                  className="glass group rounded-control px-2 py-2 text-ui leading-snug transition-colors"
                 >
                   <div className="flex items-start gap-1">
                     <span className="flex-1">{card.text}</span>
                     <button
                       onClick={() => removeCard(key, card.id)}
-                      className="t-faint hover:!text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="t-faint t-danger press opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X size={11} />
                     </button>
@@ -84,7 +94,7 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
                     {key !== 'todo' && (
                       <button
                         onClick={() => moveCard(key, card.id, -1)}
-                        className="chrome-button text-micro px-1 rounded-mark"
+                        className="chrome-button press text-micro px-1 rounded-mark"
                       >
                         ←
                       </button>
@@ -92,7 +102,7 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
                     {key !== 'done' && (
                       <button
                         onClick={() => moveCard(key, card.id, 1)}
-                        className="chrome-button text-micro px-1 rounded-mark ml-auto"
+                        className="chrome-button press text-micro px-1 rounded-mark ml-auto"
                       >
                         →
                       </button>

@@ -85,14 +85,14 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
         <button
           onClick={() => setIsErasing(false)}
           title="Draw"
-          className={`chrome-button p-1.5 rounded-control ${isErasing ? '' : 'row-on'}`}
+          className={`chrome-button press p-1.5 rounded-control ${isErasing ? '' : 'row-on'}`}
         >
           <Pen size={13} />
         </button>
         <button
           onClick={() => setIsErasing(true)}
           title="Erase"
-          className={`chrome-button p-1.5 rounded-control ${isErasing ? 'row-on' : ''}`}
+          className={`chrome-button press p-1.5 rounded-control ${isErasing ? 'row-on' : ''}`}
         >
           <Eraser size={13} />
         </button>
@@ -106,7 +106,7 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
               setColor(c);
               setIsErasing(false);
             }}
-            className={`w-4 h-4 rounded-mark transition-transform ${
+            className={`press w-4 h-4 rounded-mark transition-transform ${
               color === c && !isErasing ? 'scale-110' : ''
             }`}
             style={{
@@ -123,7 +123,7 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
             key={w}
             onClick={() => setWidth(w)}
             title={`${w}px`}
-            className={`chrome-button p-1 rounded-mark ${width === w ? 't-ink' : ''}`}
+            className={`chrome-button press p-1 rounded-mark ${width === w ? 't-ink' : ''}`}
           >
             <Minus size={13} strokeWidth={w} />
           </button>
@@ -132,35 +132,46 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
         <button
           onClick={() => update({ strokes: [] })}
           title="Clear"
-          className="t-faint hover:!text-red-400 ml-auto p-1.5 rounded-control transition-colors"
+          className="t-faint t-danger press ml-auto p-1.5 rounded-control transition-colors"
         >
           <Trash2 size={13} />
         </button>
       </div>
 
-      <svg
-        ref={svgRef}
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="none"
-        className={`flex-1 min-h-0 w-full touch-none ${isErasing ? 'cursor-cell' : 'cursor-crosshair'}`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-      >
-        {[...data.strokes, ...(drawing.current ? [drawing.current] : [])].map((stroke) => (
-          <path
-            key={stroke.id}
-            d={toPath(stroke.points)}
-            stroke={stroke.color}
-            strokeWidth={stroke.width}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </svg>
+      <div className="relative flex-1 min-h-0">
+        {/* 빈 상태. 흰 종이는 자기가 종이라고 말하지 않는다 — 굵기·색 고르는 줄이
+            위에 있어도 어디를 눌러야 하는지는 안 보인다. 획이 하나라도 생기면
+            사라지고, 클릭은 그대로 통과시킨다(DESIGN.md 6장). */}
+        {data.strokes.length === 0 && !drawing.current && (
+          <span className="t-faint pointer-events-none absolute inset-0 flex items-center justify-center text-ui">
+            Drag here to draw
+          </span>
+        )}
+
+        <svg
+          ref={svgRef}
+          viewBox="0 0 1000 1000"
+          preserveAspectRatio="none"
+          className={`absolute inset-0 h-full w-full touch-none ${isErasing ? 'cursor-cell' : 'cursor-crosshair'}`}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        >
+          {[...data.strokes, ...(drawing.current ? [drawing.current] : [])].map((stroke) => (
+            <path
+              key={stroke.id}
+              d={toPath(stroke.points)}
+              stroke={stroke.color}
+              strokeWidth={stroke.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+      </div>
     </div>
   );
 };

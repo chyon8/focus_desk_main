@@ -114,7 +114,7 @@ export const WebAppForm: React.FC<{
             </button>
             <button
               onClick={onDelete}
-              className="chrome-button flex-1 py-1 rounded-control text-meta font-medium hover:!text-red-300"
+              className="chrome-button flex-1 py-1 rounded-control text-meta font-medium t-danger"
             >
               Remove
             </button>
@@ -126,7 +126,7 @@ export const WebAppForm: React.FC<{
             <button
               onClick={() => setConfirmingDelete(true)}
               title="Remove from your web apps"
-              className="row px-2 py-1.5 rounded-control hover:!text-red-300"
+              className="row px-2 py-1.5 rounded-control t-danger"
             >
               <Trash2 size={12} />
             </button>

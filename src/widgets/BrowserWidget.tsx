@@ -7,7 +7,7 @@ import { useUiStore } from '../stores/uiStore';
 import { hostOf, toAddress } from './browserAddress';
 import { BrowserStartPage } from './BrowserStartPage';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
-import { ALLOW_POPUPS, LINK_SHIM } from './browserLinks';
+import { ALLOW_POPUPS, ERR_ABORTED, LINK_SHIM } from './browserLinks';
 import { openTabBeside, sendToCanvas } from './newTab';
 import { useWidgetData } from './useWidgetData';
 
@@ -21,9 +21,6 @@ function stepZoom(zoom: number, direction: 1 | -1) {
   );
   return ZOOM_STEPS[ZOOM_STEPS.indexOf(nearest) + direction] ?? nearest;
 }
-
-/** A load the user cancelled, which is not a failure worth a page about. */
-const ERR_ABORTED = -3;
 
 /**
  * The width the guest is laid out at when the widget is narrower than this.
@@ -50,7 +47,7 @@ const NavButton: React.FC<{
     title={label}
     disabled={disabled}
     onClick={onClick}
-    className="chrome-button shrink-0 w-6 h-6 flex items-center justify-center rounded-control disabled:opacity-30 disabled:hover:bg-transparent"
+    className="chrome-button press shrink-0 w-6 h-6 flex items-center justify-center rounded-control disabled:opacity-30 disabled:hover:bg-transparent"
   >
     {children}
   </button>
@@ -474,7 +471,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
             type="button"
             title="Reset zoom (⌘0)"
             onClick={() => update({ zoom: 1 })}
-            className="chrome-button shrink-0 px-1 h-6 rounded-control text-micro tabular-nums"
+            className="chrome-button press shrink-0 px-1 h-6 rounded-control text-micro tabular-nums"
           >
             {Math.round(zoom * 100)}%
           </button>
@@ -490,6 +487,11 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
       )}
 
       <div ref={pageBox} className="relative flex-1 min-h-0 overflow-hidden">
+        {/* 받는 중. 주소창의 Stop 버튼만으로는 페이지가 하얗게 있는 동안 아무
+            일도 안 일어나는 것으로 보였다. 페이지 자리 안쪽 윗변이라 헤더를
+            가리지 않는다(DESIGN.md 2장의 액센트 쓰는 곳). */}
+        {isLoading && <div className="load-bar" />}
+
         {hasPage ? (
           <webview
             ref={view}
@@ -514,7 +516,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
                 setFailure(null);
                 view.current?.reload();
               }}
-              className="chrome-button mt-1 px-3 h-8 rounded-control text-body"
+              className="chrome-button press mt-1 px-3 h-8 rounded-control text-body"
             >
               Try again
             </button>

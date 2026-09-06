@@ -38,7 +38,7 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
         <span>{data.mode === 'BREAK' ? 'On Break' : 'Timer'}</span>
         <button
           onClick={() => switchMode(data.mode === 'FOCUS' ? 'BREAK' : 'FOCUS')}
-          className="chrome-button flex items-center gap-1 px-2 py-1 rounded-control"
+          className="chrome-button press flex items-center gap-1 px-2 py-1 rounded-control"
         >
           {data.mode === 'FOCUS' ? (
             <>
@@ -53,9 +53,15 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
       </div>
 
       <div className="flex flex-col items-center justify-center mb-8 relative group">
+        {/* 글자 6단의 맨 위(--text-display 34px). 60px에 순수 검정 drop-shadow를
+            달고 있었다 — 크기는 눈금 밖이었고 그림자는 광원 규칙 밖이었다.
+            큰 글자라 트래킹은 음수로 조인다. */}
         <div
-          className="text-6xl font-bold font-mono tracking-wider drop-shadow-2xl tabular-nums"
-          style={{ color: data.mode === 'BREAK' ? 'var(--accent)' : 'var(--ink)' }}
+          className="text-display font-bold font-mono tabular-nums"
+          style={{
+            color: data.mode === 'BREAK' ? 'var(--accent)' : 'var(--ink)',
+            letterSpacing: '-0.035em',
+          }}
         >
           {formatTime(data.timeLeft)}
         </div>
@@ -64,13 +70,13 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
           <div className="absolute -right-8 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => adjust(1)}
-              className="chrome-button p-1 rounded-mark"
+              className="chrome-button press p-1 rounded-mark"
             >
               <ChevronUp size={16} />
             </button>
             <button
               onClick={() => adjust(-1)}
-              className="chrome-button p-1 rounded-mark"
+              className="chrome-button press p-1 rounded-mark"
             >
               <ChevronDown size={16} />
             </button>
@@ -81,9 +87,10 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
       <div className="flex gap-6 items-center">
         <button
           onClick={() => update({ isRunning: !data.isRunning })}
-          className={`w-16 h-16 flex items-center justify-center rounded-surface border transition-all active:scale-95 shadow-lg ${
+          className={`press w-16 h-16 flex items-center justify-center rounded-surface border transition-all ${
             data.isRunning ? 'chrome-button-on' : 'glass chrome-button'
           }`}
+          style={{ boxShadow: 'var(--shadow-lift)' }}
         >
           {data.isRunning ? (
             <Pause size={28} fill="currentColor" />
@@ -94,7 +101,7 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
 
         <button
           onClick={() => update({ isRunning: false, timeLeft: data.duration })}
-          className="glass chrome-button w-12 h-12 flex items-center justify-center rounded-control active:scale-95"
+          className="glass chrome-button press w-12 h-12 flex items-center justify-center rounded-control"
           title="Reset"
         >
           <RotateCcw size={20} />
