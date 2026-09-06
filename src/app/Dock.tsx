@@ -5,16 +5,12 @@ import {
   Circle,
   Columns3,
   Copy,
-  Expand,
-  Frame,
-  Keyboard,
   Layers,
   LayoutGrid,
   Minus,
   MoreHorizontal,
   PanelTop,
   Plus,
-  Shrink,
   Trash2,
   X,
 } from 'lucide-react';
@@ -292,95 +288,93 @@ export const Dock: React.FC = () => {
   const selectedIds = useUiStore((s) => s.selectedIds);
   const isRailOpen = useUiStore((s) => s.isSidebarOpen);
   const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
-  const isFullscreen = useUiStore((s) => s.isFullscreen);
-  const zoom = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera.zoom ?? 1);
   const [isArrangeOpen, setIsArrangeOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const count = selectedIds.length;
 
-  if (isMaximized) return null;
-
   return (
-    <div
-      /* The first run lights this whole plate rather than the Arrange button
-         alone: the button opens a menu above itself, and a hole cut to the
-         button would leave that menu in the dark. */
-      data-first-step-area="tidy"
-      className="glass-panel fixed bottom-4 z-[96] flex items-center gap-1 p-1.5 rounded-surface"
-      style={{
-        left: `calc(50% + ${(isRailOpen ? RAIL_WIDTH : 0) / 2}px)`,
-        transform: 'translateX(-50%)',
-      }}
-    >
-      <Btn label="Zoom out" onClick={() => zoomBy(1 / STEP)}>
-        <Minus size={15} />
-      </Btn>
-      <span className="t-soft w-11 text-center text-ui font-mono tabular-nums">
-        {Math.round(zoom * 100)}%
-      </span>
-      <Btn label="Zoom in" onClick={() => zoomBy(STEP)}>
-        <Plus size={15} />
-      </Btn>
+    <AnimatePresence>
+      {count > 0 && !isMaximized && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 12 }}
+          /* The first run lights this whole plate rather than the Arrange button
+             alone: the button opens a menu above itself, and a hole cut to the
+             button would leave that menu in the dark. */
+          data-first-step-area="tidy"
+          className="glass-panel fixed bottom-4 z-[96] flex items-center gap-1 p-1.5 rounded-surface"
+          style={{
+            left: `calc(50% + ${(isRailOpen ? RAIL_WIDTH : 0) / 2}px)`,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <span className="t-soft shrink-0 px-2 text-ui whitespace-nowrap">{count} selected</span>
 
-      <Sep />
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setIsArrangeOpen((o) => !o)}
+              title="Arrange (G, or ⌥G inside a page)"
+              data-first-step="tidy"
+              className="btn-primary flex items-center gap-1.5 px-2.5 h-8 rounded-control text-meta"
+            >
+              <LayoutGrid size={15} />
+              Arrange
+            </button>
+            <AnimatePresence>
+              {isArrangeOpen && <ArrangeMenu onDone={() => setIsArrangeOpen(false)} />}
+            </AnimatePresence>
+          </div>
 
-      <Btn label="Frame every widget (F)" onClick={useSpaceStore.getState().fitToWidgets}>
-        <Frame size={15} />
-        Fit
-      </Btn>
-      <Btn
-        label={isFullscreen ? 'Leave fullscreen (⇧M)' : 'Fullscreen (⇧M)'}
-        onClick={useUiStore.getState().toggleFullscreen}
-      >
-        {isFullscreen ? <Shrink size={15} /> : <Expand size={15} />}
-      </Btn>
-      <Btn label="Keyboard shortcuts (?)" onClick={useUiStore.getState().toggleShortcuts}>
-        <Keyboard size={15} />
-      </Btn>
-
-      <AnimatePresence>
-        {count > 0 && (
-          <motion.div
-            initial={{ opacity: 0, width: 0 }}
-            animate={{ opacity: 1, width: 'auto' }}
-            exit={{ opacity: 0, width: 0 }}
-            className="flex items-center gap-1 overflow-hidden"
-          >
-            <Sep />
-            <span className="t-soft shrink-0 px-1 text-ui whitespace-nowrap">{count} selected</span>
-
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setIsArrangeOpen((o) => !o)}
-                title="Arrange (G, or ⌥G inside a page)"
-                data-first-step="tidy"
-                className="btn-primary flex items-center gap-1.5 px-2.5 h-8 rounded-control text-meta"
-              >
-                <LayoutGrid size={15} />
-                Arrange
-              </button>
-              <AnimatePresence>
-                {isArrangeOpen && <ArrangeMenu onDone={() => setIsArrangeOpen(false)} />}
-              </AnimatePresence>
-            </div>
-
-            <div className="relative shrink-0">
-              <Btn label="More" on={isMoreOpen} onClick={() => setIsMoreOpen((o) => !o)}>
-                <MoreHorizontal size={15} />
-              </Btn>
-              <AnimatePresence>
-                {isMoreOpen && (
-                  <MoreMenu selectedIds={selectedIds} onDone={() => setIsMoreOpen(false)} />
-                )}
-              </AnimatePresence>
-            </div>
-
-            <Btn label="Drop the selection (Esc)" onClick={useUiStore.getState().clearSelection}>
-              <X size={15} />
+          <div className="relative shrink-0">
+            <Btn label="More" on={isMoreOpen} onClick={() => setIsMoreOpen((o) => !o)}>
+              <MoreHorizontal size={15} />
             </Btn>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+            <AnimatePresence>
+              {isMoreOpen && (
+                <MoreMenu selectedIds={selectedIds} onDone={() => setIsMoreOpen(false)} />
+              )}
+            </AnimatePresence>
+          </div>
+
+          <Btn label="Drop the selection (Esc)" onClick={useUiStore.getState().clearSelection}>
+            <X size={15} />
+          </Btn>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+/** The zoom and framing, in the rail. They belong to the canvas, not a selection. */
+export const CanvasTools: React.FC = () => {
+  const zoom = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera.zoom ?? 1);
+  return (
+    <>
+      <button
+        onClick={() => zoomBy(STEP)}
+        title="Zoom in"
+        aria-label="Zoom in"
+        className="rail-tool"
+      >
+        <Plus size={16} />
+      </button>
+      <button
+        onClick={useSpaceStore.getState().fitToWidgets}
+        title={`${Math.round(zoom * 100)}% - frame every widget (F)`}
+        aria-label="Frame every widget"
+        className="rail-tool text-micro font-mono tabular-nums"
+      >
+        {Math.round(zoom * 100)}
+      </button>
+      <button
+        onClick={() => zoomBy(1 / STEP)}
+        title="Zoom out"
+        aria-label="Zoom out"
+        className="rail-tool"
+      >
+        <Minus size={16} />
+      </button>
+    </>
   );
 };

@@ -279,9 +279,11 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
         /* Not a window drag region while maximised, even though it is where the
            titlebar would be: macOS takes the double-click on one for its own
            zoom, and this header's double-click is how the widget is restored. */
-        className={`widget-header group h-10 flex items-center px-3 gap-2 select-none ${
+        className={`widget-header group h-10 flex items-center px-3 select-none ${
           isMarked ? 'widget-header-marked' : ''
-        } ${overlay ? '' : 'cursor-grab active:cursor-grabbing'}`}
+        } ${widget.type === 'column' || isFull ? 'widget-header-always' : ''} ${
+          overlay ? '' : 'cursor-grab active:cursor-grabbing'
+        }`}
         style={isFull && !isSidebarOpen ? { paddingLeft: TRAFFIC_LIGHTS_WIDTH } : undefined}
         /* A column has nothing a full screen would show more of — it is a list
            of cards, and a screen-wide list of 300px cards is the same list with
@@ -301,162 +303,164 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
         onPointerCancel={endGesture}
         onLostPointerCapture={onLostCapture}
       >
-        {/* Maximised, this header is the app's top bar: it covers the strip the
-            floating buttons sit in, so they move in here. Their panels stay
-            where they are and hang under it (AmbienceDock, ThemePicker). */}
-        {isFull && !isSidebarOpen && (
-          <HeaderButton onClick={() => useUiStore.getState().setSidebarOpen(true)} label="Spaces">
-            <PanelLeft size={14} />
-          </HeaderButton>
-        )}
-        {/* A column's name is edited here rather than in its body: a title strip
-            under this header was a second row of chrome saying the same thing.
-            The count sits beside it, and the rest of the header still drags. */}
-        {widget.type === 'column' ? (
-          <>
-            {/* A header is a handle first: an input sitting in one swallows the
-                press and the column cannot be dragged at all. Double-click to
-                rename, which is how a name is changed everywhere else. */}
-            {isNaming ? (
-              <input
-                autoFocus
-                value={columnTitle ?? ''}
-                onChange={(e) =>
-                  useSpaceStore.getState().updateWidgetData(id, { title: e.target.value })
-                }
-                onBlur={() => setIsNaming(false)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                placeholder="Untitled"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-ui tracking-wide outline-none placeholder:opacity-40"
-                style={{ color: 'var(--ink)' }}
-              />
-            ) : (
-              <span
-                title="Double-click to rename"
-                className="min-w-0 flex-1 truncate text-ui tracking-wide"
-                style={{ color: columnTitle ? 'var(--ink)' : 'var(--ink-soft)' }}
-              >
-                {columnTitle || 'Untitled'}
-              </span>
-            )}
-            <span className="t-faint shrink-0 text-micro">
-              {(widget.data as unknown as ColumnData).children.length}
-            </span>
-          </>
-        ) : page?.favicon || app?.favicon ? (
-          <img
-            src={page?.favicon || app?.favicon}
-            alt=""
-            draggable={false}
-            className="shrink-0 w-3.5 h-3.5 rounded-mark object-contain"
-          />
-        ) : (
-          <entry.icon size={14} className="shrink-0" style={{ color: 'var(--ink-soft)' }} />
-        )}
-        {/* The header narrows to 140px, so a page title has to cut off. The full
-            one stays reachable as a tooltip. */}
-        {widget.type !== 'column' && (
-          <span
-            className="text-ui tracking-wide truncate min-w-0"
-            title={label}
-            style={{ color: 'var(--ink)' }}
-          >
-            {label}
-          </span>
-        )}
-
-        <div className="ml-auto shrink-0 flex items-center gap-0.5">
-          {isFull && (
+        <div className="widget-chrome flex items-center gap-2 w-full min-w-0">
+          {/* Maximised, this header is the app's top bar: it covers the strip the
+              floating buttons sit in, so they move in here. Their panels stay
+              where they are and hang under it (AmbienceDock, ThemePicker). */}
+          {isFull && !isSidebarOpen && (
+            <HeaderButton onClick={() => useUiStore.getState().setSidebarOpen(true)} label="Spaces">
+              <PanelLeft size={14} />
+            </HeaderButton>
+          )}
+          {/* A column's name is edited here rather than in its body: a title strip
+              under this header was a second row of chrome saying the same thing.
+              The count sits beside it, and the rest of the header still drags. */}
+          {widget.type === 'column' ? (
             <>
-              <HeaderButton
-                onClick={() => useUiStore.getState().toggleDock('ambience')}
-                label="Ambience"
-              >
-                <Volume2
-                  size={14}
-                  style={isAmbiencePlaying ? { color: 'var(--accent)' } : undefined}
-                />
-              </HeaderButton>
-              <HeaderButton onClick={() => useUiStore.getState().toggleDock('theme')} label="Theme">
-                <Palette size={14} />
-              </HeaderButton>
-            </>
-          )}
-          {isFull && (
-            <button
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => useUiStore.getState().clearMaximized()}
-              className="chrome-button mr-1 px-2 h-7 rounded-control text-meta"
-            >
-              Esc to restore
-            </button>
-          )}
-          {isAppOpen && (
-            <HeaderButton
-              onClick={() => useUiStore.getState().closeApp(id)}
-              label="Send the window back to its own size"
-            >
-              <LogOut size={14} />
-            </HeaderButton>
-          )}
-          {/* Hover only, and the wider of the two is dropped on a narrow header.
-              A header can be as narrow as 140px, where three buttons fill the
-              whole bar and get pressed by accident. Moving to another space is
-              the one that is gone for good — it is on the selection bar. */}
-          {!overlay && (
-            <div className="opacity-0 group-hover:opacity-100 flex items-center">
-              {/* The double-click on this header does the same thing. The button
-                  is here because nothing says so, and a column is the exception:
-                  a screen-wide list of 300px cards shows no more than the list. */}
-              {widget.type !== 'column' && widget.width >= MAXIMIZE_MIN_WIDTH && !isFull && (
-                <HeaderButton
-                  onClick={() => {
-                    useUiStore.getState().toggleMaximized(id);
-                    useSpaceStore.getState().checkHint('maximize');
+              {/* A header is a handle first: an input sitting in one swallows the
+                  press and the column cannot be dragged at all. Double-click to
+                  rename, which is how a name is changed everywhere else. */}
+              {isNaming ? (
+                <input
+                  autoFocus
+                  value={columnTitle ?? ''}
+                  onChange={(e) =>
+                    useSpaceStore.getState().updateWidgetData(id, { title: e.target.value })
+                  }
+                  onBlur={() => setIsNaming(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur();
                   }}
-                  label="Fill the screen (or double-click the header)"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  placeholder="Untitled"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 bg-transparent text-ui tracking-wide outline-none placeholder:opacity-40"
+                  style={{ color: 'var(--ink)' }}
+                />
+              ) : (
+                <span
+                  title="Double-click to rename"
+                  className="min-w-0 flex-1 truncate text-ui tracking-wide"
+                  style={{ color: columnTitle ? 'var(--ink)' : 'var(--ink-soft)' }}
                 >
-                  <Maximize2 size={13} />
-                </HeaderButton>
+                  {columnTitle || 'Untitled'}
+                </span>
               )}
-              <HeaderButton
-                onClick={() => useSpaceStore.getState().duplicateWidgets([id])}
-                label="Duplicate (⌘D)"
-              >
-                <Copy size={13} />
-              </HeaderButton>
-            </div>
-          )}
-          {/* A peek is a look at a card. Taking the card out of the column is a
-              drag, so the only button here is the one a look can turn into —
-              filling the screen with it. */}
-          {overlay && !isFull && (
-            <HeaderButton
-              onClick={() => useUiStore.getState().toggleMaximized(id)}
-              label="Fill the screen"
-            >
-              <Maximize2 size={13} />
-            </HeaderButton>
-          )}
-          {/* ✕ closes the panel rather than the card: a look at something must not
-              be able to throw it away, and the card is still in its column. */}
-          {overlay && !isFull ? (
-            <HeaderButton onClick={() => useUiStore.getState().closePeek()} label="Close">
-              <X size={14} />
-            </HeaderButton>
+              <span className="t-faint shrink-0 text-micro">
+                {(widget.data as unknown as ColumnData).children.length}
+              </span>
+            </>
+          ) : page?.favicon || app?.favicon ? (
+            <img
+              src={page?.favicon || app?.favicon}
+              alt=""
+              draggable={false}
+              className="shrink-0 w-3.5 h-3.5 rounded-mark object-contain"
+            />
           ) : (
-            <HeaderButton
-              onClick={() => useSpaceStore.getState().removeWidget(id)}
-              label="Remove"
-              danger
-            >
-              <X size={14} />
-            </HeaderButton>
+            <entry.icon size={14} className="shrink-0" style={{ color: 'var(--ink-soft)' }} />
           )}
+          {/* The header narrows to 140px, so a page title has to cut off. The full
+              one stays reachable as a tooltip. */}
+          {widget.type !== 'column' && (
+            <span
+              className="text-ui tracking-wide truncate min-w-0"
+              title={label}
+              style={{ color: 'var(--ink)' }}
+            >
+              {label}
+            </span>
+          )}
+
+          <div className="ml-auto shrink-0 flex items-center gap-0.5">
+            {isFull && (
+              <>
+                <HeaderButton
+                  onClick={() => useUiStore.getState().toggleDock('ambience')}
+                  label="Ambience"
+                >
+                  <Volume2
+                    size={14}
+                    style={isAmbiencePlaying ? { color: 'var(--accent)' } : undefined}
+                  />
+                </HeaderButton>
+                <HeaderButton onClick={() => useUiStore.getState().toggleDock('theme')} label="Theme">
+                  <Palette size={14} />
+                </HeaderButton>
+              </>
+            )}
+            {isFull && (
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => useUiStore.getState().clearMaximized()}
+                className="chrome-button mr-1 px-2 h-7 rounded-control text-meta"
+              >
+                Esc to restore
+              </button>
+            )}
+            {isAppOpen && (
+              <HeaderButton
+                onClick={() => useUiStore.getState().closeApp(id)}
+                label="Send the window back to its own size"
+              >
+                <LogOut size={14} />
+              </HeaderButton>
+            )}
+            {/* Hover only, and the wider of the two is dropped on a narrow header.
+                A header can be as narrow as 140px, where three buttons fill the
+                whole bar and get pressed by accident. Moving to another space is
+                the one that is gone for good — it is on the selection bar. */}
+            {!overlay && (
+              <div className="opacity-0 group-hover:opacity-100 flex items-center">
+                {/* The double-click on this header does the same thing. The button
+                    is here because nothing says so, and a column is the exception:
+                    a screen-wide list of 300px cards shows no more than the list. */}
+                {widget.type !== 'column' && widget.width >= MAXIMIZE_MIN_WIDTH && !isFull && (
+                  <HeaderButton
+                    onClick={() => {
+                      useUiStore.getState().toggleMaximized(id);
+                      useSpaceStore.getState().checkHint('maximize');
+                    }}
+                    label="Fill the screen (or double-click the header)"
+                  >
+                    <Maximize2 size={13} />
+                  </HeaderButton>
+                )}
+                <HeaderButton
+                  onClick={() => useSpaceStore.getState().duplicateWidgets([id])}
+                  label="Duplicate (⌘D)"
+                >
+                  <Copy size={13} />
+                </HeaderButton>
+              </div>
+            )}
+            {/* A peek is a look at a card. Taking the card out of the column is a
+                drag, so the only button here is the one a look can turn into —
+                filling the screen with it. */}
+            {overlay && !isFull && (
+              <HeaderButton
+                onClick={() => useUiStore.getState().toggleMaximized(id)}
+                label="Fill the screen"
+              >
+                <Maximize2 size={13} />
+              </HeaderButton>
+            )}
+            {/* ✕ closes the panel rather than the card: a look at something must not
+                be able to throw it away, and the card is still in its column. */}
+            {overlay && !isFull ? (
+              <HeaderButton onClick={() => useUiStore.getState().closePeek()} label="Close">
+                <X size={14} />
+              </HeaderButton>
+            ) : (
+              <HeaderButton
+                onClick={() => useSpaceStore.getState().removeWidget(id)}
+                label="Remove"
+                danger
+              >
+                <X size={14} />
+              </HeaderButton>
+            )}
+          </div>
         </div>
       </div>
 

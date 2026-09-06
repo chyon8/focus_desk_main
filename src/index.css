@@ -405,9 +405,34 @@ body {
     var(--lip);
 }
 
+/* Calm Tech: 헤더는 자리를 지키되 평소에는 비어 있다.
+   이름·최대화·닫기는 위젯 하나가 아니라 캔버스 전체에 여섯 벌씩 깔린다 — 늘 보이면
+   화면이 크롬으로 채워진다. 손이 오거나 안에 포커스가 들어오면 나타나고, 자리(40px)는
+   그대로라 나타날 때 레이아웃이 안 튄다. */
 .widget-header {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015));
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+.widget-chrome {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.widget-glass:hover .widget-chrome,
+.widget-glass:focus-within .widget-chrome,
+.widget-header:hover .widget-chrome {
+  opacity: 1;
+}
+.widget-glass:hover .widget-header,
+.widget-glass:focus-within .widget-header {
+  border-bottom-color: var(--panel-border);
+}
+/* 컬럼은 목록이다. 이름과 개수가 크롬이 아니라 내용이라 늘 보인다. */
+.widget-header-always .widget-chrome {
+  opacity: 1;
+}
+/* 최대화한 위젯의 헤더는 앱의 상단 바다. 숨을 자리가 아니다. */
+.widget-header-always {
+  border-bottom-color: var(--panel-border);
 }
 
 /* The bar across the top of a marked widget, the part that is read. It has to
@@ -545,6 +570,21 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-mark);
+}
+
+/* 글자를 치는 칸은 예외다. 링을 두르면 칸이 아니라 링이 읽힌다 — 커서가 이미
+   어디를 치고 있는지 말해준다. 링 대신 칸 자체가 한 단 밝아진다. */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+[contenteditable]:focus,
+[contenteditable]:focus-visible {
+  outline: none;
+}
+.field:focus {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 26%, transparent);
 }
 
 /* 누르면 1px 내려간다. 눌렸다는 것을 화면이 알려주는 유일한 신호다. */

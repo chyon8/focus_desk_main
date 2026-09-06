@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -22,6 +22,7 @@ import type { SceneSpec } from '../themes/types';
 import { WebAppMark } from '../webapps/WebAppMark';
 import { isComposing } from './ime';
 import { ChromeImportPanel } from './ChromeImportPanel';
+import { CanvasTools } from './Dock';
 import { openWebApp } from './launcherItems';
 import { SettingsPanel } from './SettingsPanel';
 import { SpaceSessionPanel } from './SpaceSessionPanel';
@@ -163,7 +164,10 @@ const WebApps: React.FC<{ onDone: () => void }> = ({ onDone }) => {
  * in it. Double-clicking renames in place, which is where renaming lived when
  * the rail was a list of rows.
  */
-const SpaceName: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights }) => {
+const SpaceName: React.FC<{ shown: boolean; onOpenInsights: () => void }> = ({
+  shown,
+  onOpenInsights,
+}) => {
   const id = useSpaceStore((s) => s.activeSpaceId);
   const name = useSpaceStore((s) => s.spaces[id]?.name ?? '');
   const spaceCount = useSpaceStore(useShallow((s) => Object.keys(s.spaces))).length;
@@ -199,10 +203,18 @@ const SpaceName: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights })
     );
   }
 
+  // 이름을 읽고 있을 때(rename) 사라지면 안 된다.
+  const visible = shown || mode === 'rename';
+
   return (
     <div
-      className="glass-panel group fixed z-50 flex items-center gap-2 h-9 pl-3 pr-1.5 rounded-control"
-      style={{ left: RAIL_WIDTH, top: RAIL_INSET }}
+      className="glass-panel group fixed z-50 flex items-center gap-2 h-9 pl-3 pr-1.5 rounded-control transition-opacity duration-200"
+      style={{
+        left: RAIL_WIDTH,
+        top: RAIL_INSET,
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? 'auto' : 'none',
+      }}
       onDoubleClick={() => {
         setDraft(name);
         setMode('rename');
@@ -258,6 +270,11 @@ const SpaceName: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights })
  */
 export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights }) => {
   const isOpen = useUiStore((s) => s.isSidebarOpen);
+  const activeSpaceId = useSpaceStore((s) => s.activeSpaceId);
+  // 이름판은 상시 UI가 아니다. 레일에 손이 갔을 때, 그리고 공간을 막 바꿨을 때만
+  // 뜬다 — 활성 타일과 화면을 채운 배경이 이미 어느 공간인지 말하고 있다.
+  const [isHovering, setIsHovering] = useState(false);
+  const [justSwitched, setJustSwitched] = useState(false);
   const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
   const isAtmosphereOpen = useUiStore((s) => s.openDock === 'theme');
   const spaceIds = useSpaceStore(useShallow((s) => Object.keys(s.spaces)));
@@ -267,6 +284,12 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    setJustSwitched(true);
+    const timer = setTimeout(() => setJustSwitched(false), 1800);
+    return () => clearTimeout(timer);
+  }, [activeSpaceId]);
 
   const create = () => {
     if (!newName.trim()) return;
@@ -285,7 +308,8 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
             exit={{ opacity: 0, x: -20 }}
             onClick={() => useUiStore.getState().setSidebarOpen(true)}
             title="Spaces"
-            className="glass-panel chrome-button fixed left-3.5 top-3.5 z-50 p-2.5 rounded-control"
+            /* 신호등이 창 왼쪽 위를 쓰므로 그 아래에 선다. 겹치면 둘 다 못 누른다. */
+            className="glass-panel chrome-button fixed left-3.5 top-14 z-50 p-2.5 rounded-control"
           >
             <LayoutGrid size={18} />
           </motion.button>
@@ -300,6 +324,8 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
             exit={{ opacity: 0, x: -20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             aria-label="Spaces and tools"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
             className="glass-panel fixed left-3.5 top-3.5 bottom-3.5 z-50 flex flex-col items-center gap-2 w-[60px] pt-11 pb-2.5 rounded-surface"
           >
             <div className="flex flex-col items-center gap-2 w-full min-h-0 overflow-y-auto no-scrollbar">
@@ -334,6 +360,10 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
             <div className="flex-1" />
             <div className="rail-sep" />
 
+            <CanvasTools />
+
+            <div className="rail-sep" />
+
             <RailTool
               label="Atmosphere - background and sound"
               on={isAtmosphereOpen}
@@ -355,7 +385,9 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
         )}
       </AnimatePresence>
 
-      {isOpen && !isMaximized && <SpaceName onOpenInsights={onOpenInsights} />}
+      {isOpen && !isMaximized && (
+        <SpaceName shown={isHovering || justSwitched} onOpenInsights={onOpenInsights} />
+      )}
 
       {isCreating && (
         <div

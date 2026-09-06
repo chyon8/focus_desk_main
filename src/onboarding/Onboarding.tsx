@@ -1212,10 +1212,12 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     e.preventDefault();
                     finish();
                   }}
-                  className="flex items-center gap-2 p-2 pl-5 rounded-surface max-w-[30rem]"
+                  className="flex items-center gap-2 p-2 pl-5 rounded-surface max-w-[30rem] transition-colors focus-within:bg-white/12 focus-within:border-white/35"
                   style={{
                     background: 'rgba(255,255,255,0.08)',
-                    border: '1px solid rgba(255,255,255,0.16)',
+                    borderWidth: 1,
+                    borderStyle: 'solid',
+                    borderColor: 'rgba(255,255,255,0.16)',
                   }}
                 >
                   <input
