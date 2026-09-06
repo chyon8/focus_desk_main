@@ -28,8 +28,13 @@ const COLUMN_EMPTY_BODY = 96;
 
 /** Every column is this wide. A column is read down; a wider one shows nothing more. */
 export const COLUMN_WIDTH = 300;
-/** And every row in one is this tall: a list reads as a list when its rows match. */
-export const COLUMN_CARD_HEIGHT = 196;
+/**
+ * And every row in one is this tall: a list reads as a list when its rows match.
+ *
+ * 196에서 올렸다. 그림 108px을 빼면 글 자리가 74px이었는데 주소·제목·설명 두 줄이
+ * 77px이라 마지막 줄이 글자 가운데에서 잘렸다.
+ */
+export const COLUMN_CARD_HEIGHT = 210;
 /** How much of a card the page's picture takes. The rest carries the address, the name and the line the page offers. */
 export const COLUMN_CARD_IMAGE = 108;
 

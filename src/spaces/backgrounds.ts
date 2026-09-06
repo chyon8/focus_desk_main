@@ -67,21 +67,44 @@ export function isLightBackground(value: string) {
  * Minimal 테마는 자기가 들고 있는 값을 쓰고(배경색으로 찾는다 — 공간 문서에는 색
  * 하나만 저장하면 되고 스키마가 그대로다), 나머지는 배경 밝기에서 뽑는다.
  */
+/** 면·글자의 바탕. 극성이 정하고, 배경색은 색조로만 섞인다(DESIGN.md 2장). */
+const LIGHT_SURFACE = '#f7f6f3';
+const DARK_SURFACE = '#201e1b';
+const LIGHT_INK = '#1e1c19';
+const DARK_INK = '#f0ede7';
+
 export function backgroundTokens<T extends ThemeTokens>(
   value: string,
   base: T,
   /** 사용자가 Atmosphere에서 뒤집었을 때. 없으면 색 밝기가 정한다. */
   forceLight?: boolean,
 ): T {
-  const named = MINIMAL_THEMES.find((t) => t.bg.toLowerCase() === value.toLowerCase());
-  const light = forceLight ?? isLightBackground(value);
-  const ink = named?.text ?? (light ? '#2b2f36' : '#f4f6fa');
+  const natural = isLightBackground(value);
+  const light = forceLight ?? natural;
+  /**
+   * Minimal 테마는 배경 하나가 아니라 글자·테두리·면까지 든 값 세트다. 그런데 그
+   * 세트는 자기 배경의 극성에 맞춰 정해진 값이라, 사용자가 극성을 뒤집으면 못 쓴다 —
+   * 밝은 Mist에서 Dark를 골라도 세트가 이겨서 흰 면에 어두운 글자가 그대로 남았다.
+   */
+  const named =
+    light === natural
+      ? MINIMAL_THEMES.find((t) => t.bg.toLowerCase() === value.toLowerCase())
+      : undefined;
+  const ink = named?.text ?? (light ? LIGHT_INK : DARK_INK);
   return {
     ...base,
     ink,
     inkSoft: `color-mix(in srgb, ${ink} 60%, transparent)`,
-    // 면은 글자를 이고 있으므로 불투명하다.
-    surface: named?.surface ?? `color-mix(in srgb, #ffffff ${light ? 70 : 7}%, ${value})`,
-    panelBorder: named?.border ?? (light ? 'rgba(40, 45, 55, 0.16)' : 'rgba(255, 255, 255, 0.14)'),
+    /**
+     * 면은 글자를 이고 있으므로 불투명하고, **극성이 정한 바탕**에서 출발한다.
+     * 예전에는 배경색에 흰색을 섞어서 만들었는데(어두우면 7%, 밝으면 70%), 그러면
+     * 밝은 배경에 Dark를 걸어도 흰색을 조금 섞은 밝은 면이 나온다. 배경색은 이제
+     * 색조로만 14% 섞여서, 면이 배경에서 떨어지면서도 그 공간의 색을 띤다.
+     */
+    surface:
+      named?.surface ??
+      `color-mix(in srgb, ${light ? LIGHT_SURFACE : DARK_SURFACE} 86%, ${value})`,
+    panelBorder:
+      named?.border ?? (light ? 'rgba(30, 28, 25, 0.16)' : 'rgba(255, 255, 255, 0.14)'),
   };
 }

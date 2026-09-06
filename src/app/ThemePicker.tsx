@@ -219,28 +219,33 @@ export const ThemePicker: React.FC = () => {
                 그 색에서. 그래서 기본은 Auto이고, Auto가 무엇으로 읽었는지를 버튼에
                 써 둔다. 밝은 하늘 + 어두운 지면 같은 사진에서만 손으로 뒤집는다. */}
             <div className="border-hair mt-5 pt-4 border-t">
-              <Label>UI on this background</Label>
+              <Label>UI brightness</Label>
+              {/* 기본은 배경에 맞추는 것이고, 그게 무엇으로 읽혔는지를 버튼에 쓴다.
+                  한 줄에 셋을 넣으면 이 문장이 안 들어가서 두 줄로 나눴다. */}
+              <button
+                onClick={() => setPolarity(null)}
+                className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-1 rounded-control text-meta ${
+                  polarity == null ? 'chrome-button-on' : ''
+                }`}
+              >
+                Match the background
+                <span className="t-faint">({autoLight ? 'light' : 'dark'})</span>
+              </button>
               <div className="flex items-center gap-1">
-                {(
-                  [
-                    { value: null, label: `Auto (${autoLight ? 'light' : 'dark'})` },
-                    { value: 'light', label: 'Light' },
-                    { value: 'dark', label: 'Dark' },
-                  ] as const
-                ).map(({ value, label }) => (
+                {(['light', 'dark'] as const).map((value) => (
                   <button
-                    key={label}
+                    key={value}
                     onClick={() => setPolarity(value)}
-                    className={`chrome-button flex-1 h-9 flex items-center justify-center rounded-control text-meta ${
-                      (polarity ?? null) === value ? 'chrome-button-on' : ''
+                    className={`chrome-button flex-1 h-9 flex items-center justify-center rounded-control text-meta capitalize ${
+                      polarity === value ? 'chrome-button-on' : ''
                     }`}
                   >
-                    {label}
+                    {value}
                   </button>
                 ))}
               </div>
               <p className="t-faint mt-2 px-0.5 text-micro leading-snug">
-                The background decides this. Change it only when a picture is read the wrong way.
+                Set it by hand only when a picture is read the wrong way.
               </p>
             </div>
 

@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
   COLUMN_CARD_HEIGHT,
   COLUMN_CARD_IMAGE,
   COLUMN_GAP,
   COLUMN_PAD,
+  COLUMN_WIDTH,
 } from '../canvas/columns';
 import { dropRectAt, getCamera, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
@@ -56,7 +57,7 @@ const PagePreview: React.FC<{ widget: WidgetDoc }> = ({ widget }) => {
 
       {/* Address, then name, then the page's own line — the order a link preview
           is read in, and the order every other app draws one in. */}
-      <div className="min-h-0 flex-1 px-3 py-2 flex flex-col gap-1">
+      <div className="min-h-0 flex-1 overflow-hidden px-3 py-2 flex flex-col gap-1">
         <div className="flex items-center gap-1.5">
           {card.icon && (
             <img src={card.icon} alt="" className="shrink-0 w-3.5 h-3.5 rounded-mark object-contain" />
@@ -178,6 +179,14 @@ const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => voi
     }
   };
 
+  // 카드 본문에 위젯을 통째로 담기 위한 배율. 가로·세로 중 더 빡빡한 쪽에 맞춘다.
+  const cardBody = useMemo(() => {
+    const size = WIDGET_REGISTRY[widget.type].defaultSize;
+    const height = COLUMN_CARD_HEIGHT - CARD_HANDLE;
+    const scale = Math.min(COLUMN_WIDTH / size.width, height / size.height);
+    return { ...size, scale, offsetX: (COLUMN_WIDTH - size.width * scale) / 2 };
+  }, [widget.type]);
+
   return (
     <div
       className={`group card-tile relative w-full shrink-0 overflow-hidden rounded-control ${
@@ -228,7 +237,20 @@ const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => voi
               <PagePreview widget={widget} />
             </div>
           ) : (
-            <Body id={widget.id} />
+            /* 위젯을 자기 기본 크기로 그린 뒤 카드에 맞게 줄인다. 그대로 넣으면
+               300x182 안에서 잘린다 — 타이머는 제 헤더를 숫자가 덮었고, 메모는
+               한글이 글자마다 줄바꿈돼서 세로줄이 됐다. */
+            <div
+              style={{
+                width: cardBody.width,
+                height: cardBody.height,
+                transform: `scale(${cardBody.scale})`,
+                transformOrigin: 'top left',
+                marginLeft: cardBody.offsetX,
+              }}
+            >
+              <Body id={widget.id} />
+            </div>
           )}
         </div>
       </div>
