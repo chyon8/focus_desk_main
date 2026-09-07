@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Ban, CloudRain, Flame, Snowflake, Sparkles, Upload, type LucideIcon } from 'lucide-react';
-import { assetUrl, MINIMAL_THEMES, SOLID_COLORS } from '../spaces/backgrounds';
+import { assetUrl, SOLID_COLORS } from '../spaces/backgrounds';
 import type { ParticlesChoice } from '../spaces/types';
 import { useSpaceStore } from '../stores/spaceStore';
 import { RAIL_TOP, RAIL_WIDTH, useUiStore } from '../stores/uiStore';
@@ -35,16 +35,6 @@ const WEATHER: { kind: ParticlesChoice['kind']; label: string; icon: LucideIcon 
 
 // What a kind starts at when the space has no density of its own to carry over.
 const DEFAULT_DENSITY = 0.4;
-
-/**
- * 단색 배경 전부. `SOLID_COLORS`는 배경색 하나만, `MINIMAL_THEMES`는 글자·테두리까지
- * 들고 오지만 누르는 쪽에서는 둘 다 "배경을 이 색으로"라 한 줄이다. 같은 색이 두 번
- * 나오지 않게 값으로 거른다.
- */
-const SOLID_SWATCHES: { value: string; label: string }[] = [
-  ...SOLID_COLORS.map((value) => ({ value, label: value })),
-  ...MINIMAL_THEMES.map((t) => ({ value: t.bg, label: t.name })),
-].filter((swatch, i, all) => all.findIndex((o) => o.value.toLowerCase() === swatch.value.toLowerCase()) === i);
 
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="t-soft text-micro font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
@@ -202,13 +192,15 @@ export const ThemePicker: React.FC = () => {
                 Minimal은 글자·테두리 색까지 들고 오는데, 그건 고르면 화면이
                 말해준다 — 이름표와 점 두 개가 할 일이 아니다. */}
             <Label>Colours</Label>
-            <div className="grid grid-cols-8 gap-1.5">
-              {SOLID_SWATCHES.map(({ value, label }) => (
+            {/* 일곱씩 두 줄이다 — 윗줄이 어두운 색, 아랫줄이 밝은 색.
+                `SOLID_COLORS`가 그 순서로 들고 있다. */}
+            <div className="grid grid-cols-7 gap-1.5">
+              {SOLID_COLORS.map(({ value, name }) => (
                 <button
                   key={value}
                   onClick={() => setBackground({ type: 'COLOR', value })}
-                  title={label}
-                  aria-label={label}
+                  title={name}
+                  aria-label={name}
                   className="border-hair aspect-square rounded-control border transition-transform hover:scale-[1.12] active:scale-95"
                   style={{ backgroundColor: value, ...ring(override?.value === value) }}
                 />

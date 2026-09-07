@@ -9,37 +9,37 @@ export function assetUrl(src: string) {
   return src.startsWith('/') ? `.${src}` : src;
 }
 
-export const SOLID_COLORS = [
-  '#1e1e24', // charcoal
-  '#12131a', // ink
-  '#232135', // plum
-  '#1a2420', // moss
-];
-
 /**
- * 최초 버전(legacy/components/AmbienceDock.tsx)의 `MINIMAL_THEMES` 값 그대로다.
- * 위 단색과 달리 배경 하나가 아니라 글자·강조·테두리까지 네 값을 들고 있다 —
- * 고르면 사이드바를 포함한 UI 전체가 이 값을 쓴다.
- * mist(`#f1f5f9`)와 sand(`#fdf6e3`)는 여기로 옮겼다. 위 단색 목록에 그대로 두면
- * 같은 색이 스와치 두 개로 나온다(누른 결과도 똑같다).
+ * 배경 단색. 색과 이름뿐이다 — 글자·면·테두리는 값 층(DESIGN.md 2장)이 정한다.
+ *
+ * 예전에는 Mist·Sand·Deep Forest·Stone이 `MINIMAL_THEMES`로 따로 있으면서 자기
+ * `{text, border, surface}`를 들고 왔고, `backgroundTokens`가 그 값을 값 층보다
+ * 위에 뒀다. 그래서 Mist는 면이 순백(`#ffffff`, DESIGN.md 7장이 금지한 값)이고
+ * 글자가 차가운 회색(`#475569`, 대비 7.58)이라 라이트에서 검은색이 안 나왔다.
+ * 색 값은 최초 버전 그대로고, 이제 배경색으로만 쓴다.
+ *
+ * 앞 일곱이 어두움, 뒤 일곱이 밝음이다. 팔레트가 한 줄에 일곱씩 두 줄로 세운다 —
+ * 밝은 쪽이 Mist·Sand 둘뿐이라 배경을 골라서는 라이트 UI에 갈 길이 거의 없었다.
+ *
+ * **Black·Greige는 시안(A2.html)의 `solidDark`·`solidLight` 값 그대로다.** 앱의
+ * 어두운 색은 전부 남색·자주·초록이 섞여 있어서 시안에 있는 따뜻한 무채색 검정이
+ * 없었다. 가장 어두운 Ink(`#12131a`)도 남색이다.
  */
-interface MinimalTheme {
-  name: string;
-  bg: string;
-  text: string;
-  border: string;
-  /** 위젯 안쪽 종이(`--paper`가 이걸 쓴다). 없으면 배경 밝기에서 뽑는다. */
-  surface?: string;
-}
-
-export const MINIMAL_THEMES: MinimalTheme[] = [
-  // 캔버스가 이미 거의 흰색이라 밝기로 뽑은 면이 캔버스와 1/255 차이로 붙었다.
-  // slate 눈금을 하나 띄운다 — 캔버스 100 / 면 흰색.
-  { name: 'Mist', bg: '#f1f5f9', text: '#475569', border: '#cbd5e1',
-    surface: '#ffffff' },
-  { name: 'Deep Forest', bg: '#0f291e', text: '#d1fae5', border: '#064e3b' },
-  { name: 'Stone', bg: '#292524', text: '#d6d3d1', border: '#44403c' },
-  { name: 'Sand', bg: '#fdf6e3', text: '#5c534b', border: '#ebdcc1' },
+export const SOLID_COLORS: { value: string; name: string }[] = [
+  { value: '#191715', name: 'Black' },
+  { value: '#1e1e24', name: 'Charcoal' },
+  { value: '#12131a', name: 'Ink' },
+  { value: '#232135', name: 'Plum' },
+  { value: '#1a2420', name: 'Moss' },
+  { value: '#0f291e', name: 'Deep Forest' },
+  { value: '#292524', name: 'Stone' },
+  { value: '#e9e5de', name: 'Greige' },
+  { value: '#f1f5f9', name: 'Mist' },
+  { value: '#fdf6e3', name: 'Sand' },
+  { value: '#efe7d9', name: 'Linen' },
+  { value: '#dde4dc', name: 'Sage' },
+  { value: '#e4dfea', name: 'Lilac' },
+  { value: '#eddfda', name: 'Blush' },
 ];
 
 /** sRGB relative luminance, 0(검정)~1(흰색). */
@@ -63,9 +63,6 @@ export function isLightBackground(value: string) {
  * 공간이 단색 배경을 쓰면 UI는 테마의 사진이 아니라 그 색 위에 놓인다. 테마 토큰을
  * 그대로 두면 밝은 색을 골라도 사이드바·위젯이 어두운 채로 남는다 — 팔레트에서 색을
  * 바꿔도 사이드바가 안 따라오던 원인이다.
- *
- * Minimal 테마는 자기가 들고 있는 값을 쓰고(배경색으로 찾는다 — 공간 문서에는 색
- * 하나만 저장하면 되고 스키마가 그대로다), 나머지는 배경 밝기에서 뽑는다.
  */
 /** 면·글자의 바탕. 극성이 정하고, 배경색은 색조로만 섞인다(DESIGN.md 2장). */
 const LIGHT_SURFACE = '#f7f6f3';
@@ -86,11 +83,28 @@ const DARK_INK = '#f0ede7';
  * 채도를 올리면 휘도가 떨어진다(Sand `#fdf6e3`에 Dark를 걸면 4.62에서 4.21로
  * 내려가 AA를 깼다). 휘도를 맞추면 대비가 섞기만 하던 때와 같은 자리에 남는다.
  */
+/**
+ * 배경색을 얼마나 섞는지. 극성마다 다르다.
+ *
+ * 어두운 바탕에 어두운 배경색을 35% 섞으면 휘도가 거의 안 움직이지만(charcoal은
+ * 0.014 → 0.013), 밝은 바탕에 같은 배경색을 35% 섞으면 휘도가 0.92에서 0.40까지
+ * 떨어진다. 그래서 Light를 손으로 걸어도 면이 밝지 않고 중간톤 라벤더(`#a8a8c3`)가
+ * 나왔다. 밝은 쪽은 14%만 섞어 면을 0.69~0.92에 둔다.
+ */
 const GROUND_SHARE = 0.35;
+const LIGHT_GROUND_SHARE = 0.14;
 /** 옅은 사진에 주는 바닥값. 이미 진한 배경은 제 채도가 이보다 높아서 안 건드려진다. */
 const SATURATION_FLOOR = 0.18;
 /** 흰색·검정에 가까운 색은 HSL 채도가 뻥튀기된다(Sand는 86%로 나온다). 천장을 둔다. */
 const SATURATION_CAP = 0.32;
+/**
+ * 밝은 면이 띠어야 할 최소 색폭(R·G·B 최대-최소, 0~1).
+ *
+ * HSL에서 실제로 보이는 색폭은 `(1 - |2L-1|) × S`다. 면이 아주 밝으면(L>0.94) 이
+ * 값이 눌려서 채도를 넣어도 색이 안 남는다 — 밝은 배경 여섯 개가 전부 같은
+ * 오프화이트로 나왔다(색폭 3~5). 어두운 면은 이미 12~40이라 안 건드린다.
+ */
+const BRIGHT_SURFACE_CHROMA = 0.05;
 
 /**
  * `#rgb`·`#rrggbb`만 읽는다. 그 밖이면 null이다 — MVP에서 마이그레이션된 공간은
@@ -138,17 +152,30 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   return [channel(h + 1 / 3) * 255, channel(h) * 255, channel(h - 1 / 3) * 255];
 }
 
-export function tintedSurface(base: string, ground: string): string {
+/** 그 색조·채도에서 휘도가 `target`이 되는 HSL 밝기. 휘도는 밝기에 대해 단조증가라
+ *  이분법으로 스무 번이면 1/255보다 촘촘하다. */
+function lightnessFor(hue: number, saturation: number, target: number): number {
+  let low = 0;
+  let high = 1;
+  for (let i = 0; i < 20; i += 1) {
+    const mid = (low + high) / 2;
+    if (luminanceOf(hslToRgb(hue, saturation, mid)) < target) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+}
+
+export function tintedSurface(base: string, ground: string, share = GROUND_SHARE): string {
   const baseRgb = toRgb(base);
   const groundRgb = toRgb(ground);
   // 읽을 수 없는 색이면 색조를 못 뽑는다. 브라우저는 아는 색일 수 있으므로 섞기만
   // 하던 예전 방식으로 돌아간다 — 색조는 죽지만 아무 색도 안 나오진 않는다.
   if (!baseRgb || !groundRgb) {
-    return `color-mix(in srgb, ${base} ${Math.round((1 - GROUND_SHARE) * 100)}%, ${ground})`;
+    return `color-mix(in srgb, ${base} ${Math.round((1 - share) * 100)}%, ${ground})`;
   }
 
   const mixed = baseRgb.map((c, i) =>
-    Math.round(c * (1 - GROUND_SHARE) + groundRgb[i] * GROUND_SHARE),
+    Math.round(c * (1 - share) + groundRgb[i] * share),
   ) as [number, number, number];
   const target = luminanceOf(mixed);
 
@@ -157,18 +184,19 @@ export function tintedSurface(base: string, ground: string): string {
   const min = Math.min(...groundRgb);
   // HSV 채도(`d / max`)를 쓴다. HSL 채도는 밝기 극단에서 터진다.
   const chroma = max === 0 ? 0 : (max - min) / max;
-  const saturation = Math.min(SATURATION_CAP, Math.max(SATURATION_FLOOR, chroma));
+  let saturation = Math.min(SATURATION_CAP, Math.max(SATURATION_FLOOR, chroma));
+  let lightness = lightnessFor(hue, saturation, target);
 
-  // 그 색조·채도에서 휘도가 섞은 색과 같아지는 밝기를 찾는다. 휘도는 밝기에 대해
-  // 단조증가라 이분법으로 스무 번이면 1/255보다 촘촘하다.
-  let low = 0;
-  let high = 1;
-  for (let i = 0; i < 20; i += 1) {
-    const mid = (low + high) / 2;
-    if (luminanceOf(hslToRgb(hue, saturation, mid)) < target) low = mid;
-    else high = mid;
+  // 밝은 면은 색폭이 밝기에 눌린다. 남는 폭에 맞춰 채도를 올리고 밝기를 다시 푼다 —
+  // 휘도를 다시 맞추므로 대비는 그대로다.
+  if (lightness > 0.5) {
+    const reach = 1 - Math.abs(2 * lightness - 1);
+    const needed = Math.min(1, BRIGHT_SURFACE_CHROMA / Math.max(reach, 0.001));
+    if (needed > saturation) {
+      saturation = needed;
+      lightness = lightnessFor(hue, saturation, target);
+    }
   }
-  const lightness = (low + high) / 2;
 
   return `hsl(${(hue * 360).toFixed(1)} ${(saturation * 100).toFixed(1)}% ${(lightness * 100).toFixed(1)}%)`;
 }
@@ -179,18 +207,8 @@ export function backgroundTokens<T extends ThemeTokens>(
   /** 사용자가 Atmosphere에서 뒤집었을 때. 없으면 색 밝기가 정한다. */
   forceLight?: boolean,
 ): T {
-  const natural = isLightBackground(value);
-  const light = forceLight ?? natural;
-  /**
-   * Minimal 테마는 배경 하나가 아니라 글자·테두리·면까지 든 값 세트다. 그런데 그
-   * 세트는 자기 배경의 극성에 맞춰 정해진 값이라, 사용자가 극성을 뒤집으면 못 쓴다 —
-   * 밝은 Mist에서 Dark를 골라도 세트가 이겨서 흰 면에 어두운 글자가 그대로 남았다.
-   */
-  const named =
-    light === natural
-      ? MINIMAL_THEMES.find((t) => t.bg.toLowerCase() === value.toLowerCase())
-      : undefined;
-  const ink = named?.text ?? (light ? LIGHT_INK : DARK_INK);
+  const light = forceLight ?? isLightBackground(value);
+  const ink = light ? LIGHT_INK : DARK_INK;
   return {
     ...base,
     ink,
@@ -207,8 +225,11 @@ export function backgroundTokens<T extends ThemeTokens>(
      * 색조를 어떻게 얹는지는 `tintedSurface`에 있다. 그냥 섞기만 하면 옅은 사진에서
      * 색이 죽어서, 색조는 배경에서 가져오고 밝기만 섞은 값에서 가져온다.
      */
-    surface: named?.surface ?? tintedSurface(light ? LIGHT_SURFACE : DARK_SURFACE, value),
-    panelBorder:
-      named?.border ?? (light ? 'rgba(30, 28, 25, 0.16)' : 'rgba(255, 255, 255, 0.14)'),
+    surface: tintedSurface(
+      light ? LIGHT_SURFACE : DARK_SURFACE,
+      value,
+      light ? LIGHT_GROUND_SHARE : GROUND_SHARE,
+    ),
+    panelBorder: light ? 'rgba(30, 28, 25, 0.16)' : 'rgba(255, 255, 255, 0.14)',
   };
 }

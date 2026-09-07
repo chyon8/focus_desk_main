@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MINIMAL_THEMES, SOLID_COLORS, backgroundTokens, tintedSurface } from './backgrounds';
+import { SOLID_COLORS, backgroundTokens, tintedSurface } from './backgrounds';
 
 /**
  * 면 색은 그 공간의 색을 띠어야 하고(사이드바가 공간을 바꿨다고 알려주는 신호),
@@ -18,7 +18,7 @@ const PHOTO_TONES = {
   winterhut: '#373d4a',
   sunset: '#823d5b',
 };
-const GROUNDS = [...SOLID_COLORS, ...MINIMAL_THEMES.map((t) => t.bg), ...Object.values(PHOTO_TONES)];
+const GROUNDS = [...SOLID_COLORS.map((c) => c.value), ...Object.values(PHOTO_TONES)];
 
 /** `hsl(H S% L%)` 또는 `#rrggbb`를 채널 셋으로. 테스트가 읽을 수 있으면 브라우저도 읽는다. */
 function parse(css: string): [number, number, number] {
@@ -68,10 +68,11 @@ describe('면 색', () => {
     }
   });
 
+  // 밝은 면은 색폭이 밝기에 눌려서 다르게 깨진다 — 어두운 쪽만 보면 라이트 배경
+  // 여섯 개가 전부 같은 오프화이트가 되는 걸 못 잡는다. 양쪽 극성을 다 본다.
   it.each(GROUNDS)('%s 위에서 면이 그 배경의 색조를 띤다', (ground) => {
-    // Minimal 테마는 자기가 들고 있는 면 값을 쓰므로 이 규칙 밖이다.
-    if (MINIMAL_THEMES.some((t) => t.bg.toLowerCase() === ground.toLowerCase())) return;
-    expect(spread(tintedSurface('#201e1b', ground))).toBeGreaterThan(8);
+    expect(spread(tintedSurface('#201e1b', ground, 0.35))).toBeGreaterThan(8);
+    expect(spread(tintedSurface('#f7f6f3', ground, 0.14))).toBeGreaterThan(8);
   });
 
   it('무채색에 가까운 사진도 색으로 보인다', () => {
