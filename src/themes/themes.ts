@@ -16,6 +16,7 @@ export const THEMES: Theme[] = [
     tokens: {
       ink: '#fff3e6',
       inkSoft: 'rgba(255, 243, 230, 0.6)',
+      inkFaint: 'rgba(255, 243, 230, 0.32)',
       surface: '#2e1c1a',
       panelBorder: 'rgba(255, 208, 168, 0.17)',
     },
@@ -38,6 +39,7 @@ export const THEMES: Theme[] = [
     tokens: {
       ink: '#e8f2f6',
       inkSoft: 'rgba(232, 242, 246, 0.5)',
+      inkFaint: 'rgba(232, 242, 246, 0.3)',
       surface: '#101f28',
       panelBorder: 'rgba(168, 220, 240, 0.15)',
     },
@@ -59,6 +61,7 @@ export const THEMES: Theme[] = [
     tokens: {
       ink: '#eef1f8',
       inkSoft: 'rgba(238, 241, 248, 0.5)',
+      inkFaint: 'rgba(238, 241, 248, 0.3)',
       surface: '#161c2e',
       panelBorder: 'rgba(200, 214, 245, 0.15)',
     },
@@ -76,6 +79,7 @@ export const THEMES: Theme[] = [
     tokens: {
       ink: '#3b3128',
       inkSoft: 'rgba(59, 49, 40, 0.55)',
+      inkFaint: 'rgba(59, 49, 40, 0.3)',
       surface: '#fbf6ea',
       panelBorder: 'rgba(90, 70, 50, 0.14)',
     },

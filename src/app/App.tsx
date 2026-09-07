@@ -25,6 +25,28 @@ import { HiddenAppsToast } from './HiddenAppsToast';
 import { NoticeToast } from './NoticeToast';
 import { Dock } from './Dock';
 import { UndoToast } from './UndoToast';
+import { useUiStore } from '../stores/uiStore';
+
+/**
+ * 배경을 누르면 열려 있던 Atmosphere·Sound 패널이 닫힌다.
+ *
+ * 둘은 레일 버튼으로만 여닫혔다. 그래서 켜둔 채 다른 데를 눌러도 남아 있었고,
+ * 레일을 접으면 입구까지 사라져서 끌 수가 없었다. 한 번에 하나만 열리므로
+ * (`openDock`이 값 하나다) 뒷판도 하나다.
+ *
+ * 패널보다 아래(z-49), 레일보다 위다 — 레일 버튼을 다시 눌러 닫는 길이 막히면
+ * 안 되고, 그 클릭은 `toggleDock`이 받아야 한다.
+ */
+const DockBackdrop: React.FC = () => {
+  const openDock = useUiStore((s) => s.openDock);
+  if (!openDock) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[49]"
+      onPointerDown={() => useUiStore.getState().closeDock()}
+    />
+  );
+};
 
 export const App: React.FC = () => {
   const isLoaded = useSpaceStore((s) => s.isLoaded);
@@ -85,6 +107,7 @@ export const App: React.FC = () => {
       <Rail onOpenInsights={() => setShowInsights(true)} />
       <FocusSessionBar />
       <AmbienceEngineHost />
+      <DockBackdrop />
       <SoundPanel />
       <ThemePicker />
       <QuickAdd />

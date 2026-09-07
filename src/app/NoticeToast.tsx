@@ -33,7 +33,7 @@ export const NoticeToast: React.FC = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
-          className="glass-panel fixed bottom-20 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-surface shadow-2xl"
+          className="glass-panel fixed bottom-20 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-surface"
         >
           <span className="t-ink text-ui">{notice.label}</span>
           {notice.action && (
@@ -51,7 +51,7 @@ export const NoticeToast: React.FC = () => {
             <button
               onClick={() => useUiStore.getState().dismissNotice()}
               title="Dismiss"
-              className="t-faint hover:t-ink w-7 h-7 flex items-center justify-center rounded-control"
+              className="press t-faint hover:t-ink w-7 h-7 flex items-center justify-center rounded-control"
             >
               <X size={12} />
             </button>

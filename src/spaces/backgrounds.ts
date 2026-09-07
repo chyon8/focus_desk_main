@@ -201,6 +201,58 @@ export function tintedSurface(base: string, ground: string, share = GROUND_SHARE
   return `hsl(${(hue * 360).toFixed(1)} ${(saturation * 100).toFixed(1)}% ${(lightness * 100).toFixed(1)}%)`;
 }
 
+
+/* --- 글자 3단 ---------------------------------------------------------------
+   DESIGN.md 2장은 본문·보조·최하위 셋의 대비를 값으로 못박아 뒀다(밝음 15.73 /
+   6.63 / 4.81, 어두움 14.23 / 6.59 / 5.07). 구현은 그걸 잉크의 알파로 어림했는데,
+   알파는 면이 무슨 색이냐에 따라 결과가 달라진다 — 면이 배경 색조를 띠게 되면서
+   같은 60%·32%가 배경마다 다른 대비로 나왔다. 재보면 보조는 2.75~6.07, 최하위는
+   1.78~2.66이었다. 10px 설명글이 대비 2로 나오면 읽히지 않는다.
+
+   그래서 알파가 아니라 **대비로 푼다.** 잉크의 색조·채도는 그대로 두고 밝기만
+   면 쪽으로 옮겨서 목표 대비에 맞춘다 — 면을 만들 때 쓴 것과 같은 이분법이다. --- */
+
+/** DESIGN.md 2장의 보조·최하위 대비. 양쪽 극성의 값이 거의 같아 하나로 쓴다. */
+const INK_SOFT_CONTRAST = 6.6;
+const INK_FAINT_CONTRAST = 4.9;
+
+/**
+ * 면 위에서 `target` 대비가 나오는 글자색.
+ *
+ * 본문 잉크보다 진해지지는 않는다. 밝은 배경에 Dark를 걸면 본문 자체가 5.05까지
+ * 내려가서 6.6을 낼 자리가 없다 — 그런 배경에서는 세 단이 겹치고, 위계는 굵기가
+ * 낸다(DESIGN.md 3장).
+ */
+function inkStep(ink: string, surface: string, target: number, light: boolean): string {
+  const inkRgb = toRgb(ink);
+  const surfaceLum = luminanceFromCss(surface);
+  if (!inkRgb || surfaceLum === null) return ink;
+
+  const inkLum = luminanceOf(inkRgb);
+  const wanted = light
+    ? Math.max(inkLum, (surfaceLum + 0.05) / target - 0.05)
+    : Math.min(inkLum, target * (surfaceLum + 0.05) - 0.05);
+
+  const hue = hueOf(inkRgb);
+  const max = Math.max(...inkRgb);
+  const min = Math.min(...inkRgb);
+  const saturation = max === 0 ? 0 : (max - min) / max;
+  const lightness = lightnessFor(hue, saturation, Math.min(1, Math.max(0, wanted)));
+  return `hsl(${(hue * 360).toFixed(1)} ${(saturation * 100).toFixed(1)}% ${(lightness * 100).toFixed(1)}%)`;
+}
+
+/** `tintedSurface`가 내놓는 두 가지 꼴을 다 읽는다: hsl()과 hex. color-mix 폴백은 못 읽는다. */
+function luminanceFromCss(css: string): number | null {
+  const hsl = css.match(/hsl\(([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\)/);
+  if (hsl) {
+    return luminanceOf(
+      hslToRgb(Number(hsl[1]) / 360, Number(hsl[2]) / 100, Number(hsl[3]) / 100),
+    );
+  }
+  const rgb = toRgb(css);
+  return rgb ? luminanceOf(rgb) : null;
+}
+
 export function backgroundTokens<T extends ThemeTokens>(
   value: string,
   base: T,
@@ -209,10 +261,17 @@ export function backgroundTokens<T extends ThemeTokens>(
 ): T {
   const light = forceLight ?? isLightBackground(value);
   const ink = light ? LIGHT_INK : DARK_INK;
+  // 글자 셋이 다 이 면 위에 앉으므로 면을 먼저 만든다.
+  const surface = tintedSurface(
+    light ? LIGHT_SURFACE : DARK_SURFACE,
+    value,
+    light ? LIGHT_GROUND_SHARE : GROUND_SHARE,
+  );
   return {
     ...base,
     ink,
-    inkSoft: `color-mix(in srgb, ${ink} 60%, transparent)`,
+    inkSoft: inkStep(ink, surface, INK_SOFT_CONTRAST, light),
+    inkFaint: inkStep(ink, surface, INK_FAINT_CONTRAST, light),
     /**
      * 면은 글자를 이고 있으므로 불투명하고, **극성이 정한 바탕**에서 출발한다.
      * 예전에는 배경색에 흰색을 섞어서 만들었는데(어두우면 7%, 밝으면 70%), 그러면
@@ -225,11 +284,7 @@ export function backgroundTokens<T extends ThemeTokens>(
      * 색조를 어떻게 얹는지는 `tintedSurface`에 있다. 그냥 섞기만 하면 옅은 사진에서
      * 색이 죽어서, 색조는 배경에서 가져오고 밝기만 섞은 값에서 가져온다.
      */
-    surface: tintedSurface(
-      light ? LIGHT_SURFACE : DARK_SURFACE,
-      value,
-      light ? LIGHT_GROUND_SHARE : GROUND_SHARE,
-    ),
+    surface,
     panelBorder: light ? 'rgba(30, 28, 25, 0.16)' : 'rgba(255, 255, 255, 0.14)',
   };
 }

@@ -100,9 +100,10 @@ export function useThemeVariables(theme: Theme) {
 
   useEffect(() => {
     const { style } = document.documentElement;
-    const { ink, inkSoft, surface, panelBorder } = tokens;
+    const { ink, inkSoft, inkFaint, surface, panelBorder } = tokens;
     style.setProperty('--ink', ink);
     style.setProperty('--ink-soft', inkSoft);
+    style.setProperty('--ink-faint', inkFaint);
     style.setProperty('--surface', surface);
     style.setProperty('--panel-border', panelBorder);
   }, [tokens]);

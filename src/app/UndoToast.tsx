@@ -73,7 +73,7 @@ export const UndoToast: React.FC = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
-          className={`glass-panel fixed ${hasSelection ? 'bottom-20' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-surface shadow-2xl`}
+          className={`glass-panel fixed ${hasSelection ? 'bottom-20' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 pl-4 pr-2 py-2 rounded-surface`}
         >
           <span className="t-ink text-ui">{entry.label}</span>
           <button

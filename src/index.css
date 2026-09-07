@@ -68,6 +68,8 @@
      (어두운 값은 액센트 #e9a75f와 빨강 채널이 같다).
      대비: 어두움 6.67:1 / 밝음 6.91:1 (면 위, AA 본문 4.5 기준). */
   --danger: #e98b78;
+  /* 값 층이 배경마다 다시 푼다. 이건 첫 프레임용 바닥값이다. */
+  --ink-faint: #948d83;
 }
 
 /* 극성은 배경이 정한다. themes/useTheme가 data-polarity를 단다. */
@@ -84,6 +86,7 @@
   --accent-ink: #fff7ef;
   --accent-soft: rgba(169, 88, 27, 0.12);
   --danger: #a3231a;
+  --ink-faint: #726c62;
 }
 
 body {
@@ -187,7 +190,7 @@ body {
   color: var(--ink-soft);
 }
 .t-faint {
-  color: color-mix(in srgb, var(--ink) 32%, transparent);
+  color: var(--ink-faint);
 }
 .t-accent {
   color: var(--accent);
@@ -350,6 +353,7 @@ body {
   --paper: var(--surface);
   --paper-ink: var(--ink);
   --paper-ink-soft: var(--ink-soft);
+  --paper-ink-faint: var(--ink-faint);
   --paper-border: var(--panel-border);
   /* A shade off the sheet: table headers, and the boxes Mermaid fills. */
   --paper-fill: color-mix(in srgb, var(--ink) 9%, var(--surface));
@@ -369,6 +373,9 @@ body {
   --paper: #fbfaf6;
   --paper-ink: #22212a;
   --paper-ink-soft: #56545f;
+  /* 종이 위 대비 4.9 — 방의 --ink-faint를 그대로 두면 어두운 방의 흰 종이에서
+     옅은 글자가 옅은 종이 위에 앉는다. */
+  --paper-ink-faint: #74727d;
   --paper-border: rgba(30, 28, 40, 0.13);
   --paper-fill: #eceae4;
   --paper-edge: rgba(255, 255, 255, 0.85);
@@ -731,6 +738,7 @@ textarea:focus-visible,
 .memo-paper {
   --ink: var(--paper-ink);
   --ink-soft: var(--paper-ink-soft);
+  --ink-faint: var(--paper-ink-faint);
   --panel-border: var(--paper-border);
   --surface: var(--paper-fill);
   /* A breath of the room's accent along the top, so the sheet belongs to the

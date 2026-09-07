@@ -81,13 +81,13 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.12 }}
-        className="glass-panel fixed left-1/2 top-1/2 z-[99] w-[28rem] max-h-[70vh] -translate-x-1/2 -translate-y-1/2 flex flex-col p-5 rounded-surface shadow-2xl"
+        className="glass-panel fixed left-1/2 top-1/2 z-[99] w-[28rem] max-h-[70vh] -translate-x-1/2 -translate-y-1/2 flex flex-col p-4 rounded-surface"
       >
         <div className="flex items-center gap-2 mb-1">
           <span className="t-soft text-meta font-semibold uppercase tracking-widest">
             Import from Chrome
           </span>
-          <button onClick={onClose} className="t-faint hover:t-ink ml-auto shrink-0">
+          <button onClick={onClose} className="press t-faint hover:t-ink ml-auto shrink-0">
             <X size={12} />
           </button>
         </div>
@@ -99,7 +99,7 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
               space.
             </p>
             <p className="t-soft mt-2 text-meta leading-relaxed">
-              Your tabs stay in Chrome. Nothing is closed and nothing is moved — only the addresses
+              Your tabs stay in Chrome. Nothing is closed and nothing is moved. Only the addresses
               and titles are read. macOS will ask to let Focus Desk “control” Chrome, which is the
               only permission it has for this.
             </p>
@@ -112,7 +112,19 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
           </>
         )}
 
-        {state.step === 'reading' && <div className="t-faint mt-3 text-ui">Reading Chrome…</div>}
+        {state.step === 'reading' && (
+          <div className="mt-3 space-y-1.5" aria-label="Reading Chrome">
+            {[0, 1].map((i) => (
+              <div key={i} className="glass flex flex-col gap-1.5 p-3 rounded-control">
+                <div className="flex items-center gap-3">
+                  <div className="skeleton w-4 h-4 shrink-0" />
+                  <div className="skeleton h-3 flex-1" style={{ maxWidth: `${60 - i * 15}%` }} />
+                </div>
+                <div className="skeleton h-2" style={{ width: `${80 - i * 20}%` }} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {state.step === 'none' && (
           <p className="t-soft mt-2 text-ui leading-relaxed">
@@ -143,17 +155,26 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
         )}
 
         {state.step === 'failed' && (
-          <p className="t-soft mt-2 text-ui leading-relaxed">
-            Chrome could not be read. {state.message}
-          </p>
+          <>
+            <p className="mt-2 text-ui leading-relaxed" style={{ color: 'var(--danger)' }}>
+              Chrome could not be read.
+            </p>
+            <p className="t-soft mt-2 text-meta leading-relaxed">{state.message}</p>
+            <button
+              onClick={() => void read()}
+              className="chrome-button t-accent mt-4 py-1.5 rounded-control text-meta font-medium"
+            >
+              Try again
+            </button>
+          </>
         )}
 
         {state.step === 'choose' && (
           <>
             <p className="t-soft mt-1 mb-3 text-meta leading-snug">
               {state.choices.length === 1
-                ? 'One Chrome window. It becomes one space — your tabs stay in Chrome.'
-                : `${state.choices.length} Chrome windows. Each becomes a space — your tabs stay in Chrome.`}
+                ? 'One Chrome window. It becomes one space, and your tabs stay in Chrome.'
+                : `${state.choices.length} Chrome windows. Each becomes a space, and your tabs stay in Chrome.`}
             </p>
 
             <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-1.5">
@@ -162,49 +183,53 @@ export const ChromeImportPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                 return (
                   <div
                     key={choice.id}
-                    className={`row flex flex-col gap-1.5 p-2.5 rounded-control ${on ? '' : 'opacity-50'}`}
+                    className={`row flex gap-3 p-3 rounded-control ${on ? '' : 'opacity-50'}`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <button
-                        onClick={() =>
-                          setTicked((was) => {
-                            const next = new Set(was);
-                            if (!next.delete(choice.id)) next.add(choice.id);
-                            return next;
-                          })
-                        }
-                        title={on ? 'Leave this window out' : 'Bring this window in'}
-                        className={`glass w-4 h-4 shrink-0 rounded-mark flex items-center justify-center ${
-                          on ? 't-ink' : 't-faint'
-                        }`}
-                      >
-                        {on && <Check size={10} />}
-                      </button>
-                      <input
-                        value={names[choice.id] ?? choice.name}
-                        onChange={(e) =>
-                          setNames((was) => ({ ...was, [choice.id]: e.target.value }))
-                        }
-                        disabled={!on}
-                        title="What this space will be called"
-                        className="t-ink flex-1 min-w-0 bg-transparent text-ui outline-none"
-                      />
-                      <span className="t-faint shrink-0 text-micro tabular-nums">
-                        {choice.tabs.length} tabs
-                      </span>
-                    </div>
-                    <div className="t-faint pl-[26px] text-micro truncate">
-                      {choice.tabs
-                        .slice(0, 5)
-                        .map((t) => hostOf(t.url))
-                        .join(' · ')}
-                      {choice.tabs.length > 5 && ' …'}
-                    </div>
-                    {choice.dropped > 0 && (
-                      <div className="t-faint pl-[26px] text-micro">
-                        {choice.dropped} more tabs in this window are left in Chrome.
+                    <button
+                      onClick={() =>
+                        setTicked((was) => {
+                          const next = new Set(was);
+                          if (!next.delete(choice.id)) next.add(choice.id);
+                          return next;
+                        })
+                      }
+                      title={on ? 'Leave this window out' : 'Bring this window in'}
+                      className={`press glass w-4 h-4 shrink-0 mt-0.5 rounded-mark flex items-center justify-center ${
+                        on ? 't-ink' : 't-faint'
+                      }`}
+                    >
+                      {on && <Check size={10} />}
+                    </button>
+                    {/* 아랫줄들이 이름과 나란히 서야 하는데, 들여쓰기 값을 손으로
+                        적으면 체크박스 크기가 바뀔 때마다 어긋난다. 한 칸에 담는다. */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-3">
+                        <input
+                          value={names[choice.id] ?? choice.name}
+                          onChange={(e) =>
+                            setNames((was) => ({ ...was, [choice.id]: e.target.value }))
+                          }
+                          disabled={!on}
+                          title="What this space will be called"
+                          className="t-ink flex-1 min-w-0 bg-transparent text-ui outline-none"
+                        />
+                        <span className="t-faint shrink-0 text-micro tabular-nums">
+                          {choice.tabs.length} tabs
+                        </span>
                       </div>
-                    )}
+                      <div className="t-faint text-micro truncate">
+                        {choice.tabs
+                          .slice(0, 5)
+                          .map((t) => hostOf(t.url))
+                          .join(' · ')}
+                        {choice.tabs.length > 5 && ' …'}
+                      </div>
+                      {choice.dropped > 0 && (
+                        <div className="t-faint text-micro">
+                          {choice.dropped} more tabs in this window are left in Chrome.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}

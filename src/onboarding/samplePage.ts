@@ -53,7 +53,7 @@ const HTML = `<!doctype html>
   <p><strong>Both work.</strong> Right-click the picture and choose “Send image to
   the canvas”, and it becomes a photo on the desk. Or select any of this text,
   right-click, choose “Send text to the canvas”, and it becomes a note.</p>
-  <p>Either one is a copy that is yours — it survives the site changing, or asking
+  <p>Either one is a copy that is yours. It survives the site changing, or asking
   you to sign in again. Do one and this page goes away.</p>
 </body></html>`;
 

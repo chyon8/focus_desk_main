@@ -54,13 +54,17 @@ export const ThemePicker: React.FC = () => {
   const { autoLight } = useGround(getTheme(themeId));
   const setPolarity = useSpaceStore((s) => s.setPolarity);
   const fileInput = useRef<HTMLInputElement>(null);
-  const [wallpapers, setWallpapers] = useState<string[]>([]);
+  // null while the folder is being read, so the empty state is not shown to
+  // somebody who does have pictures (DESIGN.md 6장).
+  const [wallpapers, setWallpapers] = useState<string[] | null>(null);
   const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
 
   // Re-read the folder every time the panel opens, so a picture dropped in
   // while the app is running is there the moment you look for it.
   useEffect(() => {
-    if (isOpen) void window.images?.wallpapers().then(setWallpapers);
+    if (!isOpen) return;
+    setWallpapers(null);
+    void window.images?.wallpapers().then(setWallpapers);
   }, [isOpen]);
 
   const uploadWallpaper = async (file: File) => {
@@ -99,12 +103,12 @@ export const ThemePicker: React.FC = () => {
             }`}
           >
             <Label>Theme</Label>
-            <div className="grid grid-cols-2 gap-2 mb-5">
+            <div className="grid grid-cols-2 gap-2 mb-6">
               {THEMES.map((theme) => (
                 <button
                   key={theme.id}
                   onClick={() => setTheme(theme.id)}
-                  className="group rounded-control overflow-hidden text-left transition-transform hover:scale-[1.03]"
+                  className="press group rounded-control overflow-hidden text-left transition-transform hover:scale-[1.03]"
                   style={ring(themeId === theme.id && !override)}
                 >
                   <div className="aspect-[4/3] w-full" style={thumbStyle(theme.scene)} />
@@ -139,7 +143,7 @@ export const ThemePicker: React.FC = () => {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-3 mb-5 px-0.5">
+            <div className="flex items-center gap-3 mb-6 px-0.5">
               <input
                 type="range"
                 min={5}
@@ -153,27 +157,46 @@ export const ThemePicker: React.FC = () => {
                 className="ambience-slider flex-1 h-1 rounded-control appearance-none cursor-pointer disabled:opacity-30 disabled:cursor-default"
               />
               <span className="t-faint w-7 text-right text-micro tabular-nums">
-                {weather.kind === 'none' ? '—' : Math.round(weather.density * 100)}
+                {weather.kind === 'none' ? 'off' : Math.round(weather.density * 100)}
               </span>
             </div>
 
             <Label>My wallpaper</Label>
-            <div className="grid grid-cols-3 gap-2 mb-4 max-h-40 overflow-y-auto pr-1">
-              {wallpapers.map((url) => (
-                <button
-                  key={url}
-                  onClick={() => setBackground({ type: 'IMAGE', value: url })}
-                  className="aspect-video rounded-control bg-cover bg-center transition-transform hover:scale-[1.06]"
-                  style={{ backgroundImage: `url(${assetUrl(url)})`, ...ring(override?.value === url) }}
-                />
-              ))}
-              <button
-                onClick={() => fileInput.current?.click()}
-                title="Use your own image"
-                className="border-hair t-soft aspect-video rounded-control border border-dashed flex items-center justify-center transition-colors"
-              >
-                <Upload size={13} />
-              </button>
+            <div className="mb-4">
+              <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
+                {/* 읽는 동안은 들어올 타일 모양으로 자리를 잡아둔다. 다 읽고 나면
+                    같은 자리에 사진이 앉으므로 격자가 안 튄다. */}
+                {wallpapers === null
+                  ? [0, 1, 2].map((i) => (
+                      <div key={i} className="skeleton aspect-video rounded-control" />
+                    ))
+                  : wallpapers.map((url) => (
+                      <button
+                        key={url}
+                        onClick={() => setBackground({ type: 'IMAGE', value: url })}
+                        className="press aspect-video rounded-control bg-cover bg-center transition-transform hover:scale-[1.06]"
+                        style={{
+                          backgroundImage: `url(${assetUrl(url)})`,
+                          ...ring(override?.value === url),
+                        }}
+                      />
+                    ))}
+                {wallpapers !== null && (
+                  <button
+                    onClick={() => fileInput.current?.click()}
+                    title="Use your own image"
+                    className="press border-hair t-soft aspect-video rounded-control border border-dashed flex items-center justify-center transition-colors"
+                  >
+                    <Upload size={13} />
+                  </button>
+                )}
+              </div>
+              {/* 빈 상태는 채우는 길을 가리킨다. 점선 타일이 그 길이다. */}
+              {wallpapers?.length === 0 && (
+                <p className="t-faint mt-1.5 px-0.5 text-micro leading-snug">
+                  No pictures of your own yet. Pick one with the dashed tile.
+                </p>
+              )}
             </div>
 
             <input
@@ -201,7 +224,7 @@ export const ThemePicker: React.FC = () => {
                   onClick={() => setBackground({ type: 'COLOR', value })}
                   title={name}
                   aria-label={name}
-                  className="border-hair aspect-square rounded-control border transition-transform hover:scale-[1.12] active:scale-95"
+                  className="border-hair aspect-square rounded-control press border transition-transform hover:scale-[1.12]"
                   style={{ backgroundColor: value, ...ring(override?.value === value) }}
                 />
               ))}
@@ -210,7 +233,7 @@ export const ThemePicker: React.FC = () => {
             {/* 배경을 고르면 UI 밝기는 따라온다 — 사진이면 평균 색에서, 단색이면
                 그 색에서. 그래서 기본은 Auto이고, Auto가 무엇으로 읽었는지를 버튼에
                 써 둔다. 밝은 하늘 + 어두운 지면 같은 사진에서만 손으로 뒤집는다. */}
-            <div className="border-hair mt-5 pt-4 border-t">
+            <div className="border-hair mt-6 pt-4 border-t">
               <Label>UI brightness</Label>
               {/* 기본은 배경에 맞추는 것이고, 그게 무엇으로 읽혔는지를 버튼에 쓴다.
                   한 줄에 셋을 넣으면 이 문장이 안 들어가서 두 줄로 나눴다. */}

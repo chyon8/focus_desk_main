@@ -35,7 +35,7 @@ export const MoveMenu: React.FC<{ selectedIds: string[] }> = ({ selectedIds }) =
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 8 }}
-        className="glass-panel absolute bottom-full mb-3 left-0 z-[98] w-60 p-2 rounded-surface shadow-2xl"
+        className="glass-panel absolute bottom-full mb-3 left-0 z-[98] w-60 p-2 rounded-surface"
       >
         <div className="t-faint px-2 pt-1 pb-2 text-micro font-bold uppercase tracking-widest">
           Move to

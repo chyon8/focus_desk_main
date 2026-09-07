@@ -26,7 +26,7 @@ const Row: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void 
 }) => (
   <button
     onClick={onClick}
-    className="row flex items-center gap-2.5 w-full px-2.5 py-2 rounded-control text-ui"
+    className="row flex items-center gap-3 w-full px-3 py-2 rounded-control text-ui"
   >
     {icon}
     <span className="t-ink">{label}</span>
@@ -45,7 +45,9 @@ export const SettingsPanel: React.FC<{
   const webDark = usePrefsStore((s) => s.webDark);
   const [accessibility, setAccessibility] = useState(true);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  // 실패한 것에는 다시 해볼 길을 같이 준다 (DESIGN.md 6장). 성공한 것은 retry가
+  // 없어서 그냥 한 줄로 남는다.
+  const [note, setNote] = useState<{ text: string; retry?: () => void } | null>(null);
   const [imported, setImported] = useState(false);
 
   useEffect(() => {
@@ -65,23 +67,38 @@ export const SettingsPanel: React.FC<{
     usePrefsStore.getState().setAttachApps(!attachApps);
   };
 
+  // 쓰기가 도중에 죽으면(디스크가 찼다·권한이 없다) invoke가 reject한다. 잡지
+  // 않으면 아무 일도 안 일어난 것처럼 보인다 — 백업이 이 패널의 존재 이유다.
   const exportTo = async () => {
-    const dest = await window.backup?.export();
-    if (dest) setNote(`Copied to ${dest.split('/').pop()}`);
+    setNote(null);
+    try {
+      const dest = await window.backup?.export();
+      if (dest) setNote({ text: `Copied to ${dest.split('/').pop()}` });
+    } catch {
+      setNote({ text: 'Backup failed. Nothing was written.', retry: () => void exportTo() });
+    }
   };
 
   const importFrom = async () => {
-    const result = await window.backup?.import();
-    if (!result) return;
-    if ('error' in result) {
-      setNote(result.error);
+    setNote(null);
+    let result: Awaited<ReturnType<NonNullable<typeof window.backup>['import']>> | undefined;
+    try {
+      result = await window.backup?.import();
+    } catch {
+      setNote({ text: 'The backup could not be read.', retry: () => void importFrom() });
       return;
     }
-    setNote(
-      result.spaces === 0 && result.images === 0
-        ? 'Nothing new — this profile already has all of it.'
-        : `Added ${result.spaces} space${result.spaces === 1 ? '' : 's'}.`
-    );
+    if (!result) return;
+    if ('error' in result) {
+      setNote({ text: result.error, retry: () => void importFrom() });
+      return;
+    }
+    setNote({
+      text:
+        result.spaces === 0 && result.images === 0
+          ? 'Nothing new. This profile already has all of it.'
+          : `Added ${result.spaces} space${result.spaces === 1 ? '' : 's'}.`,
+    });
     // The stores read their files once, when the window loads.
     if (result.spaces > 0 || result.images > 0) setImported(true);
   };
@@ -107,7 +124,7 @@ export const SettingsPanel: React.FC<{
         <Label>This space</Label>
         <Row icon={<Chrome size={14} />} label="Bring in what Chrome has open" onClick={onOpenImport} />
         <Row icon={<KeyRound size={14} />} label="What this space is signed in to" onClick={onOpenSessions} />
-        <div className="mb-5" />
+        <div className="mb-6" />
 
         <Label>Notes and pages</Label>
         <div className="t-faint mb-1.5 text-micro font-medium">Note paper</div>
@@ -144,7 +161,7 @@ export const SettingsPanel: React.FC<{
           <Moon size={13} />
           Ask sites for their dark theme
         </button>
-        <p className="t-faint mb-5 px-0.5 text-micro leading-snug">
+        <p className="t-faint mb-6 px-0.5 text-micro leading-snug">
           Sites with a dark theme of their own will use it. Sites without one look the same either
           way. This changes web pages only.
         </p>
@@ -166,16 +183,16 @@ export const SettingsPanel: React.FC<{
         {attachApps && !accessibility && (
           <button
             onClick={() => void window.apps?.showAccessibilitySettings()}
-            className="chrome-button w-full py-1.5 mb-5 rounded-control text-meta"
+            className="chrome-button w-full py-1.5 mb-6 rounded-control text-meta"
           >
             Allow Focus Desk to move windows…
           </button>
         )}
-        {(!attachApps || accessibility) && <div className="mb-5" />}
+        {(!attachApps || accessibility) && <div className="mb-6" />}
 
         <Label>Data</Label>
         <p className="t-faint mb-2 px-0.5 text-micro leading-snug">
-          Everything is on this mac only. A backup is a plain folder — spaces, pictures and
+          Everything is on this mac only. A backup is a plain folder: spaces, pictures and
           settings. Sign-ins are not in it.
         </p>
         <div className="space-y-0.5 mb-2">
@@ -195,10 +212,25 @@ export const SettingsPanel: React.FC<{
             onClick={() => void importFrom()}
           />
         </div>
-        <p className="t-faint mb-1.5 px-2.5 text-micro">
+        <p className="t-faint mb-1.5 px-3 text-micro">
           {lastBackup ? `Last automatic copy: ${lastBackup}` : 'No automatic copy yet.'}
         </p>
-        {note && <p className="t-soft mb-2 px-2.5 text-micro leading-snug">{note}</p>}
+        {note &&
+          (note.retry ? (
+            <div className="mb-2 px-3">
+              <p className="text-micro leading-snug" style={{ color: 'var(--danger)' }}>
+                {note.text}
+              </p>
+              <button
+                onClick={note.retry}
+                className="chrome-button t-accent mt-1 px-2 py-0.5 rounded-control text-micro font-medium"
+              >
+                Try again
+              </button>
+            </div>
+          ) : (
+            <p className="t-soft mb-2 px-3 text-micro leading-snug">{note.text}</p>
+          ))}
         {imported && (
           <button
             onClick={() => void window.backup?.reload()}

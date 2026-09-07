@@ -67,7 +67,7 @@ export const HiddenAppsToast: React.FC = () => {
           exit={{ opacity: 0, y: -10 }}
           /* no-drag: the window's title bar drag strip runs under this, and a
              click meant for one of these buttons must not drag the window. */
-          className="glass-panel no-drag fixed top-7 left-1/2 -translate-x-1/2 z-[95] max-w-[70vw] flex items-center gap-2 pl-4 pr-2 h-9 rounded-control shadow-2xl"
+          className="glass-panel no-drag fixed top-7 left-1/2 -translate-x-1/2 z-[95] max-w-[70vw] flex items-center gap-2 pl-4 pr-2 h-9 rounded-surface"
         >
           <span className="t-ink shrink-0 text-ui">
             {apps.length === 1 ? '1 app' : `${apps.length} apps`} hidden so this space stays

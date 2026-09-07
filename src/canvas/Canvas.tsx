@@ -206,12 +206,11 @@ export const Canvas: React.FC = () => {
     if (e.target !== e.currentTarget) return;
     const box = viewportRef.current!.getBoundingClientRect();
     const local = { x: e.clientX - box.left, y: e.clientY - box.top };
+    // `teaches`가 붙는 건 여기뿐이다 — N도 같은 팔레트를 열지만 가르치는 동작은
+    // 더블클릭이다. 투어 1단계는 팔레트가 닫힐 때 끝난다(`closeQuickAdd`).
     useUiStore
       .getState()
-      .openQuickAdd({ x: e.clientX, y: e.clientY }, screenToWorld(camera, local));
-    // Only from here, not from `openQuickAdd` itself: N opens the same palette in
-    // the middle of the view, and the move being taught is the double-click.
-    useUiStore.getState().passFirstStep('add');
+      .openQuickAdd({ x: e.clientX, y: e.clientY }, screenToWorld(camera, local), true);
     useSpaceStore.getState().checkHint('add');
   };
 

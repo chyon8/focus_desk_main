@@ -32,6 +32,8 @@ export interface LauncherItem {
 export interface LauncherSection {
   title: string;
   items: LauncherItem[];
+  /** The catalogue has not come back yet: draw the rows that are coming. */
+  loading?: boolean;
 }
 
 /** Short enough that a section stays a suggestion rather than a directory. */
@@ -164,6 +166,11 @@ export function buildLauncherSections(
 
   // Installed apps and presets are long lists, so they wait to be asked for.
   if (needle) {
+    // Spotlight is slower than the local lists, so this slot holds its place
+    // rather than appearing under the user's hands (DESIGN.md 6장).
+    if (sources.installedApps === null) {
+      sections.push({ title: 'Apps on this Mac', items: [], loading: true });
+    }
     const apps = (sources.installedApps ?? [])
       .map<LauncherItem>((app) => ({
         key: `app:${app.appKey}`,

@@ -8,10 +8,10 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
   {
     title: 'Canvas',
     items: [
-      ['K', 'Open anything — search'],
+      ['K', 'Open anything: search'],
       ['N', 'Add a widget'],
-      ['G', 'Tidy up — move and resize the widgets'],
-      ['F', 'Fit on screen — move the camera only'],
+      ['G', 'Tidy up: move and resize the widgets'],
+      ['F', 'Fit on screen: move the camera only'],
       ['M', 'Fullscreen'],
       ['Double-click', 'Add one right here'],
       ['?', 'This sheet'],
@@ -68,7 +68,7 @@ export const ShortcutSheet: React.FC = () => {
         initial={{ opacity: 0, y: 8, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.15 }}
-        className="glass-panel fixed left-1/2 top-1/2 z-[98] w-[560px] max-w-[92vw] max-h-[80vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-5 rounded-surface shadow-2xl"
+        className="glass-panel fixed left-1/2 top-1/2 z-[98] w-[560px] max-w-[92vw] max-h-[80vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-4 rounded-surface"
       >
         <div className="flex items-baseline gap-3 mb-4">
           <h2 className="t-ink text-body font-bold tracking-wide">Keyboard</h2>
@@ -86,7 +86,7 @@ export const ShortcutSheet: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6">
           {GROUPS.map((group) => (
             <div key={group.title}>
               <div className="t-faint mb-2 text-micro font-bold uppercase tracking-widest">

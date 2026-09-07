@@ -68,6 +68,23 @@ describe('면 색', () => {
     }
   });
 
+  /**
+   * 글자 셋이 다 읽혀야 한다. 전에는 본문만 봤고, 보조·최하위는 잉크의 알파
+   * (60% · 32%)라 면 색이 바뀌면 같이 흔들렸다 — 재보니 최하위가 1.78~2.66이었다.
+   * 지금은 대비로 풀지만, 본문보다 진해지지는 않으므로 본문이 낮은 배경
+   * (밝은 배경에 Dark를 건 경우)에서는 셋이 겹친다. 그때 기준은 본문이다.
+   */
+  it.each(GROUNDS)('%s 위에서 보조·최하위도 읽힌다', (ground) => {
+    for (const light of [true, false]) {
+      const { surface, ink, inkSoft, inkFaint } = backgroundTokens(ground, {} as never, light);
+      const body = contrast(surface, ink);
+      expect(contrast(surface, inkFaint)).toBeGreaterThanOrEqual(Math.min(4.5, body));
+      // 단이 뒤집히지 않는다: 본문 ≥ 보조 ≥ 최하위.
+      expect(body + 0.05).toBeGreaterThanOrEqual(contrast(surface, inkSoft));
+      expect(contrast(surface, inkSoft) + 0.05).toBeGreaterThanOrEqual(contrast(surface, inkFaint));
+    }
+  });
+
   // 밝은 면은 색폭이 밝기에 눌려서 다르게 깨진다 — 어두운 쪽만 보면 라이트 배경
   // 여섯 개가 전부 같은 오프화이트가 되는 걸 못 잡는다. 양쪽 극성을 다 본다.
   it.each(GROUNDS)('%s 위에서 면이 그 배경의 색조를 띤다', (ground) => {

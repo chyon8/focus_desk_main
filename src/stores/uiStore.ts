@@ -93,7 +93,7 @@ interface UiState {
    * The quick-add palette, open at a point: `screen` places the popover in window
    * coordinates, `world` is where the chosen widget lands. Null when closed.
    */
-  quickAdd: { screen: Point; world: Point } | null;
+  quickAdd: { screen: Point; world: Point; teaches?: boolean } | null;
   /**
    * Which of the two top-bar panels is open, if either. In the store because the
    * button that opens one is not always in the same component as the panel: a
@@ -166,7 +166,7 @@ interface UiState {
   setDraggingWidget: (widgetId: string | null) => void;
   toggleDock: (dock: 'atmosphere' | 'sound', top?: number) => void;
   closeDock: () => void;
-  openQuickAdd: (screen: Point, world: Point) => void;
+  openQuickAdd: (screen: Point, world: Point, teaches?: boolean) => void;
   closeQuickAdd: () => void;
   toggleLauncher: () => void;
   closeLauncher: () => void;
@@ -214,7 +214,10 @@ export const useUiStore = create<UiState>((set, get) => ({
   // Nothing is placed yet, so the desk is simply a window like any other.
   isStaged: false,
 
-  setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
+  // 레일을 접으면 열려 있던 Atmosphere·Sound도 닫는다. 둘 다 레일 옆에 서고
+  // 입구가 레일 버튼뿐이라, 남겨두면 끌 수 없는 패널이 뜬 채로 남는다.
+  setSidebarOpen: (isSidebarOpen) =>
+    set(isSidebarOpen ? { isSidebarOpen } : { isSidebarOpen, openDock: null }),
 
   setSelection: (selectedIds) => set({ selectedIds }),
 
@@ -264,11 +267,20 @@ export const useUiStore = create<UiState>((set, get) => ({
     set((s) => ({ openDock: s.openDock === dock ? null : dock, dockTop: top ?? null })),
   closeDock: () => set({ openDock: null }),
 
-  openQuickAdd: (screen, world) => set({ quickAdd: { screen, world } }),
+  openQuickAdd: (screen, world, teaches) => set({ quickAdd: { screen, world, teaches } }),
 
-  closeQuickAdd: () => set({ quickAdd: null }),
+  // 투어의 1단계는 팔레트가 닫힐 때 끝난다 — 위젯을 골랐든 빈 곳을 눌러 접었든.
+  // 더블클릭한 순간에 넘기면 팔레트가 아직 열려 있는데 다음 카드가 뜬다: 방금
+  // 시킨 일이 안 끝났는데 화면은 다음 얘기를 하고 있다.
+  closeQuickAdd: () => {
+    if (get().quickAdd?.teaches) get().passFirstStep('add');
+    set({ quickAdd: null });
+  },
 
-  toggleLauncher: () => set((s) => ({ isLauncherOpen: !s.isLauncherOpen, quickAdd: null })),
+  toggleLauncher: () => {
+    get().closeQuickAdd();
+    set((s) => ({ isLauncherOpen: !s.isLauncherOpen }));
+  },
   closeLauncher: () => set({ isLauncherOpen: false }),
   toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
 

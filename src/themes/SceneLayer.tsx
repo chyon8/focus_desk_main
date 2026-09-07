@@ -2,6 +2,7 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { assetUrl, isLightBackground } from '../spaces/backgrounds';
 import { useSpaceStore } from '../stores/spaceStore';
+import { useGround } from './useTheme';
 import { ParticleLayer } from './ParticleLayer';
 import type { Atmosphere, Glow, SceneSpec, Theme } from './types';
 
@@ -52,6 +53,9 @@ function glowStyle(glow: Glow): React.CSSProperties {
  * A space's own background, when the user has picked one, overrides the theme's scene.
  */
 export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
+  // 배경을 뒤집어 놓았어도 비네트는 그림 위 장식이라 그림이 실제로 어떤지를
+  // 따른다. 그래서 light가 아니라 autoLight다.
+  const { autoLight } = useGround(theme);
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
   const { atmosphere } = theme;
@@ -73,8 +77,10 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
   // 것이다. 단색 배경에 그대로 얹으면 고른 색이 그 색으로 안 나온다 — Golden Hour의
   // 따뜻한 scrim 아래에서 Mist(#f1f5f9)가 탁한 회색으로 보이던 원인이다.
   const flat = scene.kind === 'color';
-  // 비네트도 마찬가지로 테마의 mood가 아니라 실제로 뒤에 깔린 색을 따라간다.
-  const lightBackdrop = flat ? isLightBackground(scene.value) : theme.mood === 'light';
+  // 비네트도 실제로 뒤에 깔린 색을 따라간다. 사진일 때 theme.mood를 보면
+  // 오버라이드 사진(Meadow·Cabin)에서 테마가 적어둔 값과 실제 사진이 갈린다 —
+  // useGround가 그 사진의 평균 색을 읽어 이미 답을 갖고 있다.
+  const lightBackdrop = flat ? isLightBackground(scene.value) : autoLight;
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">

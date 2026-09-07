@@ -109,9 +109,9 @@ export const Launcher: React.FC = () => {
         initial={{ opacity: 0, y: -8, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.12 }}
-        className="glass-panel fixed left-1/2 top-[16vh] z-[98] w-[560px] max-w-[92vw] -translate-x-1/2 overflow-hidden rounded-surface shadow-2xl"
+        className="glass-panel fixed left-1/2 top-[16vh] z-[98] w-[560px] max-w-[92vw] -translate-x-1/2 overflow-hidden rounded-surface"
       >
-        <div className="border-hair flex items-center gap-2.5 px-4 h-12 border-b">
+        <div className="border-hair flex items-center gap-3 px-4 h-12 border-b">
           <Search size={15} className="t-faint shrink-0" />
           <input
             value={query}
@@ -127,7 +127,9 @@ export const Launcher: React.FC = () => {
         </div>
 
         <div ref={listRef} className="max-h-[46vh] overflow-y-auto p-2">
-          {flat.length === 0 ? (
+          {/* 아직 읽는 중인 목록이 있으면 "없다"고 말하지 않는다 — 스켈레톤만
+              있는 구간도 구간이라 sections로 센다. */}
+          {sections.length === 0 ? (
             <div className="t-faint px-2 py-6 text-center text-ui">Nothing matches.</div>
           ) : (
             sections.map((section) => (
@@ -135,6 +137,13 @@ export const Launcher: React.FC = () => {
                 <div className="t-faint px-2 pt-1.5 pb-1 text-micro font-bold uppercase tracking-widest">
                   {section.title}
                 </div>
+                {section.loading &&
+                  [0, 1, 2].map((i) => (
+                    <div key={i} className="flex items-center gap-3 px-2 py-1.5">
+                      <div className="skeleton w-[18px] h-[18px] shrink-0" />
+                      <div className="skeleton h-3" style={{ width: `${64 - i * 12}%` }} />
+                    </div>
+                  ))}
                 {section.items.map((item) => {
                   row += 1;
                   const isActive = row === index;
@@ -144,7 +153,7 @@ export const Launcher: React.FC = () => {
                       data-active={isActive}
                       onMouseMove={captureRow(setActive, row)}
                       onClick={() => run(item)}
-                      className={`!text-[inherit] w-full flex items-center gap-2.5 px-2 py-1.5 rounded-control text-left ${
+                      className={`!text-[inherit] w-full flex items-center gap-3 px-2 py-1.5 rounded-control text-left ${
                         isActive ? 'chrome-button-on' : 'row'
                       }`}
                     >

@@ -251,7 +251,7 @@ const CONFETTI = Array.from({ length: 22 }, (_, i) => {
     y: Math.sin(angle) * reach - 26, // biased upwards, the way thrown paper goes
     spin: (i % 2 ? 1 : -1) * (160 + (i % 4) * 90),
     delay: (i % 6) * 0.022,
-    color: ["var(--accent)", "#f6b17a", "#7fb5a5", "#e8dcc8"][i % 4],
+    color: ["var(--accent)", "var(--accent-hover)", "var(--ink)", "var(--ink-soft)"][i % 4],
     tall: i % 3 === 0,
   };
 });
@@ -454,8 +454,9 @@ export const FirstSteps: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* 팔레트가 열리면 링은 치운다. 겨눌 곳은 이미 눌렀고, 지금 볼 것은 팔레트다. */}
       <AnimatePresence>
-        {at && two && <Ring key={step} at={at} size={ringSize} />}
+        {at && two && !picking && <Ring key={step} at={at} size={ringSize} />}
       </AnimatePresence>
 
       <div className="absolute" style={{ ...place, width: CARD_WIDTH }}>
@@ -470,7 +471,7 @@ export const FirstSteps: React.FC = () => {
                 ? { type: "spring", stiffness: 320, damping: 20 }
                 : { duration: 0.22 }
             }
-            className={`glass-panel rounded-surface shadow-2xl ${
+            className={`glass-panel rounded-surface ${
               step === "done" ? "px-6 py-6" : "px-4 py-3"
             }`}
           >
@@ -479,9 +480,12 @@ export const FirstSteps: React.FC = () => {
                 <p className="t-ink text-body font-medium mb-1">
                   Three moves, then the desk is yours.
                 </p>
+                {/* 팔레트가 열려 있는 동안은 다음에 할 일을 쓴다. 이 단계는 팔레트가
+                    닫힐 때 끝나므로, 고르는 것과 접는 것 둘 다 길이라고 말해준다. */}
                 <p className="t-soft text-ui leading-relaxed">
-                  Double-click the ring — that is how anything comes out onto
-                  the desk.
+                  {picking
+                    ? "Pick one, or click anywhere else to close it."
+                    : "Double-click the ring. That is how anything comes out onto the desk."}
                 </p>
               </>
             )}
@@ -498,10 +502,10 @@ export const FirstSteps: React.FC = () => {
             {step === "drag" && (
               <>
                 <p className="t-ink text-body font-medium mb-1">
-                  Last one — take something off this page.
+                  Last one. Take something off this page.
                 </p>
                 <p className="t-soft text-ui leading-relaxed">
-                  Right-click the picture — or select some of the text and
+                  Right-click the picture, or select some of the text and
                   right-click that. Either one becomes a widget on the desk.
                 </p>
               </>
@@ -538,12 +542,10 @@ export const FirstSteps: React.FC = () => {
                 </p>
                 <button
                   onClick={() => useUiStore.getState().endFirstSteps()}
-                  className="pointer-events-auto mt-4 px-5 h-9 rounded-control text-body font-semibold"
+                  className="press pointer-events-auto mt-4 px-6 h-9 rounded-control text-body font-semibold"
                   /* Filled rather than tinted: it is the one button on the one
-                     card that is a handover. The ink is fixed dark because every
-                     room theme's accent is a light one (#ffb27a · #7fc8d8 ·
-                     #a8b8e8 · #b07d4a), and there is no token for text on top
-                     of the accent. */
+                     card that is a handover. `--accent-ink` is the text colour
+                     that goes on top of the accent. */
                   style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
                 >
                   Start
@@ -552,7 +554,7 @@ export const FirstSteps: React.FC = () => {
             )}
 
             {step !== "done" && (
-              <div className="flex items-center justify-between mt-2.5">
+              <div className="flex items-center justify-between mt-3">
                 <Dots index={step === "add" ? 0 : step === "tidy" ? 1 : 2} />
                 <button
                   onClick={() => useUiStore.getState().endFirstSteps()}

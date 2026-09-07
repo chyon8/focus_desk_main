@@ -41,6 +41,8 @@ export interface ThemeTokens {
   ink: string;
   /** Labels and secondary text. */
   inkSoft: string;
+  /** 메타·설명글. DESIGN.md 2장의 최하위 단. */
+  inkFaint: string;
   /** 위젯·패널·독이 깔고 앉는 면. 불투명하다. */
   surface: string;
   panelBorder: string;
