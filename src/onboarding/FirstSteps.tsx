@@ -475,16 +475,17 @@ export const FirstSteps: React.FC = () => {
               step === "done" ? "px-6 py-6" : "px-4 py-3"
             }`}
           >
+            {/* 팔레트가 열리면 큰 줄부터 바꾼다. 작은 줄만 바꾸면 화면에서 달라진
+                것이 없어 보여서, 더블클릭이 먹은 줄 모르고 Skip을 누르게 된다.
+                이 단계는 팔레트가 닫힐 때 끝나므로 고르는 것과 접는 것을 다 적는다. */}
             {step === "add" && (
               <>
                 <p className="t-ink text-body font-medium mb-1">
-                  Three moves, then the desk is yours.
+                  {picking ? "That is the add palette." : "Three moves, then the desk is yours."}
                 </p>
-                {/* 팔레트가 열려 있는 동안은 다음에 할 일을 쓴다. 이 단계는 팔레트가
-                    닫힐 때 끝나므로, 고르는 것과 접는 것 둘 다 길이라고 말해준다. */}
                 <p className="t-soft text-ui leading-relaxed">
                   {picking
-                    ? "Pick one, or click anywhere else to close it."
+                    ? "Pick one, or click anywhere else to close it. Either way, move one is done."
                     : "Double-click the ring. That is how anything comes out onto the desk."}
                 </p>
               </>
