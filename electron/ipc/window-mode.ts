@@ -1,6 +1,21 @@
 import { ipcMain, BrowserWindow, nativeTheme } from 'electron';
 
+/**
+ * Whether a widget is filling the screen right now.
+ *
+ * The main process needs to know because ⇧[ and ⇧] are the only way to step
+ * between widgets from inside a page, and they are also how `{` and `}` are
+ * typed. Swallowing those in every page all the time would break writing code
+ * in one, so they are only taken while there is something to step away from.
+ */
+let maximised = false;
+export const isWidgetMaximised = () => maximised;
+
 export function registerWindowModeIpc(getWindow: () => BrowserWindow | null) {
+  ipcMain.handle('window:set-maximized', (_event, value: boolean) => {
+    maximised = value;
+  });
+
   /**
    * Whether pages are told the reader wants a dark theme (D-084).
    *

@@ -61,6 +61,27 @@ export const WEB_APP_PRESETS: WebAppPreset[] = [
   { group: 'Music', name: 'SoundCloud', url: 'https://soundcloud.com/discover', icon: { kind: 'emoji', char: '🔊' } },
 ];
 
+/**
+ * Whether the icon this web app is wearing is the one its preset shipped with,
+ * rather than one the user picked.
+ *
+ * The presets carry a generic emoji apiece — an envelope for Gmail, an asterisk
+ * for Claude — which is meant to stand in until the real logo arrives. But the
+ * rule that keeps a page load from overwriting an icon reads any emoji as the
+ * user's choice, so those placeholders were kept for good: the canvas tile wore
+ * the real logo while the sidebar row beside it still wore the emoji.
+ *
+ * Matched on the value rather than a flag, so a web app saved before this
+ * existed is read the same way as one saved after.
+ */
+export function wearsPresetIcon(app: { url: string; icon: WebAppIcon | null }) {
+  if (app.icon?.kind !== 'emoji') return false;
+  const char = app.icon.char;
+  return WEB_APP_PRESETS.some(
+    (preset) => preset.url === app.url && preset.icon.kind === 'emoji' && preset.icon.char === char
+  );
+}
+
 /** Emoji offered in the icon picker. Enough to tell a dozen tiles apart. */
 export const ICON_EMOJI = [
   '🎨', '🎧', '📄', '✉️', '📅', '🗂️', '💬', '📐',

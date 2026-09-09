@@ -49,9 +49,10 @@ interface RoomSpec {
  * wallpaper.
  *
  * Left out: the cosy-room pictures, which read as stock art next to the drawn
- * scenes, and `loficafe.jpg`, which has "© 2020 Lo-Fi Geek. All rights reserved"
- * printed into the image itself. **No wallpaper here has a licence anybody has
- * checked** — see STATUS.
+ * scenes. `loficafe.jpg` and `rainiywindow.jpg` were deleted outright — the
+ * first has "© 2020 Lo-Fi Geek. All rights reserved" printed into the image
+ * itself, and neither was used anywhere while the picker listed the folder
+ * whole. **No wallpaper here has a licence anybody has checked** — see STATUS.
  */
 const SPECS: RoomSpec[] = [
   {

@@ -11,6 +11,24 @@ function imagesDir() {
   return dir;
 }
 
+/**
+ * Where the user's own wallpapers go.
+ *
+ * The folder is meant to be a drop zone — copy a picture in and it is in the
+ * picker. That only worked while running from source: a packaged build reads
+ * `VITE_PUBLIC` out of `app.asar`, which cannot be opened in Finder and cannot
+ * be written to. This one sits beside the rest of the profile, so the Open
+ * folder button in Settings already leads to it.
+ */
+function wallpapersDir() {
+  const dir = path.join(app.getPath('userData'), 'wallpapers');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/** The host in a `focusdesk-image://` URL that means the wallpapers folder. */
+const WALLPAPER_HOST = 'wallpaper';
+
 /** Must run before app.whenReady(). */
 export function registerImageProtocolScheme() {
   protocol.registerSchemesAsPrivileged([
@@ -319,13 +337,20 @@ export function registerImagesIpc() {
   // The wallpapers folder is a drop zone: whatever is in it shows up in the
   // picker, so adding a picture is copying a file — no code change.
   ipcMain.handle('images:wallpapers', () => {
-    const dir = path.join(process.env.VITE_PUBLIC!, 'wallpapers');
-    if (!fs.existsSync(dir)) return [];
-    return fs
-      .readdirSync(dir)
-      .filter((name) => WALLPAPER_EXTS.has(path.extname(name).toLowerCase()))
-      .sort()
-      .map((name) => `/wallpapers/${name}`);
+    const pictures = (dir: string) =>
+      fs.existsSync(dir)
+        ? fs
+            .readdirSync(dir)
+            .filter((name) => WALLPAPER_EXTS.has(path.extname(name).toLowerCase()))
+            .sort()
+        : [];
+    // The ones that ship with the app, then the ones the user put there.
+    return [
+      ...pictures(path.join(process.env.VITE_PUBLIC!, 'wallpapers')).map((n) => `/wallpapers/${n}`),
+      ...pictures(wallpapersDir()).map(
+        (n) => `${IMAGE_SCHEME}://${WALLPAPER_HOST}/${encodeURIComponent(n)}`
+      ),
+    ];
   });
 
   // Hosts, not URLs: one icon per site, so twelve tabs on one site cost one
@@ -344,9 +369,11 @@ export function registerImagesIpc() {
   });
 
   protocol.handle(IMAGE_SCHEME, (request) => {
-    // Only ever serve out of the images directory, whatever the URL claims.
-    const name = path.basename(decodeURIComponent(new URL(request.url).pathname));
-    return net.fetch(`file://${path.join(imagesDir(), name)}`);
+    // Only ever serve out of one of the two directories, whatever the URL claims.
+    const url = new URL(request.url);
+    const dir = url.hostname === WALLPAPER_HOST ? wallpapersDir() : imagesDir();
+    const name = path.basename(decodeURIComponent(url.pathname));
+    return net.fetch(`file://${path.join(dir, name)}`);
   });
 
   /**

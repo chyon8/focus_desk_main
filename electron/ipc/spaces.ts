@@ -15,6 +15,22 @@ function fileFor(id: string) {
   return path.join(spacesDir(), `${path.basename(id)}.json`);
 }
 
+/**
+ * Writes a space without ever leaving a half-written one behind.
+ *
+ * `writeFileSync` on the file itself truncates it first, so a crash mid-write
+ * left invalid JSON — and `spaces:list` catches a parse failure and drops that
+ * space from the list without saying anything, so the space simply vanished.
+ * Writing beside it and renaming means the file is either the old one or the
+ * new one: a rename over an existing path is atomic on macOS.
+ */
+function writeSpace(doc: { id: string }) {
+  const file = fileFor(doc.id);
+  const temp = `${file}.tmp`;
+  fs.writeFileSync(temp, JSON.stringify(doc, null, 2), 'utf-8');
+  fs.renameSync(temp, file);
+}
+
 export function registerSpacesIpc() {
   ipcMain.handle('spaces:list', () => {
     const dir = spacesDir();
@@ -31,14 +47,12 @@ export function registerSpacesIpc() {
       .filter(Boolean);
   });
 
-  ipcMain.handle('spaces:save', (_event, doc: { id: string }) => {
-    fs.writeFileSync(fileFor(doc.id), JSON.stringify(doc, null, 2), 'utf-8');
-  });
+  ipcMain.handle('spaces:save', (_event, doc: { id: string }) => writeSpace(doc));
 
   // Blocking twin, for the debounced writes still pending when the window goes
   // away: an `invoke` sent from `beforeunload` loses the race with the teardown.
   ipcMain.on('spaces:save-sync', (event, doc: { id: string }) => {
-    fs.writeFileSync(fileFor(doc.id), JSON.stringify(doc, null, 2), 'utf-8');
+    writeSpace(doc);
     event.returnValue = true;
   });
 

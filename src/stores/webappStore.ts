@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { WebAppIcon } from '../spaces/types';
+import { wearsPresetIcon } from '../webapps/presets';
 
 const KEY = 'webapps-v1';
 
@@ -25,7 +26,8 @@ interface WebAppState {
   remove: (id: string) => void;
   /**
    * The site reported a favicon. Kept as the icon unless the user has chosen an
-   * emoji — their choice is not something a page load gets to overwrite.
+   * emoji — their choice is not something a page load gets to overwrite. A
+   * preset's own emoji is not a choice, so the real logo replaces it.
    */
   noteFavicon: (id: string, src: string) => void;
 }
@@ -65,7 +67,8 @@ export const useWebAppStore = create<WebAppState>((set, get) => ({
 
   noteFavicon: (id, src) => {
     const existing = get().apps[id];
-    if (!existing || existing.icon?.kind === 'emoji') return;
+    if (!existing) return;
+    if (existing.icon?.kind === 'emoji' && !wearsPresetIcon(existing)) return;
     if (existing.icon?.kind === 'image' && existing.icon.src === src) return;
     get().save({ ...existing, icon: { kind: 'image', src } });
   },

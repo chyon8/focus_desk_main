@@ -50,6 +50,15 @@ export const WebAppWidget: React.FC<{ id: string }> = ({ id }) => {
     update({ name: saved.name, icon: saved.icon });
   }, [saved, data.name, data.icon, update]);
 
+  // The saved web app wears the logo this widget fetched, or the sidebar row
+  // keeps the preset's emoji while the tile beside it shows the real thing. On
+  // the value rather than in the fetch: a widget that already had its logo when
+  // this was written never fetches again, and its saved app would stay stale.
+  const { appId, favicon } = data;
+  useEffect(() => {
+    if (appId && favicon) useWebAppStore.getState().noteFavicon(appId, favicon);
+  }, [appId, favicon]);
+
   if (!data.appId || editing) {
     return (
       <WebAppPicker

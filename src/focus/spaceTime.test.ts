@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   addSpaceSeconds,
   dropSpace,
+  isYesterday,
+  lastVisit,
+  type SpaceTime,
   MAX_TICK_MS,
   recentDateKeys,
   sanitizeTime,
@@ -74,5 +77,31 @@ describe('space time', () => {
       b: { '2026-08-17': Number.POSITIVE_INFINITY },
     };
     expect(sanitizeTime(time)).toEqual({ a: { '2026-08-16': 3_600 }, b: {} });
+  });
+});
+
+describe('lastVisit', () => {
+  const now = new Date('2026-09-09T10:00:00');
+
+  it('picks the last day used before today, and the longest stay in it', () => {
+    const time: SpaceTime = {
+      research: { '2026-09-07': 4000, '2026-09-08': 600 },
+      writing: { '2026-09-08': 9240 },
+      today: { '2026-09-09': 99999 },
+    };
+    expect(lastVisit(time, now)).toEqual({ spaceId: 'writing', date: '2026-09-08', seconds: 9240 });
+  });
+
+  it('says nothing about today, or about a space passed through', () => {
+    expect(lastVisit({ a: { '2026-09-09': 5000 } }, now)).toBeNull();
+    expect(lastVisit({ a: { '2026-09-08': 30 } }, now)).toBeNull();
+    expect(lastVisit({}, now)).toBeNull();
+  });
+
+  it('reaches back past a weekend rather than only knowing yesterday', () => {
+    const visit = lastVisit({ a: { '2026-09-04': 3000 } }, now);
+    expect(visit?.date).toBe('2026-09-04');
+    expect(isYesterday(visit!.date, now)).toBe(false);
+    expect(isYesterday('2026-09-08', now)).toBe(true);
   });
 });

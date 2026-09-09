@@ -12,12 +12,16 @@ const DARK_INK = '#f0ede7';
 
 /** 실제로 쓰이는 배경 전부. 사진은 photoTone이 내는 평균색이다. */
 const PHOTO_TONES = {
-  loficafe: '#444a59',
-  rainiywindow: '#646976',
   ghibli: '#5e8781',
   winterhut: '#373d4a',
   sunset: '#823d5b',
 };
+
+/**
+ * 무채색에 가까운 사진의 평균색. 채도 바닥값이 생긴 이유가 이 둘이라서, 그림 파일을
+ * 지운 뒤에도(라이선스 미확인) 값은 남긴다 — 사용자가 자기 사진을 넣으면 같은 일이 난다.
+ */
+const NEAR_GREY = { loficafe: '#444a59', rainiywindow: '#646976' };
 const GROUNDS = [...SOLID_COLORS.map((c) => c.value), ...Object.values(PHOTO_TONES)];
 
 /** `hsl(H S% L%)` 또는 `#rrggbb`를 채널 셋으로. 테스트가 읽을 수 있으면 브라우저도 읽는다. */
@@ -94,14 +98,14 @@ describe('면 색', () => {
 
   it('무채색에 가까운 사진도 색으로 보인다', () => {
     // 이 둘이 회색으로 나오던 것이 채도 바닥값을 넣은 이유다. 그냥 섞기만 하면 폭이 3~4였다.
-    expect(spread(tintedSurface('#201e1b', PHOTO_TONES.loficafe))).toBeGreaterThan(12);
-    expect(spread(tintedSurface('#201e1b', PHOTO_TONES.rainiywindow))).toBeGreaterThan(12);
+    expect(spread(tintedSurface('#201e1b', NEAR_GREY.loficafe))).toBeGreaterThan(12);
+    expect(spread(tintedSurface('#201e1b', NEAR_GREY.rainiywindow))).toBeGreaterThan(12);
   });
 
   it('이미 진한 배경은 제 채도를 그대로 쓴다', () => {
     // 노을은 바닥값(18%)보다 채도가 높아서 끌어올려지지 않는다.
     expect(spread(tintedSurface('#201e1b', PHOTO_TONES.sunset))).toBeGreaterThan(
-      spread(tintedSurface('#201e1b', PHOTO_TONES.loficafe)),
+      spread(tintedSurface('#201e1b', NEAR_GREY.loficafe)),
     );
   });
 

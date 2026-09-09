@@ -10,7 +10,7 @@ import { registerStorageIpc } from './ipc/storage';
 import { registerImageProtocolScheme, registerImagesIpc } from './ipc/images';
 import { registerSessionIpc } from './ipc/session';
 import { registerSpacesIpc } from './ipc/spaces';
-import { registerWindowModeIpc } from './ipc/window-mode';
+import { isWidgetMaximised, registerWindowModeIpc } from './ipc/window-mode';
 
 // A profile of its own, for working on screens that only a new install sees —
 // the onboarding above all. Everything the app writes goes to this folder
@@ -113,6 +113,9 @@ function createWindow() {
 
 /** The physical keys ⇧ turns into app shortcuts, matching `useKeyboardShortcuts`. */
 const SHIFT_SHORTCUTS = new Set(['KeyK', 'KeyN', 'KeyG', 'KeyF', 'KeyM']);
+
+/** Stepping to the widget beside this one, which only exists while one is full screen. */
+const MAXIMISED_SHORTCUTS = new Set(['BracketLeft', 'BracketRight']);
 
 // ⌘+ arrives as '=' unless shift is down, and the numpad spells it '+'.
 const ZOOM_KEYS: Record<string, string> = {
@@ -243,7 +246,13 @@ app.on('web-contents-created', (_event, contents) => {
       // The launcher, add, arrange, fit and fullscreen. The page keeps the plain
       // letters (it may well be typing), so the app's copies are ⇧K/⇧N/⇧G/⇧F/⇧M.
       // `code`, since that is what the renderer matches on too.
-      if (!SHIFT_SHORTCUTS.has(input.code)) return;
+      //
+      // ⇧[ and ⇧] are how `{` and `}` are typed, so they are only taken while a
+      // widget is filling the screen — that is the only time they do anything.
+      const isShortcut =
+        SHIFT_SHORTCUTS.has(input.code) ||
+        (isWidgetMaximised() && MAXIMISED_SHORTCUTS.has(input.code));
+      if (!isShortcut) return;
       e.preventDefault();
       win.webContents.send('guest-key', input.code);
     }

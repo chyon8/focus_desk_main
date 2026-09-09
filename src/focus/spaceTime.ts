@@ -95,3 +95,48 @@ export function recentDateKeys(days: number, now = new Date()) {
   }
   return keys;
 }
+
+/** The space someone spent the most time in, on the last day before today they used the app. */
+export interface LastVisit {
+  spaceId: string;
+  /** YYYY-MM-DD, local. */
+  date: string;
+  seconds: number;
+}
+
+/**
+ * Under a minute in a space is a space that was passed through, not worked in,
+ * and reading it back as "you spent 12s here" is worse than saying nothing.
+ */
+export const LAST_VISIT_MIN_SECONDS = 60;
+
+/**
+ * What the desk can say to somebody coming back: where they were last time and
+ * for how long.
+ *
+ * The last day the app was used, not yesterday specifically — a Monday morning
+ * would otherwise have nothing to say about Friday. Within that day it is the
+ * one space they gave the most time to; several spaces in one day is normal and
+ * listing them all is a report, not a greeting.
+ */
+export function lastVisit(time: SpaceTime, now = new Date()): LastVisit | null {
+  const today = todayKey(now);
+  let best: LastVisit | null = null;
+  for (const [spaceId, days] of Object.entries(time ?? {})) {
+    for (const [date, seconds] of Object.entries(days ?? {})) {
+      if (date >= today || seconds < LAST_VISIT_MIN_SECONDS) continue;
+      // A later day always wins; within one day, the longer stay does.
+      if (!best || date > best.date || (date === best.date && seconds > best.seconds)) {
+        best = { spaceId, date, seconds };
+      }
+    }
+  }
+  return best;
+}
+
+/** True when `date` is the calendar day before today, so the line can say "Yesterday". */
+export function isYesterday(date: string, now = new Date()) {
+  const d = new Date(now);
+  d.setDate(d.getDate() - 1);
+  return todayKey(d) === date;
+}

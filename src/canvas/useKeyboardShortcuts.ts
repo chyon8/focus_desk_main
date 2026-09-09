@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { openQuickAddAtCentre } from '../app/QuickAdd';
 import { returnFocusToApp } from './appFocus';
-import { useSpaceStore } from '../stores/spaceStore';
+import { stepMaximised, useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 
 /** True when the user is typing, so single-letter shortcuts must not fire. */
@@ -31,7 +31,28 @@ function runShortcut(code: string) {
   }
   else if (code === 'KeyF') fitToWidgets();
   else if (code === 'KeyM') useUiStore.getState().toggleFullscreen();
+  // [ and ] move to the widget beside this one without leaving the full screen.
+  // Only while one is filling the screen: on the canvas the widget is already
+  // there to click, and the keys stay free for a page that wants them.
+  else if (code === 'BracketLeft') return stepFullScreen(-1);
+  else if (code === 'BracketRight') return stepFullScreen(1);
   else return false;
+  return true;
+}
+
+/** False when there is nowhere to step, so the key stays the canvas's to ignore. */
+function stepFullScreen(delta: 1 | -1) {
+  const { maximizedWidgetId, toggleMaximized } = useUiStore.getState();
+  if (!maximizedWidgetId) return false;
+  const { spaces, activeSpaceId } = useSpaceStore.getState();
+  const space = spaces[activeSpaceId];
+  const next = space && stepMaximised(space, maximizedWidgetId, delta);
+  if (!next) return false;
+  // `toggleMaximized` sets it, since the id differs from the one showing.
+  toggleMaximized(next);
+  // The page being left still holds the keyboard, and it is behind the new one
+  // now — without this, Esc and the next [ go to a widget nobody can see.
+  returnFocusToApp();
   return true;
 }
 
@@ -78,7 +99,7 @@ export function useKeyboardShortcuts() {
 
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
 
-      // K·N·G·F·M, with or without ⇧. The plain letters are for the canvas; ⇧ makes
+      // K·N·G·F·M and [·], with or without ⇧. The plain keys are for the canvas; ⇧ makes
       // the same shortcut reachable from inside a web page, where a plain letter
       // is something the page is being typed into (the main process forwards the
       // ⇧ ones back out of the guest).
@@ -108,6 +129,13 @@ export function useKeyboardShortcuts() {
       } else runShortcut(key);
     });
 
+    // ⇧[ and ⇧] are typed as `{` and `}`, so the main process only takes them out
+    // of a page while a widget is filling the screen (`window-mode.ts`).
+    const offMaximized = useUiStore.subscribe((s, prev) => {
+      const full = s.maximizedWidgetId !== null;
+      if (full !== (prev.maximizedWidgetId !== null)) void window.windowMode?.setMaximized(full);
+    });
+
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', trackAlt);
     // Switching apps with ⌥ down never sends the keyup.
@@ -117,6 +145,7 @@ export function useKeyboardShortcuts() {
       window.removeEventListener('keyup', trackAlt);
       window.removeEventListener('blur', dropAlt);
       offGuestKey?.();
+      offMaximized();
     };
   }, []);
 }

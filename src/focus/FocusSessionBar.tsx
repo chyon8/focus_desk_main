@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pause, Play, Square } from 'lucide-react';
 import { useFocusStore } from '../stores/focusStore';
-import { useUiStore } from '../stores/uiStore';
+import { RAIL_WIDTH, useUiStore } from '../stores/uiStore';
 import { formatClock } from './stats';
 
 /**
@@ -18,6 +18,7 @@ export const FocusSessionBar: React.FC = () => {
   const taskName = useFocusStore((s) => s.taskName);
   const [, forceTick] = useState(0);
   const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
+  const isSidebarOpen = useUiStore((s) => s.isSidebarOpen);
 
   const isActive = startedAt !== null || banked > 0;
   const isRunning = startedAt !== null;
@@ -36,7 +37,12 @@ export const FocusSessionBar: React.FC = () => {
     // Maximised, the widget's header is the top bar and this moves up into it —
     // the middle of that row is empty. Not hidden: a running session is the one
     // thing on this strip that is still true while a page fills the screen.
-    <div className={`fixed left-1/2 -translate-x-1/2 z-50 ${isMaximized ? 'top-0.5' : 'top-9'}`}>
+    <div
+      className={`fixed left-1/2 -translate-x-1/2 z-50 ${isMaximized ? 'top-0.5' : 'top-9'}`}
+      /* The header it sits in starts after the rail (`canvasArea`), so centring
+         on the window puts it left of centre whenever the rail is out. */
+      style={isMaximized && isSidebarOpen ? { marginLeft: RAIL_WIDTH / 2 } : undefined}
+    >
       <AnimatePresence mode="wait">
         {isActive && (
           <motion.div

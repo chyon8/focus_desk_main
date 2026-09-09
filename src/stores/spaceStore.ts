@@ -9,6 +9,7 @@ import {
   clampCamera,
   findFreeSpot,
   fitCamera,
+  inReadingOrder,
   isFullyVisible,
   minZoomFor,
 } from '../canvas/layout';
@@ -198,6 +199,35 @@ function ownerOf(widgets: Record<string, WidgetDoc>, id: string): WidgetDoc | un
   return Object.values(widgets).find(
     (w) => w.type === 'column' && columnData(w).children.includes(id)
   );
+}
+
+/**
+ * The widgets `[` and `]` step through while one is filling the screen, in the
+ * order they are read on the canvas.
+ *
+ * A column contributes its cards, in the column's own order, at the column's
+ * place in that reading — the point of putting pages in a column is that the
+ * column holds their order, so stepping has to follow it rather than where the
+ * cards happen to sit. The column itself is never in the list: it cannot be
+ * maximised (`WidgetFrame`).
+ */
+export function maximiseOrder(space: SpaceDoc): string[] {
+  const top = Object.values(space.widgets).filter((w) => !ownerOf(space.widgets, w.id));
+  return inReadingOrder(top).flatMap((w) =>
+    w.type === 'column'
+      ? columnData(w).children.filter((id) => space.widgets[id])
+      : [w.id]
+  );
+}
+
+/** The id `[` or `]` lands on, or null when there is nowhere else to go. */
+export function stepMaximised(space: SpaceDoc, current: string, delta: 1 | -1): string | null {
+  const order = maximiseOrder(space);
+  const at = order.indexOf(current);
+  // Wrapping, because with two widgets open a list with ends is a dead key half
+  // the time.
+  if (at === -1 || order.length < 2) return null;
+  return order[(at + delta + order.length) % order.length];
 }
 
 /**

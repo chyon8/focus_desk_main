@@ -42,7 +42,7 @@ export interface Area {
 }
 
 /** Reading order: top-left first, for callers that want tidying over reordering. */
-export function inReadingOrder(boxes: Box[]) {
+export function inReadingOrder<T extends Box>(boxes: T[]): T[] {
   return [...boxes].sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
 }
 
