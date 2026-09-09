@@ -23,7 +23,8 @@ export const CalendarWidget: React.FC = () => {
   ];
 
   return (
-    <div className="t-ink h-full w-full flex flex-col p-4">
+    <div className="t-ink h-full w-full flex flex-col px-4 pb-4 pt-10">
+      {/* pt-10: float 헤더와 겹치지 않게 위쪽 여백 확보 */}
       <div className="flex items-center justify-between mb-4">
         <button onClick={() => shiftMonth(-1)} className="chrome-button press p-1 rounded-control">
           <ChevronLeft size={16} />

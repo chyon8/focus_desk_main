@@ -13,7 +13,8 @@ export const ClockWidget: React.FC = () => {
   const hoursRatio = (minutesRatio + time.getHours()) / 12;
 
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center relative p-6">
+    <div className="h-full w-full flex flex-col items-center justify-center relative px-6 pb-6 pt-10">
+      {/* pt-10: float 헤더와 겹치지 않게 위쪽 여백 확보 */}
       <div className="clock-face relative w-56 h-56 rounded-full flex items-center justify-center">
         {Array.from({ length: 60 }, (_, i) => {
           const isHour = i % 5 === 0;

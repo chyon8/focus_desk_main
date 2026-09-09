@@ -80,7 +80,8 @@ export const CanvasWidget: React.FC<{ id: string }> = ({ id }) => {
   };
 
   return (
-    <div className="photo-paper h-full w-full flex flex-col">
+    <div className="photo-paper h-full w-full flex flex-col pt-10">
+      {/* pt-10: float 헤더와 겹치지 않게 위쪽 여백 확보 */}
       <div className="border-hair h-9 shrink-0 flex items-center gap-2 px-3 border-b">
         <button
           onClick={() => setIsErasing(false)}

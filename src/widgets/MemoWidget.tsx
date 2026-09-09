@@ -55,8 +55,9 @@ export const MemoWidget: React.FC<{ id: string }> = ({ id }) => {
       {/* 종이 어디를 눌러도 쓰기 시작한다. ProseMirror는 자기 글 상자 안의 클릭만
           받으므로, 마지막 줄 아래 빈 곳을 누르면 아무 일도 안 일어났다 —
           한 줄짜리 메모에서는 눌러야 할 데가 그 한 줄뿐이었다. */}
+      {/* pt-10: float 헤더와 겹치지 않게 위쪽 여백 확보 */}
       <div
-        className="relative flex-1 min-h-0 overflow-y-auto px-6 py-4 cursor-text"
+        className="relative flex-1 min-h-0 overflow-y-auto px-6 pb-4 pt-10 cursor-text"
         onMouseDown={(e) => {
           if (e.target !== e.currentTarget || !editor) return;
           e.preventDefault();

@@ -52,7 +52,8 @@ export const KanbanWidget: React.FC<{ id: string }> = ({ id }) => {
   const empty = COLUMNS.every(({ key }) => data.columns[key].length === 0);
 
   return (
-    <div className="t-ink h-full w-full flex flex-col p-4">
+    <div className="t-ink h-full w-full flex flex-col px-4 pb-4 pt-10">
+      {/* pt-10: float 헤더와 겹치지 않게 위쪽 여백 확보 */}
       <span className="t-soft text-ui font-semibold uppercase tracking-widest mb-4">Board</span>
 
       {/* 빈 상태는 보드 전체가 비었을 때만. 컬럼마다 넣으면 빈 보드에 같은 말이

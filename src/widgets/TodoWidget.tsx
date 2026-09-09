@@ -42,7 +42,8 @@ export const TodoWidget: React.FC<{ id: string }> = ({ id }) => {
   const remaining = data.items.filter((i) => !i.done).length;
 
   return (
-    <div className="t-ink h-full w-full flex flex-col p-6">
+    <div className="t-ink h-full w-full flex flex-col px-6 pb-6 pt-10">
+      {/* pt-10: float 헤더와 겹치지 않게 위쪽 여백 확보 */}
       <div className="flex gap-2 items-center mb-4">
         <div className="w-2.5 h-2.5 rounded-mark" style={{ background: 'var(--accent)' }} />
         <span className="t-soft text-ui font-semibold uppercase tracking-widest">

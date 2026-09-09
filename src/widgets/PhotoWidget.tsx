@@ -118,7 +118,7 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
 
   return (
     <div
-      className="photo-paper h-full w-full flex flex-col p-3"
+      className="photo-paper h-full w-full flex flex-col px-3 pb-3 pt-10"
       onDragOver={(e) => {
         e.preventDefault();
         setIsDropTarget(true);
