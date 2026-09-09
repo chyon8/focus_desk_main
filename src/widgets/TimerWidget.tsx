@@ -34,7 +34,8 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
 
   return (
     <div className="h-full w-full flex flex-col p-6 items-center justify-center relative">
-      <div className="t-soft absolute top-4 w-full px-6 flex justify-between items-center text-ui font-medium tracking-wider uppercase">
+      {/* top-10: float 헤더(30px)와 겹치지 않게 아래로 내렸다 */}
+      <div className="t-soft absolute top-10 w-full px-6 flex justify-between items-center text-ui font-medium tracking-wider uppercase">
         <span>{data.mode === 'BREAK' ? 'On Break' : 'Timer'}</span>
         <button
           onClick={() => switchMode(data.mode === 'FOCUS' ? 'BREAK' : 'FOCUS')}
