@@ -3,11 +3,12 @@ import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronLeft,
+  Ellipsis,
   Image,
+  KeyRound,
   LayoutGrid,
   Plus,
   Search,
-  SlidersHorizontal,
   Trash2,
   Volume2,
 } from 'lucide-react';
@@ -17,20 +18,13 @@ import { assetUrl } from '../spaces/backgrounds';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useSpaceTimeStore } from '../stores/spaceTimeStore';
 import { RAIL_WIDTH, RAIL_TOP, useUiStore } from '../stores/uiStore';
-import { useWebAppStore } from '../stores/webappStore';
 import { getTheme } from '../themes/themes';
 import type { SceneSpec } from '../themes/types';
-import { WebAppMark } from '../webapps/WebAppMark';
 import { isComposing } from './ime';
 import { ChromeImportPanel } from './ChromeImportPanel';
 import { CanvasTools } from './Dock';
-import { openWebApp } from './launcherItems';
 import { SettingsPanel } from './SettingsPanel';
 import { SpaceSessionPanel } from './SpaceSessionPanel';
-import { WIDGET_DRAG_TYPE, WidgetDragPayload } from './WidgetPalette';
-
-/** More than this is a list, and the launcher (K) is the list. */
-const MAX_APPS = 12;
 
 function sceneStyle(scene: SceneSpec): React.CSSProperties {
   switch (scene.kind) {
@@ -78,7 +72,7 @@ const SpaceTile: React.FC<{ id: string; onOpenMenu: (top: number) => void }> = (
           if (isActive) onOpenMenu(e.currentTarget.getBoundingClientRect().top);
           else useSpaceStore.getState().setActiveSpace(id);
         }}
-        title={isActive ? `${name} - rename, time, delete` : name}
+        title={isActive ? `${name} - rename, time, sign-ins, delete` : name}
         aria-current={isActive}
         aria-label={name}
         className={`rail-space ${isActive ? 'rail-space-on' : ''}`}
@@ -117,81 +111,23 @@ const RailTool: React.FC<{
   </button>
 );
 
-/** The saved web apps. A click opens one here; a drag drops it where it lands. */
-const WebApps: React.FC<{ onDone: () => void }> = ({ onDone }) => {
-  const apps = useWebAppStore((s) => s.apps);
-  const list = Object.values(apps)
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .slice(0, MAX_APPS);
-
-  return (
-    <>
-      <div className="fixed inset-0 z-[89]" onClick={onDone} />
-      <motion.div
-        initial={{ opacity: 0, x: -8 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -8 }}
-        className="glass-panel absolute left-full top-0 ml-3 z-[90] w-56 p-2 rounded-surface"
-      >
-        <div className="t-soft px-2 pt-1 pb-2 text-micro font-semibold uppercase tracking-[0.14em]">
-          Web apps
-        </div>
-        {list.length === 0 ? (
-          <p className="t-soft px-2 pb-2 text-meta leading-snug">
-            No web apps yet. Add one from a browser widget's address bar.
-          </p>
-        ) : (
-          <div className="grid grid-cols-4 gap-1">
-            {list.map((app) => (
-              <button
-                key={app.id}
-                title={`${app.name} - click to open, or drag onto the canvas`}
-                draggable
-                onDragStart={(e) => {
-                  const payload: WidgetDragPayload = {
-                    type: 'webapp',
-                    data: {
-                      appId: app.id,
-                      name: app.name,
-                      icon: app.icon,
-                      homeUrl: app.url,
-                      url: app.url,
-                      open: true,
-                    },
-                  };
-                  e.dataTransfer.setData(WIDGET_DRAG_TYPE, JSON.stringify(payload));
-                  e.dataTransfer.effectAllowed = 'copy';
-                }}
-                onClick={() => {
-                  openWebApp(app);
-                  onDone();
-                }}
-                className="row flex flex-col items-center justify-center gap-1 py-2 rounded-control active:scale-95"
-              >
-                <WebAppMark icon={app.icon} name={app.name} size={18} />
-                <span className="text-micro leading-none tracking-wide truncate max-w-full">
-                  {app.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    </>
-  );
-};
-
 /**
- * 서 있는 공간에 거는 것들 — 이름 바꾸기, 오늘 기록, 삭제.
+ * 서 있는 공간에 거는 것들 — 이름 바꾸기, 오늘 기록, 로그인, 삭제.
  *
  * 레일의 활성 타일을 다시 누르면 그 타일 옆에 뜬다. 예전에는 화면 왼쪽 위에 판이
  * 상시로 떠 있었는데, 낱말 하나를 위해 레일·독 말고 세 번째 물체가 늘 화면에
  * 있는 꼴이었다. 이름 자체는 레일 안 타일 밑에 있다.
  */
-const SpaceMenu: React.FC<{ top: number; onClose: () => void; onOpenInsights: () => void }> = ({
+const SpaceMenu: React.FC<{
+  top: number;
+  onClose: () => void;
+  onOpenInsights: () => void;
+  onOpenSessions: () => void;
+}> = ({
   top,
   onClose,
   onOpenInsights,
+  onOpenSessions,
 }) => {
   const id = useSpaceStore((s) => s.activeSpaceId);
   const name = useSpaceStore((s) => s.spaces[id]?.name ?? '');
@@ -244,6 +180,17 @@ const SpaceMenu: React.FC<{ top: number; onClose: () => void; onOpenInsights: ()
           <span className="t-soft text-micro font-mono tabular-nums">
             {formatDuration(seconds)}
           </span>
+        </button>
+
+        <button
+          onClick={() => {
+            onOpenSessions();
+            onClose();
+          }}
+          className="row w-full flex items-center gap-2 px-2 py-2 rounded-control text-ui"
+        >
+          <KeyRound size={14} />
+          <span className="t-ink flex-1 text-left">Sign-ins in this space</span>
         </button>
 
         {spaceCount > 1 &&
@@ -304,10 +251,9 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
   const [menuTop, setMenuTop] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
-  const [isAppsOpen, setIsAppsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const create = () => {
     if (!newName.trim()) return;
@@ -366,14 +312,6 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
             <RailTool label="Search this space (K)" onClick={useUiStore.getState().toggleLauncher}>
               <Search size={18} />
             </RailTool>
-            <div className="relative">
-              <RailTool label="Web apps" on={isAppsOpen} onClick={() => setIsAppsOpen((o) => !o)}>
-                <LayoutGrid size={18} />
-              </RailTool>
-              <AnimatePresence>
-                {isAppsOpen && <WebApps onDone={() => setIsAppsOpen(false)} />}
-              </AnimatePresence>
-            </div>
 
             <div className="flex-1" />
             <div className="rail-sep" />
@@ -383,7 +321,7 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
             <div className="rail-sep" />
 
             <RailTool
-              label="Background"
+              label="Space appearance"
               on={isAtmosphereOpen}
               onClick={() => useUiStore.getState().toggleDock('atmosphere')}
             >
@@ -401,11 +339,11 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
               <Volume2 size={18} style={isAmbiencePlaying ? { color: 'var(--accent)' } : undefined} />
             </RailTool>
             <RailTool
-              label="Settings"
-              on={isSettingsOpen}
-              onClick={() => setIsSettingsOpen((o) => !o)}
+              label="More"
+              on={isMoreOpen}
+              onClick={() => setIsMoreOpen((o) => !o)}
             >
-              <SlidersHorizontal size={18} />
+              <Ellipsis size={18} />
             </RailTool>
             <RailTool label="Hide the rail" onClick={() => useUiStore.getState().setSidebarOpen(false)}>
               <ChevronLeft size={18} />
@@ -419,6 +357,7 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
           top={menuTop}
           onClose={() => setMenuTop(null)}
           onOpenInsights={onOpenInsights}
+          onOpenSessions={() => setIsSessionOpen(true)}
         />
       )}
 
@@ -453,24 +392,23 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
               Create
             </button>
           </div>
+          <div className="border-hair mt-3 pt-3 border-t">
+            <button
+              onClick={() => {
+                setIsCreating(false);
+                setIsImportOpen(true);
+              }}
+              className="row w-full flex items-center gap-2 px-2 py-2 rounded-control text-ui"
+            >
+              Bring in from Chrome
+            </button>
+          </div>
         </div>
       )}
 
       {isImportOpen && <ChromeImportPanel onClose={() => setIsImportOpen(false)} />}
       {isSessionOpen && <SpaceSessionPanel onClose={() => setIsSessionOpen(false)} />}
-      {isSettingsOpen && (
-        <SettingsPanel
-          onClose={() => setIsSettingsOpen(false)}
-          onOpenImport={() => {
-            setIsSettingsOpen(false);
-            setIsImportOpen(true);
-          }}
-          onOpenSessions={() => {
-            setIsSettingsOpen(false);
-            setIsSessionOpen(true);
-          }}
-        />
-      )}
+      {isMoreOpen && <SettingsPanel onClose={() => setIsMoreOpen(false)} />}
     </>
   );
 };

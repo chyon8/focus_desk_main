@@ -45,47 +45,41 @@ interface RoomSpec {
 }
 
 /**
- * The five. Three are the themes' own scenes; two borrow a palette and bring a
+ * The five. One uses its theme's own scene; four borrow a palette and bring a
  * wallpaper.
- *
- * Left out: the cosy-room pictures, which read as stock art next to the drawn
- * scenes. `loficafe.jpg` and `rainiywindow.jpg` were deleted outright — the
- * first has "© 2020 Lo-Fi Geek. All rights reserved" printed into the image
- * itself, and neither was used anywhere while the picker listed the folder
- * whole. **No wallpaper here has a licence anybody has checked** — see STATUS.
  */
 const SPECS: RoomSpec[] = [
   {
     id: 'meadow',
     name: 'Meadow',
     themeId: 'golden-hour',
-    background: '/wallpapers/ghibli.jpg',
+    background: '/wallpapers/summer-meadow.webp',
     ambience: { ...silent, cafe: 26 },
     hours: [6, 15],
   },
   {
-    id: 'golden-hour',
-    name: 'Golden Hour',
+    id: 'midnight-observatory',
+    name: 'Midnight Observatory',
     themeId: 'golden-hour',
-    background: null,
-    ambience: { ...silent, cafe: 32 },
-    hours: [15, 20],
-  },
-  {
-    id: 'rainy-night',
-    name: 'Rainy Night',
-    themeId: 'rainy-night',
-    background: null,
-    ambience: { ...silent, rain: 46 },
+    background: '/wallpapers/midnight-observatory.webp',
+    ambience: { ...silent },
     hours: [19, 24],
   },
   {
-    id: 'cabin',
-    name: 'Cabin',
+    id: 'rainy-attic',
+    name: 'Rainy Attic',
+    themeId: 'rainy-night',
+    background: '/wallpapers/rainy-attic.webp',
+    ambience: { ...silent, rain: 46 },
+    hours: [18, 24],
+  },
+  {
+    id: 'quiet-snow',
+    name: 'Quiet Snow',
     themeId: 'snowfall',
-    background: '/wallpapers/winterhut.jpg',
-    ambience: { ...silent, fire: 42 },
-    hours: [20, 24],
+    background: '/wallpapers/quiet-snow.webp',
+    ambience: { ...silent },
+    hours: [6, 12],
   },
   {
     id: 'snowfall',
@@ -105,9 +99,8 @@ export const ROOMS: Room[] = SPECS.map((spec) => ({
 /**
  * The rooms with the one that suits the hour first.
  *
- * Nobody is asked what time it is — the app already knows, and opening on a
- * lit cabin at eleven at night is the kind of thing a person notices without
- * being able to say why.
+ * Nobody is asked what time it is — the app already knows, so a fitting room
+ * is shown first.
  *
  * Among the rooms that suit the hour, a painted one comes before a gradient: the
  * first card is shown wide, and a wide empty gradient is a worse first thing to

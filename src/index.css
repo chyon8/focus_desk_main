@@ -346,9 +346,8 @@ body {
 
 /* --- Paper ---------------------------------------------------------------
    The note, the photo and the sketch are printed objects: they keep their own
-   sheet rather than going see-through like the rest of the widgets. One switch
-   lights all three (D-084) — by default the sheet is the room's own surface, so
-   a dark theme gets dark paper. */
+   sheet rather than going see-through like the rest of the widgets. The sheet
+   follows the room, so a dark theme gets dark paper. */
 :root {
   --paper: var(--surface);
   --paper-ink: var(--ink);
@@ -359,26 +358,6 @@ body {
   --paper-fill: color-mix(in srgb, var(--ink) 9%, var(--surface));
   /* The lit top edge of the sheet. */
   --paper-edge: rgba(255, 255, 255, 0.07);
-}
-
-:root[data-paper='light'] .memo-paper,
-:root[data-paper='light'] .photo-paper {
-  --accent: #a9581b;
-  --accent-hover: #944c15;
-  --accent-ink: #fff7ef;
-  --accent-soft: rgba(169, 88, 27, 0.12);
-}
-
-:root[data-paper='light'] {
-  --paper: #fbfaf6;
-  --paper-ink: #22212a;
-  --paper-ink-soft: #56545f;
-  /* 종이 위 대비 4.9 — 방의 --ink-faint를 그대로 두면 어두운 방의 흰 종이에서
-     옅은 글자가 옅은 종이 위에 앉는다. */
-  --paper-ink-faint: #74727d;
-  --paper-border: rgba(30, 28, 40, 0.13);
-  --paper-fill: #eceae4;
-  --paper-edge: rgba(255, 255, 255, 0.85);
 }
 
 .photo-paper {
@@ -479,21 +458,6 @@ body {
   border-radius: var(--radius-mark);
   background: var(--accent);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
-}
-
-/* Where you just were. A glow rather than a ring: a ring already means "picked
-   out", and at a distance two rings of different widths read as the same thing.
-   It also survives being zoomed out, which a 2px line does not. */
-.widget-last-active {
-  /* The glass shadow is repeated because box-shadow replaces rather than adds. */
-  box-shadow:
-    0 0 0 calc(2px / var(--zoom, 1)) color-mix(in srgb, var(--accent) 80%, transparent),
-    /* The accent alone washes out against a wallpaper of its own colour. */
-    0 0 0 calc(4px / var(--zoom, 1)) rgba(var(--shadow-tint), 0.55),
-    0 0 calc(26px / var(--zoom, 1)) calc(2px / var(--zoom, 1))
-      color-mix(in srgb, var(--accent) 32%, transparent),
-    var(--shadow-float),
-    var(--lip);
 }
 
 /* Calm Tech: 헤더는 자리를 지키되 평소에는 비어 있다.

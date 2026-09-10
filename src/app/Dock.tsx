@@ -291,35 +291,68 @@ export const Dock: React.FC = () => {
   );
 };
 
-/** The zoom and framing, in the rail. They belong to the canvas, not a selection. */
+/** The zoom and framing controls live behind one view button in the rail. */
 export const CanvasTools: React.FC = () => {
   const zoom = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera.zoom ?? 1);
+  const [isOpen, setIsOpen] = useState(false);
+  const percent = Math.round(zoom * 100);
+
   return (
-    <>
+    <div className="relative">
       <button
-        onClick={() => zoomBy(STEP)}
-        title="Zoom in"
-        aria-label="Zoom in"
-        className="rail-tool"
-      >
-        <Plus size={16} />
-      </button>
-      <button
-        onClick={useSpaceStore.getState().fitToWidgets}
-        title={`${Math.round(zoom * 100)}% - frame every widget (F)`}
-        aria-label="Frame every widget"
+        onClick={() => setIsOpen((open) => !open)}
+        title={`View: ${percent}%`}
+        aria-label="View controls"
+        aria-pressed={isOpen}
         className="rail-tool text-micro font-mono tabular-nums"
       >
-        {Math.round(zoom * 100)}
+        {percent}
       </button>
-      <button
-        onClick={() => zoomBy(1 / STEP)}
-        title="Zoom out"
-        aria-label="Zoom out"
-        className="rail-tool"
-      >
-        <Minus size={16} />
-      </button>
-    </>
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-[89]" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              className="glass-panel absolute bottom-0 left-full z-[90] ml-3 w-44 p-2 rounded-surface"
+            >
+              <div className="t-soft px-2 pt-1 pb-2 text-micro font-semibold uppercase tracking-[0.14em]">
+                View
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                <button
+                  onClick={() => zoomBy(1 / STEP)}
+                  title="Zoom out"
+                  className="chrome-button h-8 flex items-center justify-center rounded-control"
+                >
+                  <Minus size={15} />
+                </button>
+                <span className="flex items-center justify-center text-meta font-mono tabular-nums">
+                  {percent}%
+                </span>
+                <button
+                  onClick={() => zoomBy(STEP)}
+                  title="Zoom in"
+                  className="chrome-button h-8 flex items-center justify-center rounded-control"
+                >
+                  <Plus size={15} />
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  useSpaceStore.getState().fitToWidgets();
+                  setIsOpen(false);
+                }}
+                className="row mt-1 w-full flex items-center justify-between px-2 py-2 rounded-control text-left text-ui"
+              >
+                Frame every widget <span className="t-soft">F</span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };

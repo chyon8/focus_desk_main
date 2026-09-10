@@ -4,6 +4,23 @@ import { DEFAULT_THEME_ID, THEMES } from '../themes/themes';
 import { ColumnData, SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from './types';
 import { columnHeight, COLUMN_WIDTH } from '../canvas/columns';
 
+// Removed bundled assets need replacements in saved spaces and imported backups.
+// Exact paths preserve user uploads, even when their filenames are the same.
+const RETIRED_WALLPAPERS: Record<string, string> = {
+  '/wallpapers/ghibli.jpg': '/wallpapers/summer-meadow.webp',
+  '/wallpapers/winterhut.jpg': '/wallpapers/quiet-snow.webp',
+  '/wallpapers/warm-cabin.webp': '/wallpapers/quiet-snow.webp',
+  '/wallpapers/sunset_landscape.png': '/wallpapers/amber-lake.webp',
+  '/wallpapers/morning-studio.webp': '/wallpapers/coastal-mist.webp',
+  '/wallpapers/cloudtop-sanctuary.webp': '/wallpapers/summer-country-room.webp',
+  '/wallpapers/aurora-fjord.webp': '/wallpapers/rainy-attic.webp',
+  '/wallpapers/moonlit-conservatory.webp': '/wallpapers/afternoon-records.webp',
+};
+
+function currentWallpaper(src: string): string {
+  return RETIRED_WALLPAPERS[src] ?? src;
+}
+
 /**
  * Brings a stored space document up to the current schema.
  * Add a step per version bump; each step takes the previous shape and returns the next.
@@ -120,6 +137,11 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     }
     doc.widgets = widgets;
     doc.schemaVersion = 9;
+  }
+
+  // v11 also replaces the three rejected images from v10.
+  if (doc.schemaVersion < 11 && doc.background?.type === 'IMAGE') {
+    doc.background = { ...doc.background, value: currentWallpaper(doc.background.value) };
   }
 
   doc.schemaVersion = SCHEMA_VERSION;
@@ -263,7 +285,7 @@ export function migrateLegacySpaces(raw: unknown): SpaceDoc[] {
         background:
           legacy.backgroundType === 'COLOR'
             ? { type: 'COLOR' as const, value: legacy.backgroundUrl }
-            : { type: 'IMAGE' as const, value: legacy.backgroundUrl },
+            : { type: 'IMAGE' as const, value: currentWallpaper(legacy.backgroundUrl) },
         // Legacy widgets used screen pixels; treat them as world coordinates at 1:1.
         camera: { x: 0, y: 0, zoom: 1 },
         // The MVP stored ambience volumes but never played anything, so start silent.

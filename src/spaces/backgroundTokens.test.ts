@@ -12,9 +12,16 @@ const DARK_INK = '#f0ede7';
 
 /** 실제로 쓰이는 배경 전부. 사진은 photoTone이 내는 평균색이다. */
 const PHOTO_TONES = {
-  ghibli: '#5e8781',
-  winterhut: '#373d4a',
-  sunset: '#823d5b',
+  // Generated WebP assets, averaged at 16×16 as photoTone does.
+  amberLake: '#ba8065',
+  coastalMist: '#aab3b7',
+  midnightObservatory: '#2a2143',
+  quietSnow: '#bdc8d6',
+  rainyDesk: '#1e232e',
+  summerMeadow: '#8a9c82',
+  summerCountryRoom: '#7f816e',
+  rainyAttic: '#433534',
+  afternoonRecords: '#946842',
 };
 
 /**
@@ -104,7 +111,7 @@ describe('면 색', () => {
 
   it('이미 진한 배경은 제 채도를 그대로 쓴다', () => {
     // 노을은 바닥값(18%)보다 채도가 높아서 끌어올려지지 않는다.
-    expect(spread(tintedSurface('#201e1b', PHOTO_TONES.sunset))).toBeGreaterThan(
+    expect(spread(tintedSurface('#201e1b', PHOTO_TONES.amberLake))).toBeGreaterThan(
       spread(tintedSurface('#201e1b', NEAR_GREY.loficafe)),
     );
   });

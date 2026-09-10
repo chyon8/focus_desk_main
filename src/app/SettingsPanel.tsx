@@ -2,18 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { usePrefsStore } from '../stores/prefsStore';
 import { useUiStore } from '../stores/uiStore';
-import { AppWindow, Chrome, Download, FolderOpen, KeyRound, Moon, Sun, Upload, X } from 'lucide-react';
+import { AppWindow, Download, FolderOpen, Upload, X } from 'lucide-react';
 
 /**
  * The app's own settings.
  *
- * 종이·웹페이지 밝기가 여기 있는 이유: 둘 다 앱 전체에 걸리고, 공간 하나의 외양이
- * 아니다. Atmosphere 패널에 두었더니 그 패널 안에 밝기 컨트롤이 셋이 되어(종이 /
- * 웹페이지 / 배경) 무엇이 무엇을 바꾸는지 알 수 없었다.
- *
- * Backups are the reason this panel exists: there is no account and no server,
- * so a copy of the folder is the only thing between the user and a lost disk
- * (D-094).
+ * This is the small set of app-level controls that do not belong to a space.
  */
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="t-soft text-micro font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
@@ -35,14 +29,8 @@ const Row: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void 
 
 export const SettingsPanel: React.FC<{
   onClose: () => void;
-  /** Bring in the windows open in Chrome. */
-  onOpenImport: () => void;
-  /** What this space is signed in to. */
-  onOpenSessions: () => void;
-}> = ({ onClose, onOpenImport, onOpenSessions }) => {
+}> = ({ onClose }) => {
   const attachApps = usePrefsStore((s) => s.attachApps);
-  const paper = usePrefsStore((s) => s.paper);
-  const webDark = usePrefsStore((s) => s.webDark);
   const [accessibility, setAccessibility] = useState(true);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   // 실패한 것에는 다시 해볼 길을 같이 준다 (DESIGN.md 6장). 성공한 것은 retry가
@@ -114,59 +102,14 @@ export const SettingsPanel: React.FC<{
       >
         <div className="flex items-center gap-2 mb-4">
           <span className="t-soft text-meta font-semibold uppercase tracking-widest">
-            Settings
+            More
           </span>
           <button onClick={onClose} className="t-faint hover:t-ink ml-auto shrink-0">
             <X size={12} />
           </button>
         </div>
 
-        <Label>This space</Label>
-        <Row icon={<Chrome size={14} />} label="Bring in what Chrome has open" onClick={onOpenImport} />
-        <Row icon={<KeyRound size={14} />} label="What this space is signed in to" onClick={onOpenSessions} />
-        <div className="mb-6" />
-
-        <Label>Notes and pages</Label>
-        <div className="t-faint mb-1.5 text-micro font-medium">Note paper</div>
-        <div className="flex items-center gap-1 mb-2">
-          {(
-            [
-              { mode: 'theme', label: 'Match the room', icon: Moon },
-              { mode: 'light', label: 'Always white', icon: Sun },
-            ] as const
-          ).map(({ mode, label, icon: Icon }) => (
-            <button
-              key={mode}
-              onClick={() => usePrefsStore.getState().setPaper(mode)}
-              className={`chrome-button flex-1 h-9 flex items-center justify-center gap-1.5 rounded-control text-meta ${
-                paper === mode ? 'chrome-button-on' : ''
-              }`}
-            >
-              <Icon size={13} />
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="t-faint mb-4 px-0.5 text-micro leading-snug">
-          Notes, photos and sketches are printed sheets, so they can keep white paper whatever the
-          room is doing. This changes those three widgets only.
-        </p>
-
-        <button
-          onClick={() => usePrefsStore.getState().setWebDark(!webDark)}
-          className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-control text-meta ${
-            webDark ? 'chrome-button-on' : ''
-          }`}
-        >
-          <Moon size={13} />
-          Ask sites for their dark theme
-        </button>
-        <p className="t-faint mb-6 px-0.5 text-micro leading-snug">
-          Sites with a dark theme of their own will use it. Sites without one look the same either
-          way. This changes web pages only.
-        </p>
-
-        <Label>Apps</Label>
+        <Label>App windows</Label>
         <button
           onClick={toggleAttachApps}
           className={`chrome-button w-full h-9 flex items-center justify-center gap-1.5 mb-2 rounded-control text-meta ${

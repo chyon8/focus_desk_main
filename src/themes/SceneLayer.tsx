@@ -74,7 +74,7 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
   const sceneKey = scene.kind === 'image' ? scene.src : scene.value;
 
   // scrim과 glow는 사진 위에서 글자가 읽히게 하려고 테마가 자기 사진에 맞춰 정해둔
-  // 것이다. 단색 배경에 그대로 얹으면 고른 색이 그 색으로 안 나온다 — Golden Hour의
+  // 것이다. 단색 배경에 그대로 얹으면 고른 색이 그 색으로 안 나온다 — Amber Lake의
   // 따뜻한 scrim 아래에서 Mist(#f1f5f9)가 탁한 회색으로 보이던 원인이다.
   const flat = scene.kind === 'color';
   // 비네트도 실제로 뒤에 깔린 색을 따라간다. 사진일 때 theme.mood를 보면

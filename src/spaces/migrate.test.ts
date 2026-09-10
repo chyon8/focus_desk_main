@@ -75,6 +75,48 @@ describe('migrateLegacySpaces', () => {
 });
 
 describe('migrateSpace', () => {
+  it.each([
+    ['ghibli.jpg', 'summer-meadow.webp'],
+    ['winterhut.jpg', 'quiet-snow.webp'],
+    ['warm-cabin.webp', 'quiet-snow.webp'],
+    ['sunset_landscape.png', 'amber-lake.webp'],
+    ['morning-studio.webp', 'coastal-mist.webp'],
+    ['cloudtop-sanctuary.webp', 'summer-country-room.webp'],
+    ['aurora-fjord.webp', 'rainy-attic.webp'],
+    ['moonlit-conservatory.webp', 'afternoon-records.webp'],
+  ])('replaces removed wallpaper %s without changing other space settings', (old, replacement) => {
+    const [base] = migrateLegacySpaces(legacy);
+    const raw: SpaceDoc = {
+      ...base,
+      schemaVersion: 10,
+      background: { type: 'IMAGE', value: `/wallpapers/${old}` },
+    };
+    const migrated = migrateSpace(raw);
+    expect(migrated).toEqual({
+      ...raw,
+      schemaVersion: SCHEMA_VERSION,
+      background: { type: 'IMAGE', value: `/wallpapers/${replacement}` },
+    });
+    expect(raw.background?.value).toBe(`/wallpapers/${old}`);
+    expect(migrateSpace(migrated)).toEqual(migrated);
+  });
+
+  it('preserves an uploaded image with a retired filename', () => {
+    const [base] = migrateLegacySpaces(legacy);
+    const raw: SpaceDoc = {
+      ...base, schemaVersion: 9,
+      background: { type: 'IMAGE', value: 'focusdesk-image://wallpaper/morning-studio.webp' },
+    };
+    expect(migrateSpace(raw).background).toEqual(raw.background);
+  });
+
+  it('replaces retired images during MVP import as well', () => {
+    const [space] = migrateLegacySpaces([
+      { ...legacy[0], backgroundType: 'IMAGE', backgroundUrl: '/wallpapers/ghibli.jpg' },
+    ]);
+    expect(space.background).toEqual({ type: 'IMAGE', value: '/wallpapers/summer-meadow.webp' });
+  });
+
   it('gives v1 widgets a stacking order and stamps the current version', () => {
     const v1 = {
       id: 's',

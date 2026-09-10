@@ -1,0 +1,60 @@
+{
+  "generator": "Built-in ImageGen",
+  "date": "2026-09-10",
+  "assets": [
+    {
+      "id": "rainy-desk",
+      "original": "originals/rainy-desk.png",
+      "wallpaper": "../../public/wallpapers/rainy-desk.webp",
+      "prompt": "Create Rainy Desk, a premium desktop workspace wallpaper. Wide 16:9 landscape, target 2560x1440. Lofi hand-painted illustration of a quiet navy-blue study at night, rain on a broad window, distant soft city silhouettes, a small warm amber desk lamp and modest desk along the right edge. Large calm low-detail central area, subdued highlights, rich muted blue palette, cozy believable lighting, restrained fine texture. Composition must survive center-cover cropping to 16:10 and ultrawide. No people, text, lettering, logos, watermark or UI. Full bleed single finished image."
+    },
+    {
+      "id": "summer-meadow",
+      "original": "originals/summer-meadow.png",
+      "wallpaper": "../../public/wallpapers/summer-meadow.webp",
+      "prompt": "Create Summer Meadow, a premium desktop wallpaper, wide 16:9 target 2560x1440. Studio Ghibli style original hand-painted pastoral landscape: broad soft green summer meadow, enormous gentle ivory clouds in pale turquoise sky, a tiny original country cottage and trees on the right third, distant rolling hills. No existing film scene or characters. Luminous light daytime palette, painterly natural foliage concentrated at edges, expansive calm low-detail center, no harsh white highlights, subtle gouache brushwork. Suitable behind desktop widgets, center-cover crop safe for 16:10 and ultrawide. No people, text, logos, watermark or UI. Full bleed single image."
+    },
+    {
+      "id": "coastal-mist",
+      "original": "originals/coastal-mist.png",
+      "wallpaper": "../../public/wallpapers/coastal-mist.webp",
+      "prompt": "Create Coastal Mist, fine-art photographic desktop wallpaper. Wide 16:9 target 2560x1440. Quiet pale sea under coastal fog, barely visible distant headland on right, very soft horizon near upper middle, subdued silver sage and blue-gray colors, gentle long-exposure water, tiny weathered rocks confined to lower right edge. Bright airy midtones, no pure-white glare, minimal composition with broad low-detail center. Natural photography, no illustration, no dramatic sunset. Center-cover crop safe at 16:10 and ultrawide. No people, text, logos, watermark or UI. Full bleed single finished image."
+    },
+    {
+      "id": "amber-lake",
+      "original": "originals/amber-lake.png",
+      "wallpaper": "../../public/wallpapers/amber-lake.webp",
+      "prompt": "Create Amber Lake premium desktop wallpaper, wide 16:9 target 2560x1440. Restrained hand-painted landscape of still lake at golden hour, layered distant mauve mountains, apricot and dusty peach sky reflected in smooth water, low soft amber sun behind haze, small shoreline grasses at bottom corners only. Warm muted palette, broad simple center, elegant atmospheric perspective, no sharp glare, no dense ripples, fine subtle brush texture. Original scene, calm and spacious, center-cover crop safe at 16:10 and ultrawide. No people, buildings, text, logos, watermark or UI. Full bleed single image."
+    },
+    {
+      "id": "quiet-snow",
+      "original": "originals/quiet-snow.png",
+      "wallpaper": "../../public/wallpapers/quiet-snow.webp",
+      "prompt": "Create Quiet Snow premium desktop wallpaper. Wide 16:9 target 2560x1440. Minimal restrained gouache winter landscape: broad untouched rolling snowfield in soft blue-gray, distant thin line of fir forest softened by snowfall and fog, pale slate winter sky, a few delicate grasses only at bottom edge. Luminous cool midtones, no pure white glare, no dramatic dark foreground, very low detail center, subtle paperlike paint texture rather than noise. Beautiful spacious composition for a calm workspace, center-cover crop safe at 16:10 and ultrawide. No people, footprints, buildings, text, logos, watermark or UI. Full bleed single image."
+    },
+    {
+      "id": "midnight-observatory",
+      "original": "originals/midnight-observatory.png",
+      "wallpaper": "../../public/wallpapers/midnight-observatory.webp",
+      "prompt": "Create Midnight Observatory premium illustrated desktop wallpaper. Wide 16:9 target 2560x1440. Original quiet hilltop observatory with small round dome on right third and one dim amber window, vast muted violet indigo night sky, sparse tiny stars, distant layered purple hills. Hand-painted animation background, imaginative but grounded, gentle atmospheric depth, mostly smooth low-detail sky and central terrain. No huge moon, no glowing nebula, no dense star field, subdued highlights and restrained brush texture. Rich purple distinguishes this from navy rainy room. Center-cover crop safe for 16:10 and ultrawide. No people, text, logos, watermark or UI. Full bleed single image."
+    },
+    {
+      "id": "rainy-attic",
+      "original": "originals/rainy-attic.png",
+      "wallpaper": "../../public/wallpapers/rainy-attic.webp",
+      "prompt": "Rainy Attic. Create a beautiful authentic lofi anime wallpaper, widescreen 16:9 target 2560x1440. A small lived-in attic bedroom in a quiet neighborhood on a rainy blue evening. Wide interior view: low sloped wood ceiling, broad dormer window showing softly drawn rooftops and rain, small wooden writing desk and warm orange shaded lamp to the right, soft rumpled bed on the left, a few books and a mug. Strong tasteful composition, warm terracotta lamp pool against muted blue-purple exterior, intimate cozy everyday atmosphere. IMPORTANT ART DIRECTION: unmistakably TWO-DIMENSIONAL hand-drawn illustration, visible delicate ink contours, simple cel shaded forms, matte gouache color fills, gently irregular shapes, charming stylization. NOT a photograph, NOT photorealistic, NOT a 3D render, no glossy surfaces or hyper-detailed textures, no epic fantasy landscape, no dramatic god rays. Broad quiet middle floor and wall for desktop widgets; warm medium shadows that retain detail, not nearly-black image. No people, no lettering on books, no logos, no watermark, no UI. One full-bleed finished image with crop-safe composition."
+    },
+    {
+      "id": "afternoon-records",
+      "original": "originals/afternoon-records.png",
+      "wallpaper": "../../public/wallpapers/afternoon-records.webp",
+      "prompt": "Afternoon Records. Create an exceptionally appealing cozy lofi hand-drawn anime interior wallpaper, wide 16:9 target 2560x1440. Warm lived-in small listening room at late afternoon, low olive-green sofa on left with casually tossed ochre cushion, wooden record player cabinet and neatly leaning unlabeled vinyl sleeves on right, linen curtain and large window lighting the room from left, a mug and a few books, lush but sparse houseplants, low sun drawing bold soft-edged warm shapes across terracotta carpet and creamy plaster wall. Broad quiet middle wall and rug with room to breathe. Three-quarter wide room view, excellent graphic composition, confident warm cream/rust/olive color palette, affectionate everyday details. IMPORTANT: clearly 2D illustration with elegant visible pencil/ink contours and limited cel-shaded shadow shapes, matte gouache fills, simplified charming furniture, subtle hand-painted texture. No photorealistic materials, no 3D render, no epic landscape, no exaggerated cinematic bloom. Stunning through color harmony and illustration craft. No people, no text, no lettering, no logos, no watermark, no UI. Full bleed, center-cover crop safe for desktop."
+    },
+    {
+      "id": "summer-country-room",
+      "original": "originals/summer-country-room.png",
+      "wallpaper": "../../public/wallpapers/summer-country-room.webp",
+      "prompt": "Summer Country Room. Create a beautiful original Studio Ghibli-style hand-painted background for a desktop wallpaper. Wide 16:9 target 2560x1440. Inside a modest Japanese rural wooden room on a bright summer afternoon, looking through wide open timber windows toward lush green rice fields, distant wooded hills and enormous soft summer cumulus clouds in a clear turquoise sky. Thin ivory curtains gently billow inward at sides. A small low wooden desk with an open blank sketchbook and ceramic cup on right, simple woven floor mat, worn honey-colored wooden floor, small vase with one leafy branch. Warm nostalgic everyday simplicity, no magical objects. Confident exquisite 2D animation background painting, expressive watercolor/gouache foliage, clean simplified architecture, delicate contours, soft natural daylight and broad readable color shapes. Central view and floor stay simple for desktop widgets; striking summer blue/green contrasted with warm shaded wood. Do not reproduce a specific film scene or character. No photorealism, no 3D, no epic fantasy, no busy decoration, no people, no text, logos, watermarks or UI. One finished full-bleed image with crop-safe widescreen composition."
+    }
+  ]
+}

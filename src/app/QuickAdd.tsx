@@ -1,11 +1,12 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { getCamera, useSpaceStore } from '../stores/spaceStore';
 import { screenToWorld } from '../canvas/camera';
 import { canvasArea, useUiStore } from '../stores/uiStore';
-import { PALETTE_ITEMS, PaletteEntry } from './WidgetPalette';
+import { MORE_TOOL_GROUPS, QUICK_ADD_ITEMS, PaletteEntry } from './WidgetPalette';
 
-const PANEL_WIDTH = 232;
+const PANEL_WIDTH = 304;
 // 첫 렌더에 쓸 어림값. 진짜 높이는 아래에서 재서 덮는다 — 팔레트에 줄이 하나
 // 늘 때마다 상수를 같이 고쳐야 했고, 안 고쳐서 마지막 줄이 창 밖으로 잘렸다.
 const PANEL_HEIGHT_GUESS = 260;
@@ -30,13 +31,20 @@ export function openQuickAddAtCentre() {
 
 /**
  * The palette where the pointer already is: double-click bare canvas (or press N)
- * and the widget lands exactly there. The sidebar copy stays for browsing — this
- * one exists because crossing the screen to fetch a widget was the slow part (D-063).
+ * and the widget lands exactly there. This avoids crossing the screen to fetch a
+ * widget (D-063).
  */
 export const QuickAdd: React.FC = () => {
   const quickAdd = useUiStore((s) => s.quickAdd);
   const panel = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(PANEL_HEIGHT_GUESS);
+  const [view, setView] = useState<'quick' | 'more'>('quick');
+
+  // A new opening always starts with the short list, even if the last one was
+  // closed while its more-tools list was open.
+  useLayoutEffect(() => {
+    if (quickAdd) setView('quick');
+  }, [quickAdd]);
 
   // 그려진 높이를 재서 접는 값에 쓴다. 레이아웃 이펙트라 화면에 나오기 전에
   // 자리가 잡히고, 값이 같으면 setState를 안 해서 여기서 멈춘다.
@@ -77,23 +85,78 @@ export const QuickAdd: React.FC = () => {
         style={{ left, top, width: PANEL_WIDTH, maxHeight: `calc(100vh - ${EDGE * 2}px)` }}
         className="glass-panel fixed z-[96] overflow-y-auto p-2 rounded-surface"
       >
-        <div className="t-faint px-2 pt-1 pb-2 text-micro font-bold uppercase tracking-widest">
-          Add widget
-        </div>
-        <div className="grid grid-cols-4 gap-1">
-          {PALETTE_ITEMS.map((item) => (
+        {view === 'quick' ? (
+          <>
+            <div className="t-faint px-2 pt-1 pb-2 text-micro font-bold uppercase tracking-widest">
+              Add widget
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              {QUICK_ADD_ITEMS.map((item) => (
+                <PaletteCard key={item.label} item={item} onClick={() => add(item)} />
+              ))}
+            </div>
             <button
-              key={item.label}
-              onClick={() => add(item)}
-              title={item.label}
-              className="row flex flex-col items-center justify-center gap-1 py-3 rounded-control"
+              onClick={() => setView('more')}
+              className="row mt-1.5 w-full flex items-center gap-2 px-3 py-2 rounded-control text-ui"
             >
-              <item.icon size={18} />
-              <span className="text-micro leading-none tracking-wide">{item.label}</span>
+              <span className="flex-1 text-left">More tools</span>
+              <ChevronRight size={14} className="t-faint" />
             </button>
-          ))}
-        </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 px-1 pt-1 pb-2">
+              <button
+                onClick={() => setView('quick')}
+                title="Back"
+                aria-label="Back to quick add"
+                className="chrome-button w-7 h-7 flex items-center justify-center rounded-control"
+              >
+                <ArrowLeft size={14} />
+              </button>
+              <div className="t-faint text-micro font-bold uppercase tracking-widest">More tools</div>
+            </div>
+            <div className="space-y-2">
+              {MORE_TOOL_GROUPS.map((group) => (
+                <section key={group.label}>
+                  <div className="t-faint px-2 pb-1 text-micro font-bold uppercase tracking-widest">
+                    {group.label}
+                  </div>
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => (
+                      <PaletteRow key={item.label} item={item} onClick={() => add(item)} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </>
+        )}
       </motion.div>
     </>
+  );
+};
+
+const PaletteCard: React.FC<{ item: PaletteEntry; onClick: () => void }> = ({ item, onClick }) => {
+  const Icon = item.icon;
+  return (
+    <button onClick={onClick} title={item.label} className="row min-h-20 flex items-start gap-2 p-3 rounded-control text-left">
+      <Icon size={17} className="t-soft mt-0.5 shrink-0" />
+      <span className="min-w-0">
+        <span className="t-ink block text-ui font-medium">{item.label}</span>
+        <span className="t-faint mt-0.5 block text-micro leading-snug">{item.description}</span>
+      </span>
+    </button>
+  );
+};
+
+const PaletteRow: React.FC<{ item: PaletteEntry; onClick: () => void }> = ({ item, onClick }) => {
+  const Icon = item.icon;
+  return (
+    <button onClick={onClick} className="row w-full flex items-center gap-3 px-2 py-2 rounded-control text-left">
+      <Icon size={16} className="t-soft shrink-0" />
+      <span className="t-ink text-ui font-medium">{item.label}</span>
+      <span className="t-faint ml-auto text-micro">{item.description}</span>
+    </button>
   );
 };

@@ -1,6 +1,6 @@
-import { Music, Table, Workflow, type LucideIcon } from 'lucide-react';
+import { Music, type LucideIcon } from 'lucide-react';
 import { WidgetType } from '../spaces/types';
-import { WIDGET_REGISTRY, WIDGET_TYPES } from '../widgets/registry';
+import { WIDGET_REGISTRY } from '../widgets/registry';
 
 /** What a dragged palette icon carries. Read on drop by the canvas. */
 export const WIDGET_DRAG_TYPE = 'application/x-focus-desk-widget';
@@ -15,41 +15,60 @@ export interface WidgetDragPayload {
 // widget would add (its own address bar, nav buttons) already exists.
 const MUSIC_URL = 'https://music.youtube.com';
 
-// A table and a diagram are blocks in a note, not widget types of their own
-// (D-080) — the canvas is already what holds separate objects side by side. They
-// are here because reaching for one is reaching for a tool, so the palette hands
-// over a note with that block already in it.
-const TABLE_NOTE =
-  '<table><tbody><tr><th><p></p></th><th><p></p></th><th><p></p></th></tr>' +
-  '<tr><td><p></p></td><td><p></p></td><td><p></p></td></tr>' +
-  '<tr><td><p></p></td><td><p></p></td><td><p></p></td></tr></tbody></table><p></p>';
-const DIAGRAM_NOTE =
-  '<div data-mermaid data-code="flowchart TD&#10;  A[Idea] --&gt; B[Draft]&#10;  B --&gt; C[Done]"></div><p></p>';
-
 export interface PaletteEntry {
   label: string;
+  description: string;
   icon: LucideIcon;
   payload: WidgetDragPayload;
 }
 
-/** Everything that can be added, in one list — the canvas double-click popover
- *  (D-063) and the launcher (K) show the same set, so they cannot drift apart. */
-export const PALETTE_ITEMS: PaletteEntry[] = [
-  ...WIDGET_TYPES.map((type) => ({
-    label: WIDGET_REGISTRY[type].label,
-    icon: WIDGET_REGISTRY[type].icon,
-    payload: { type } as WidgetDragPayload,
-  })),
-  { label: 'Music', icon: Music, payload: { type: 'browser', data: { url: MUSIC_URL } } },
+const widget = (type: WidgetType, description: string): PaletteEntry => ({
+  label: WIDGET_REGISTRY[type].label,
+  description,
+  icon: WIDGET_REGISTRY[type].icon,
+  payload: { type },
+});
+
+/** The few things a blank place is normally asking to become. */
+export const QUICK_ADD_ITEMS: PaletteEntry[] = [
+  widget('memo', 'Write an idea'),
+  widget('todo', 'Track next steps'),
+  widget('browser', 'Open any website'),
+  widget('webapp', 'Keep a favourite site here'),
+  widget('column', 'Stack related widgets'),
+  widget('timer', 'Work for a set time'),
+];
+
+export interface PaletteGroup {
+  label: string;
+  items: PaletteEntry[];
+}
+
+/** Less frequent tools stay reachable without making the first choice a catalogue. */
+export const MORE_TOOL_GROUPS: PaletteGroup[] = [
   {
-    label: 'Table',
-    icon: Table,
-    payload: { type: 'memo', data: { content: TABLE_NOTE, theme: 'LIGHT' } },
+    label: 'Capture',
+    items: [widget('sketch', 'Draw freely'), widget('photo', 'Pin an image')],
   },
   {
-    label: 'Diagram',
-    icon: Workflow,
-    payload: { type: 'memo', data: { content: DIAGRAM_NOTE, theme: 'LIGHT' } },
+    label: 'Organise',
+    items: [widget('calendar', 'See your schedule'), widget('kanban', 'Plan work in stages')],
+  },
+  {
+    label: 'Work',
+    items: [
+      widget('app', 'Open a Mac app'),
+      { label: 'Music', description: 'Play YouTube Music', icon: Music, payload: { type: 'browser', data: { url: MUSIC_URL } } },
+    ],
+  },
+  {
+    label: 'Time',
+    items: [widget('clock', 'See the time')],
   },
 ];
 
+/** Everything that can be added as a canvas widget, also shown by the launcher. */
+export const PALETTE_ITEMS: PaletteEntry[] = [
+  ...QUICK_ADD_ITEMS,
+  ...MORE_TOOL_GROUPS.flatMap((group) => group.items),
+];

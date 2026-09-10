@@ -221,7 +221,7 @@ export function buildLauncherSections(
   const widgets = PALETTE_ITEMS.map<LauncherItem>((item) => ({
     key: `add:${item.label}`,
     name: item.label,
-    hint: 'New widget',
+    hint: item.description,
     mark: { kind: 'lucide', icon: item.icon },
     run: () => useSpaceStore.getState().addWidget(item.payload.type, item.payload.data),
   }))

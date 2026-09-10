@@ -140,8 +140,6 @@ declare global {
     };
     windowMode?: {
       toggleFullscreen: () => Promise<boolean>;
-      /** Asks every guest page for its dark theme, via `prefers-color-scheme`. */
-      setWebDark: (dark: boolean) => Promise<boolean>;
       /** Whether a widget is filling the screen, so ⇧[ and ⇧] are forwarded out of a page. */
       setMaximized: (value: boolean) => Promise<void>;
       onGuestKey: (handler: (key: string, contentsId?: number) => void) => () => void;

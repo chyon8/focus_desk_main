@@ -86,7 +86,6 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
   // out: the window covers the widget, so nothing in the body can be clicked.
   const isAppOpen = useUiStore((s) => s.openAppIds.includes(id)) && widget.type === 'app';
   const isSelected = useUiStore((s) => s.selectedIds.includes(id));
-  const isLastActive = useUiStore((s) => s.lastActiveId === id);
   const isAltHeld = useUiStore((s) => s.isAltHeld);
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen);
   // Only for the sound button this header grows while maximised. A boolean, so
@@ -246,9 +245,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
         isMarked ? 'widget-marked' : ''
       } ${isAltHeld ? 'alt-pick' : ''} ${isSelected ? 'widget-selected' : ''} ${
         isDropTarget ? 'widget-drop-target' : ''
-      } ${isOverColumn ? 'opacity-40' : ''} ${
-        isLastActive && !overlay ? 'widget-last-active' : ''
-      }`}
+      } ${isOverColumn ? 'opacity-40' : ''}`}
       style={{
         // 프레임에 건다 — 왼쪽 변 막대를 그리는 .widget-marked::before가 읽는다.
         ...(isMarked && ({ '--mark': mark } as React.CSSProperties)),
@@ -490,13 +487,9 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
           the same content more room: a memo at twice the size is meant to be twice
           as readable. The browser is the exception — a real page lays itself out
           again for the space it is given, and scaling it would fight that. */}
-      {/* Working in a widget marks it as where you were; grabbing its header to
-          move it does not. A browser widget's page swallows the click, so it
-          reports itself instead (BrowserWidget). */}
       <div
         className="w-full overflow-hidden"
         style={{ height: bodyHeight }}
-        onPointerDownCapture={() => useUiStore.getState().noteActive(id)}
       >
         <div
           style={{

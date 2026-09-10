@@ -162,7 +162,6 @@ contextBridge.exposeInMainWorld('files', {
 
 contextBridge.exposeInMainWorld('windowMode', {
   toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
-  setWebDark: (dark: boolean) => ipcRenderer.invoke('window:set-web-dark', dark),
   // Whether a widget is filling the screen, so ⇧[ and ⇧] are only taken out of a
   // page while there is another widget to step to.
   setMaximized: (value: boolean) => ipcRenderer.invoke('window:set-maximized', value),

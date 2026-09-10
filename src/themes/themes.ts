@@ -5,9 +5,9 @@ export const DEFAULT_THEME_ID = 'golden-hour';
 export const THEMES: Theme[] = [
   {
     id: 'golden-hour',
-    name: 'Golden Hour',
+    name: 'Amber Lake',
     mood: 'dark',
-    scene: { kind: 'image', src: '/wallpapers/sunset_landscape.png' },
+    scene: { kind: 'image', src: '/wallpapers/amber-lake.webp' },
     atmosphere: {
       scrim: 0.34,
       scrimTint: '44, 22, 14',

@@ -40,6 +40,13 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="t-soft text-micro font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
 );
 
+function wallpaperName(url: string): string {
+  const filename = url.split('/').pop() ?? url;
+  let name = filename;
+  try { name = decodeURIComponent(filename); } catch { /* Keep malformed filenames readable. */ }
+  return name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export const ThemePicker: React.FC = () => {
   const isOpen = useUiStore((s) => s.openDock === 'atmosphere');
   const setTheme = useSpaceStore((s) => s.setTheme);
@@ -161,7 +168,7 @@ export const ThemePicker: React.FC = () => {
               </span>
             </div>
 
-            <Label>My wallpaper</Label>
+            <Label>Wallpapers</Label>
             <div className="mb-4">
               <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
                 {/* 읽는 동안은 들어올 타일 모양으로 자리를 잡아둔다. 다 읽고 나면
@@ -173,13 +180,20 @@ export const ThemePicker: React.FC = () => {
                   : wallpapers.map((url) => (
                       <button
                         key={url}
+                        title={wallpaperName(url)}
+                        aria-label={wallpaperName(url)}
+                        aria-pressed={override?.type === 'IMAGE' && override.value === url}
                         onClick={() => setBackground({ type: 'IMAGE', value: url })}
-                        className="press aspect-video rounded-control bg-cover bg-center transition-transform hover:scale-[1.06]"
+                        className="press aspect-video rounded-control bg-cover bg-center flex items-end overflow-hidden transition-transform hover:scale-[1.06]"
                         style={{
                           backgroundImage: `url(${assetUrl(url)})`,
                           ...ring(override?.value === url),
                         }}
-                      />
+                      >
+                        <span className="w-full truncate px-1 py-0.5 text-micro t-ink" style={{ background: 'var(--surface)' }}>
+                          {wallpaperName(url)}
+                        </span>
+                      </button>
                     ))}
                 {wallpapers !== null && (
                   <button
@@ -194,7 +208,7 @@ export const ThemePicker: React.FC = () => {
               {/* 빈 상태는 채우는 길을 가리킨다. 점선 타일이 그 길이다. */}
               {wallpapers?.length === 0 && (
                 <p className="t-faint mt-1.5 px-0.5 text-micro leading-snug">
-                  No pictures of your own yet. Pick one with the dashed tile.
+                  No wallpapers yet. Pick one with the dashed tile.
                 </p>
               )}
             </div>

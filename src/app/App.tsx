@@ -73,12 +73,6 @@ export const App: React.FC = () => {
     void usePrefsStore.getState().load();
   }, []);
 
-  // The paper switch is one attribute on the root; the CSS does the rest.
-  const paper = usePrefsStore((s) => s.paper);
-  useEffect(() => {
-    document.documentElement.dataset.paper = paper;
-  }, [paper]);
-
   // Saves are debounced, so closing the window right after an edit would drop it.
   useEffect(() => {
     window.addEventListener('beforeunload', flushSaves);

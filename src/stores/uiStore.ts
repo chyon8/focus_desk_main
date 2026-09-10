@@ -80,11 +80,6 @@ interface UiState {
   /** ⌥ is down, so hovering a widget shows it can be picked. */
   isAltHeld: boolean;
   /**
-   * The widget last used, marked with a ring. With a dozen browser widgets open
-   * the one you just came back from is otherwise impossible to find again.
-   */
-  lastActiveId: string | null;
-  /**
    * The "move to space" list on the selection bar. In the store rather than the
    * bar because a widget's own header opens it too, by picking that widget out.
    */
@@ -153,7 +148,6 @@ interface UiState {
   toggleSelected: (widgetId: string) => void;
   clearSelection: () => void;
   setAltHeld: (held: boolean) => void;
-  noteActive: (widgetId: string) => void;
   openMoveMenu: (widgetIds?: string[]) => void;
   closeMoveMenu: () => void;
   toggleMaximized: (widgetId: string) => void;
@@ -198,7 +192,6 @@ export const useUiStore = create<UiState>((set, get) => ({
   dropSpot: null,
   selectedIds: [],
   isAltHeld: false,
-  lastActiveId: null,
   isMoveMenuOpen: false,
   quickAdd: null,
   firstStep: null,
@@ -231,8 +224,6 @@ export const useUiStore = create<UiState>((set, get) => ({
   clearSelection: () => set({ selectedIds: [], isMoveMenuOpen: false }),
 
   setAltHeld: (isAltHeld) => set({ isAltHeld }),
-
-  noteActive: (lastActiveId) => set({ lastActiveId }),
 
   // Given ids, those become the selection: the menu acts on what is picked, and a
   // widget's own header asks for that one widget.

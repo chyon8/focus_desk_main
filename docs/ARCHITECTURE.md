@@ -29,7 +29,7 @@ docs/
 - 변환 유틸: `worldToScreen`, `screenToWorld` — vitest 대상
 - 줌: 커서 중심(zoom-to-cursor). 팬: 스페이스바 드래그 + 트랙패드
 - 위젯 드래그 중에는 transient 업데이트(리렌더 최소화), 드롭 시 스토어 커밋
-- 셸은 **사이드바 하나**. 하단 컨트롤바는 없앴고 정리·맞춤·줌%·통계·단축키표는 사이드바로 갔다. 단축키 N·G·F는 웹페이지에 포커스가 있으면 안 오므로 **⌥N·⌥G·⌥F**가 같은 일을 한다(main의 `before-input-event`가 전달). 위젯 추가는 **빈 캔버스 더블클릭 = 그 자리**, **N = 화면 가운데**, 사이드바 팔레트 = 훑어보기. 전체 목록은 앱 안 `?` 표
+- 셸은 **사이드바 하나**. 하단 컨트롤바는 없앴고 정리·맞춤·줌%·통계·단축키표는 사이드바로 갔다. 단축키 N·G·F는 웹페이지에 포커스가 있으면 안 오므로 **⌥N·⌥G·⌥F**가 같은 일을 한다(main의 `before-input-event`가 전달). 위젯 추가는 **빈 캔버스 더블클릭 = 그 자리**, **N = 화면 가운데**다. 빠른 추가는 자주 쓰는 6개만 먼저 보이고, 나머지는 같은 창의 `More tools`, 전체 목록은 런처(K)에 있다
 
 ## 상태 모델 (stores/)
 - `spaceStore`: 스페이스 문서 단위. `{ id, name, schemaVersion, themeId, background, camera, ambience, widgets{} }`
@@ -40,12 +40,12 @@ docs/
 
 ## 위젯 시스템 (widgets/)
 - Registry 패턴, 2단 분리: `defs.ts`(label/defaultSize/createData, React 무관) ↔ `registry.ts`(icon/Component 결합). 스토어는 defs만 import해 순환 참조를 피한다
-- **위젯 추가는 사이드바의 팔레트**([WidgetPalette.tsx](../src/app/WidgetPalette.tsx)): 클릭하면 화면 가운데, 캔버스로 끌어다 놓으면 그 자리(`addWidget(type, data, at)`). 하단 컨트롤바에는 위젯 버튼이 없다
+- **위젯 추가**([QuickAdd.tsx](../src/app/QuickAdd.tsx)): 빈 캔버스 더블클릭은 그 자리에, N은 화면 가운데에 빠른 추가를 연다(`addWidget(type, data, at)`). `WidgetPalette.tsx`가 빠른 6개·보조 도구·런처의 전체 목록을 같은 데이터로 만든다
 - **위젯을 키우면 본문도 커진다**: `WidgetFrame`이 본문에 `scale(width / defaultSize.width)`(0.5~3배)를 건다. 브라우저 위젯만 예외(페이지가 스스로 리플로우)
 - **다중 선택**: ⇧+빈 캔버스 드래그 = 밴드 선택, ⌥+클릭 = 토글, ⌥ 누르는 동안 hover 테두리. 선택이 있으면 정렬·맞춤·드래그가 그것만 건드린다(`uiStore.selectedIds`, 비영속)
 - **Esc는 지우지 않는다**: 최대화 복귀 → 선택 해제까지만. 위젯 ✕는 8초 Undo 토스트(`UndoToast`)로 되돌릴 수 있다
-- **메모는 문서다**: Tiptap. `/`가 블록 메뉴(표·다이어그램·체크리스트·제목…), 저장은 HTML. 표·다이어그램은 **별도 위젯 타입이 아니라** 노트 안의 블록이고, 팔레트의 Table·Diagram은 그 블록이 미리 들어간 노트다. 다이어그램은 Mermaid(`src/widgets/editor/`)
-- **런처 `K`**(페이지 안에서는 `⇧K`): 공간의 위젯·저장한 웹앱·설치된 앱·자주 간 사이트·프리셋·위젯 종류를 한 목록에서. 색인은 [launcherItems.ts](../src/app/launcherItems.ts). 사이드바 웹앱 독이 같은 `openWebApp`을 쓴다
+- **메모는 문서다**: Tiptap. `/`가 블록 메뉴(표·다이어그램·체크리스트·제목…), 저장은 HTML. 표·다이어그램은 **별도 위젯 타입이 아니라** 노트 안의 블록이다. 다이어그램은 Mermaid(`src/widgets/editor/`)
+- **런처 `K`**(페이지 안에서는 `⇧K`): 공간의 위젯·저장한 웹앱·설치된 앱·자주 간 사이트·프리셋·위젯 종류를 한 목록에서. 색인은 [launcherItems.ts](../src/app/launcherItems.ts)
 - **위젯 복제**: 헤더 hover 아이콘, 또는 선택이 있을 때 `⌘D`
 - 위젯 컴포넌트는 **`{ id }`만** 받고 `useWidgetData<D>(id)`로 자기 데이터만 구독 (prop drilling 금지)
 - 위젯 **본체는 투명**이고 색은 전부 테마 토큰에서 온다. 새 위젯을 만들 때 `bg-white`/`bg-black/40` 같은 색을 직접 쓰지 말 것 — `.glass`, `.t-ink`, `.field`, `.row`, `.chrome-button`을 쓴다
