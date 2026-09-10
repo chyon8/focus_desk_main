@@ -472,7 +472,7 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 
 - **더보기 패널** = [SettingsPanel.tsx](../src/app/SettingsPanel.tsx). 사이드바 맨 아래 `…`. 지금 `APP WINDOWS`(앱 창 붙이기 스위치)와 `DATA`(폴더 열기·내보내기·가져오기) 두 섹션
 - **공간 모양**([ThemePicker.tsx](../src/app/ThemePicker.tsx))은 배경(프리셋·사진·색)·날씨·UI 밝기를 현재 공간에만 건다
-- **월페이퍼 폴더** = `userData/wallpapers`. 사진을 넣으면 팔레트의 Wallpapers에 뜬다 — 설정의 폴더 열기가 바로 그 위(userData)로 간다. 앱이 들고 오는 10장은 번들에서 읽고(`/wallpapers/…`), 사용자 것은 `focusdesk-image://wallpaper/…`로 나간다([images.ts](../electron/ipc/images.ts)). **패키징본에서는 번들 쪽이 asar 안이라 못 쓴다** — 그래서 드롭 존을 여기로 옮겼다 (2026-09-09)
+- **월페이퍼 폴더** = `userData/wallpapers`. 사진을 넣으면 팔레트의 Background에 뜬다 — 설정의 폴더 열기가 바로 그 위(userData)로 간다. 앱이 들고 오는 사진은 번들에서 읽고(`/wallpapers/…`), 사용자 것은 `focusdesk-image://wallpaper/…`로 나간다([images.ts](../electron/ipc/images.ts)). **패키징본에서는 번들 쪽이 asar 안이라 못 쓴다** — 그래서 드롭 존을 여기로 옮겼다 (2026-09-09)
 - **백업** = [backup.ts](../electron/ipc/backup.ts). 하루 1회 스냅샷(최근 5개, `userData/backups/<날짜>/`), 내보내기·가져오기. **가져오기는 id가 같으면 건너뛴다** — 같은 프로필에 되가져오면 "Nothing new"가 정상이다. 쿠키는 백업에 없다
 - **앱 창 붙이기** = `prefsStore.attachApps`, 기본 `false`. 접근성 프롬프트는 헬퍼의 `place`·`windows` 두 곳에서만 뜬다([FocusDeskHelper.swift:391](../electron/helper/macos/FocusDeskHelper.swift#L391), [:518](../electron/helper/macos/FocusDeskHelper.swift#L518))
 - **정렬 순서** = `z` 내림차순(최근 쓴 것부터). `arrange()`는 받은 순서대로 깐다 — 안에서 다시 정렬하지 않는다

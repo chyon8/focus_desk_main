@@ -36,6 +36,49 @@ const WEATHER: { kind: ParticlesChoice['kind']; label: string; icon: LucideIcon 
 // What a kind starts at when the space has no density of its own to carry over.
 const DEFAULT_DENSITY = 0.4;
 
+const BASE_THEMES = ['paper', 'rainy-night', 'snowfall'].map(getTheme);
+
+/** A theme-owned picture appears in the picker once, but still selects its theme. */
+const THEME_FOR_WALLPAPER = new Map(
+  THEMES.flatMap((theme) =>
+    theme.scene.kind === 'image' ? [[theme.scene.src, theme.id] as const] : [],
+  ),
+);
+
+/** The first row follows the order chosen for the wallpaper picker. */
+const WALLPAPER_HEAD = [
+  'midnight-observatory.webp',
+  'quiet-snow.webp',
+  'geometric-relief.png',
+  'summer-meadow.webp',
+];
+
+/** Keep quieter secondary scenes at the end, in the order chosen for the picker. */
+const WALLPAPER_TAIL = [
+  'ghibli-night-tram.png',
+  'ghibli-old-cinema.png',
+  'amber-lake.webp',
+  'afternoon-records.webp',
+];
+
+function orderedWallpapers(urls: string[]): string[] {
+  return [...new Set(urls)].sort((a, b) => {
+    const aHeadRank = WALLPAPER_HEAD.findIndex((name) => a.endsWith(`/${name}`));
+    const bHeadRank = WALLPAPER_HEAD.findIndex((name) => b.endsWith(`/${name}`));
+    if (aHeadRank !== -1 || bHeadRank !== -1) {
+      if (aHeadRank === -1) return 1;
+      if (bHeadRank === -1) return -1;
+      return aHeadRank - bHeadRank;
+    }
+    const aRank = WALLPAPER_TAIL.findIndex((name) => a.endsWith(`/${name}`));
+    const bRank = WALLPAPER_TAIL.findIndex((name) => b.endsWith(`/${name}`));
+    if (aRank === -1 && bRank === -1) return 0;
+    if (aRank === -1) return -1;
+    if (bRank === -1) return 1;
+    return aRank - bRank;
+  });
+}
+
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="t-soft text-micro font-semibold uppercase tracking-[0.14em] mb-2">{children}</div>
 );
@@ -110,8 +153,10 @@ export const ThemePicker: React.FC = () => {
             }`}
           >
             <Label>Background</Label>
-            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1 mb-4">
-              {THEMES.map((theme) => (
+            {/* Plain and weather-backed choices stay compact. Pictures get the
+                width they need below, while all of them remain one setting. */}
+            <div className="grid grid-cols-3 gap-2">
+              {BASE_THEMES.map((theme) => (
                 <button
                   key={theme.id}
                   onClick={() => setTheme(theme.id)}
@@ -127,39 +172,70 @@ export const ThemePicker: React.FC = () => {
                   </div>
                 </button>
               ))}
+            </div>
+
+            <div className="border-hair mt-3 border-t pt-3">
+              <div className="grid grid-cols-2 gap-2">
                 {/* 읽는 동안은 들어올 타일 모양으로 자리를 잡아둔다. 다 읽고 나면
                     같은 자리에 사진이 앉으므로 격자가 안 튄다. */}
                 {wallpapers === null
-                  ? [0, 1, 2].map((i) => (
-                      <div key={i} className="skeleton aspect-video rounded-control" />
+                  ? [0, 1, 2, 3].map((i) => (
+                      <div key={i} className="overflow-hidden rounded-control">
+                        <div className="skeleton aspect-video" />
+                        <div className="skeleton mt-1 h-7" />
+                      </div>
                     ))
-                  : wallpapers.map((url) => (
-                      <button
-                        key={url}
-                        title={wallpaperName(url)}
-                        aria-label={wallpaperName(url)}
-                        aria-pressed={override?.type === 'IMAGE' && override.value === url}
-                        onClick={() => setBackground({ type: 'IMAGE', value: url })}
-                        className="press aspect-video rounded-control bg-cover bg-center flex items-end overflow-hidden transition-transform hover:scale-[1.06]"
-                        style={{
-                          backgroundImage: `url(${assetUrl(url)})`,
-                          ...ring(override?.value === url),
-                        }}
-                      >
-                        <span className="w-full truncate px-1 py-0.5 text-micro t-ink" style={{ background: 'var(--surface)' }}>
-                          {wallpaperName(url)}
-                        </span>
-                      </button>
-                    ))}
+                  : orderedWallpapers(wallpapers).map((url) => {
+                      const ownerThemeId = THEME_FOR_WALLPAPER.get(url);
+                      const selected = override?.type === 'IMAGE' && override.value === url ||
+                        ownerThemeId === themeId && !override;
+                      return (
+                        <button
+                          key={url}
+                          title={wallpaperName(url)}
+                          aria-label={wallpaperName(url)}
+                          aria-pressed={selected}
+                          onClick={() =>
+                            ownerThemeId
+                              ? setTheme(ownerThemeId)
+                              : setBackground({ type: 'IMAGE', value: url })
+                          }
+                          className="press overflow-hidden rounded-control text-left transition-transform hover:scale-[1.03]"
+                          style={ring(selected)}
+                        >
+                          <div
+                            className="aspect-video bg-cover bg-center"
+                            style={{ backgroundImage: `url(${assetUrl(url)})` }}
+                          />
+                          <span
+                            className="t-ink block h-7 overflow-hidden px-1 py-0.5 text-micro leading-[12px]"
+                            style={{
+                              background: 'var(--surface)',
+                              display: '-webkit-box',
+                              WebkitBoxOrient: 'vertical',
+                              WebkitLineClamp: 2,
+                            }}
+                          >
+                            {wallpaperName(url)}
+                          </span>
+                        </button>
+                      );
+                    })}
                 {wallpapers !== null && (
                   <button
                     onClick={() => fileInput.current?.click()}
                     title="Use your own image"
-                    className="press border-hair t-soft aspect-video rounded-control border border-dashed flex items-center justify-center transition-colors"
+                    className="press border-hair t-soft overflow-hidden rounded-control border border-dashed text-center transition-colors"
                   >
-                    <Upload size={13} />
+                    <span className="flex aspect-video items-center justify-center">
+                      <Upload size={16} />
+                    </span>
+                    <span className="block h-7 px-1 py-0.5 text-micro leading-[12px]">
+                      Add image
+                    </span>
                   </button>
                 )}
+              </div>
             </div>
 
             <input
@@ -179,7 +255,7 @@ export const ThemePicker: React.FC = () => {
                 말해준다 — 이름표와 점 두 개가 할 일이 아니다. */}
             {/* 일곱씩 두 줄이다 — 윗줄이 어두운 색, 아랫줄이 밝은 색.
                 `SOLID_COLORS`가 그 순서로 들고 있다. */}
-            <div className="grid grid-cols-7 gap-1.5 mb-6">
+            <div className="mt-3 grid grid-cols-7 gap-1.5 mb-6">
               {SOLID_COLORS.map(({ value, name }) => (
                 <button
                   key={value}
