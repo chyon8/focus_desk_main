@@ -89,6 +89,13 @@
   --ink-faint: #726c62;
 }
 
+/* Paper uses a quieter edge than photo-backed light themes. Its flat background
+   already separates the ivory surfaces, so a white halo only makes them glare. */
+:root[data-theme='paper'] {
+  --halo: rgba(74, 61, 48, 0.18);
+  --lip: inset 0 1px 0 rgba(255, 252, 246, 0.42);
+}
+
 body {
   margin: 0;
   overflow: hidden;

@@ -13,11 +13,11 @@ describe('rooms', () => {
 
   it('offers every theme as a room', () => {
     expect(ROOMS.map((room) => room.id)).toEqual([
-      'meadow',
+      'snowfall',
       'midnight-observatory',
+      'meadow',
       'rainy-attic',
       'quiet-snow',
-      'snowfall',
     ]);
     for (const room of ROOMS) {
       expect(room.name).not.toBe('');
@@ -25,11 +25,13 @@ describe('rooms', () => {
     }
   });
 
-  it('puts the room that suits the hour first', () => {
-    // The first card is the wide one, so it should be a painted room that
-    // suits the hour rather than a gradient.
-    expect(roomsForHour(23)[0].id).toBe('rainy-attic');
-    expect(roomsForHour(8)[0].id).toBe('meadow');
+  it('keeps Snowfall first and Midnight Observatory second', () => {
+    for (const hour of [0, 8, 12, 18, 23]) {
+      expect(roomsForHour(hour).slice(0, 2).map((room) => room.id)).toEqual([
+        'snowfall',
+        'midnight-observatory',
+      ]);
+    }
   });
 
   it('keeps every room whatever the hour', () => {

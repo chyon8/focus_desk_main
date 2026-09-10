@@ -80,11 +80,23 @@ export function useGround(theme: Theme): { ground: string; light: boolean; autoL
 
 /** Publishes the theme's tokens as CSS variables so the whole UI can read them. */
 export function useThemeVariables(theme: Theme) {
+  const background = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const { ground, light } = useGround(theme);
 
   const tokens = useMemo(
-    () => backgroundTokens(ground, theme.tokens, light),
-    [ground, theme, light],
+    () => {
+      const derived = backgroundTokens(ground, theme.tokens, light);
+      // Paper is a deliberately coloured material, not a generic light backdrop.
+      // Keep its ivory face and stronger edge until the user chooses another background.
+      return theme.id === 'paper' && !background
+        ? {
+            ...derived,
+            surface: theme.tokens.surface,
+            panelBorder: theme.tokens.panelBorder,
+          }
+        : derived;
+    },
+    [background, ground, theme, light],
   );
 
   // 그림자 색조는 UI가 실제로 놓인 색에서 뽑는다.
@@ -92,7 +104,8 @@ export function useThemeVariables(theme: Theme) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-polarity', light ? 'light' : 'dark');
-  }, [light]);
+    document.documentElement.setAttribute('data-theme', theme.id);
+  }, [light, theme.id]);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--shadow-tint', tint);

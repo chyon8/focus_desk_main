@@ -109,23 +109,86 @@ export const ThemePicker: React.FC = () => {
               isMaximized ? 'right-0 mt-2' : 'left-0 top-0'
             }`}
           >
-            <Label>Theme</Label>
-            <div className="grid grid-cols-2 gap-2 mb-6">
+            <Label>Background</Label>
+            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1 mb-4">
               {THEMES.map((theme) => (
                 <button
                   key={theme.id}
                   onClick={() => setTheme(theme.id)}
-                  className="press group rounded-control overflow-hidden text-left transition-transform hover:scale-[1.03]"
+                  className="press group rounded-control overflow-hidden text-left transition-transform hover:scale-[1.04]"
                   style={ring(themeId === theme.id && !override)}
                 >
-                  <div className="aspect-[4/3] w-full" style={thumbStyle(theme.scene)} />
+                  <div className="aspect-video w-full" style={thumbStyle(theme.scene)} />
                   <div
-                    className="t-ink px-2 py-1.5 text-meta font-medium"
+                    className="t-ink truncate px-1 py-0.5 text-micro font-medium"
                     style={{ background: 'color-mix(in srgb, var(--surface) 80%, transparent)' }}
                   >
                     {theme.name}
                   </div>
                 </button>
+              ))}
+                {/* 읽는 동안은 들어올 타일 모양으로 자리를 잡아둔다. 다 읽고 나면
+                    같은 자리에 사진이 앉으므로 격자가 안 튄다. */}
+                {wallpapers === null
+                  ? [0, 1, 2].map((i) => (
+                      <div key={i} className="skeleton aspect-video rounded-control" />
+                    ))
+                  : wallpapers.map((url) => (
+                      <button
+                        key={url}
+                        title={wallpaperName(url)}
+                        aria-label={wallpaperName(url)}
+                        aria-pressed={override?.type === 'IMAGE' && override.value === url}
+                        onClick={() => setBackground({ type: 'IMAGE', value: url })}
+                        className="press aspect-video rounded-control bg-cover bg-center flex items-end overflow-hidden transition-transform hover:scale-[1.06]"
+                        style={{
+                          backgroundImage: `url(${assetUrl(url)})`,
+                          ...ring(override?.value === url),
+                        }}
+                      >
+                        <span className="w-full truncate px-1 py-0.5 text-micro t-ink" style={{ background: 'var(--surface)' }}>
+                          {wallpaperName(url)}
+                        </span>
+                      </button>
+                    ))}
+                {wallpapers !== null && (
+                  <button
+                    onClick={() => fileInput.current?.click()}
+                    title="Use your own image"
+                    className="press border-hair t-soft aspect-video rounded-control border border-dashed flex items-center justify-center transition-colors"
+                  >
+                    <Upload size={13} />
+                  </button>
+                )}
+            </div>
+
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void uploadWallpaper(file);
+              }}
+            />
+
+            {/* 단색은 전부 여기 한 줄이다. Minimal 테마를 카드로 따로 두었더니
+                같은 일(배경을 이 색으로)을 하는 목록이 둘로 나뉘어 있었다.
+                Minimal은 글자·테두리 색까지 들고 오는데, 그건 고르면 화면이
+                말해준다 — 이름표와 점 두 개가 할 일이 아니다. */}
+            {/* 일곱씩 두 줄이다 — 윗줄이 어두운 색, 아랫줄이 밝은 색.
+                `SOLID_COLORS`가 그 순서로 들고 있다. */}
+            <div className="grid grid-cols-7 gap-1.5 mb-6">
+              {SOLID_COLORS.map(({ value, name }) => (
+                <button
+                  key={value}
+                  onClick={() => setBackground({ type: 'COLOR', value })}
+                  title={name}
+                  aria-label={name}
+                  className="border-hair aspect-square rounded-control press border transition-transform hover:scale-[1.12]"
+                  style={{ backgroundColor: value, ...ring(override?.value === value) }}
+                />
               ))}
             </div>
 
@@ -166,82 +229,6 @@ export const ThemePicker: React.FC = () => {
               <span className="t-faint w-7 text-right text-micro tabular-nums">
                 {weather.kind === 'none' ? 'off' : Math.round(weather.density * 100)}
               </span>
-            </div>
-
-            <Label>Wallpapers</Label>
-            <div className="mb-4">
-              <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
-                {/* 읽는 동안은 들어올 타일 모양으로 자리를 잡아둔다. 다 읽고 나면
-                    같은 자리에 사진이 앉으므로 격자가 안 튄다. */}
-                {wallpapers === null
-                  ? [0, 1, 2].map((i) => (
-                      <div key={i} className="skeleton aspect-video rounded-control" />
-                    ))
-                  : wallpapers.map((url) => (
-                      <button
-                        key={url}
-                        title={wallpaperName(url)}
-                        aria-label={wallpaperName(url)}
-                        aria-pressed={override?.type === 'IMAGE' && override.value === url}
-                        onClick={() => setBackground({ type: 'IMAGE', value: url })}
-                        className="press aspect-video rounded-control bg-cover bg-center flex items-end overflow-hidden transition-transform hover:scale-[1.06]"
-                        style={{
-                          backgroundImage: `url(${assetUrl(url)})`,
-                          ...ring(override?.value === url),
-                        }}
-                      >
-                        <span className="w-full truncate px-1 py-0.5 text-micro t-ink" style={{ background: 'var(--surface)' }}>
-                          {wallpaperName(url)}
-                        </span>
-                      </button>
-                    ))}
-                {wallpapers !== null && (
-                  <button
-                    onClick={() => fileInput.current?.click()}
-                    title="Use your own image"
-                    className="press border-hair t-soft aspect-video rounded-control border border-dashed flex items-center justify-center transition-colors"
-                  >
-                    <Upload size={13} />
-                  </button>
-                )}
-              </div>
-              {/* 빈 상태는 채우는 길을 가리킨다. 점선 타일이 그 길이다. */}
-              {wallpapers?.length === 0 && (
-                <p className="t-faint mt-1.5 px-0.5 text-micro leading-snug">
-                  No wallpapers yet. Pick one with the dashed tile.
-                </p>
-              )}
-            </div>
-
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void uploadWallpaper(file);
-              }}
-            />
-
-            {/* 단색은 전부 여기 한 줄이다. Minimal 테마를 카드로 따로 두었더니
-                같은 일(배경을 이 색으로)을 하는 목록이 둘로 나뉘어 있었다.
-                Minimal은 글자·테두리 색까지 들고 오는데, 그건 고르면 화면이
-                말해준다 — 이름표와 점 두 개가 할 일이 아니다. */}
-            <Label>Colours</Label>
-            {/* 일곱씩 두 줄이다 — 윗줄이 어두운 색, 아랫줄이 밝은 색.
-                `SOLID_COLORS`가 그 순서로 들고 있다. */}
-            <div className="grid grid-cols-7 gap-1.5">
-              {SOLID_COLORS.map(({ value, name }) => (
-                <button
-                  key={value}
-                  onClick={() => setBackground({ type: 'COLOR', value })}
-                  title={name}
-                  aria-label={name}
-                  className="border-hair aspect-square rounded-control press border transition-transform hover:scale-[1.12]"
-                  style={{ backgroundColor: value, ...ring(override?.value === value) }}
-                />
-              ))}
             </div>
 
             {/* 배경을 고르면 UI 밝기는 따라온다 — 사진이면 평균 색에서, 단색이면

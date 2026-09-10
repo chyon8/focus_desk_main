@@ -70,7 +70,7 @@ export const THEMES: Theme[] = [
     id: 'paper',
     name: 'Paper',
     mood: 'light',
-    scene: { kind: 'color', value: '#fdf6e3' },
+    scene: { kind: 'color', value: '#d7cdbd' },
     atmosphere: {
       scrim: 0.08,
       scrimTint: '255, 248, 232',
@@ -80,8 +80,8 @@ export const THEMES: Theme[] = [
       ink: '#3b3128',
       inkSoft: 'rgba(59, 49, 40, 0.55)',
       inkFaint: 'rgba(59, 49, 40, 0.3)',
-      surface: '#fbf6ea',
-      panelBorder: 'rgba(90, 70, 50, 0.14)',
+      surface: '#eee7da',
+      panelBorder: 'rgba(74, 61, 48, 0.2)',
     },
   },
 ];

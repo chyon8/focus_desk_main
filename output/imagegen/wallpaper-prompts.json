@@ -1,0 +1,21 @@
+{
+  "tool": "built-in image_gen",
+  "prompts": [
+    {
+      "name": "ghibli-night-tram",
+      "prompt": "Create one finished desktop wallpaper, landscape 16:9, ideally 3840x2160. Full bleed, a single image, no collage, no border, no text, no watermark, no logos. For a productivity desktop: calm composition, spacious areas, restrained highlights and detail, beautiful at full screen. No natural scenery, no plants, no forests, no mountains, no ocean, no countryside. Use case: illustration-story. A Studio Ghibli-inspired hand-painted animation background of the inside of an empty old city tram late at night. Worn wooden fittings, upholstered benches, overhead hand straps, softly glowing interior lamps, urban building windows visible beyond the tram windows. Warm intimate lighting, painterly gouache textures, carefully drawn perspective, quiet everyday atmosphere. Wide cinematic view along the carriage, no characters, interior and city architecture only."
+    },
+    {
+      "name": "ghibli-old-cinema",
+      "prompt": "Create one finished desktop wallpaper, landscape 16:9, ideally 3840x2160. Full bleed, a single image, no collage, no border, no text, no watermark, no logos. For a productivity desktop: calm composition, spacious areas, restrained highlights and detail, beautiful at full screen. No natural scenery, no plants, no forests, no mountains, no ocean, no countryside. Use case: illustration-story. A Studio Ghibli-inspired hand-painted animation background of a small old neighborhood cinema auditorium after closing. Rows of gently worn upholstered seats, a blank softly dim cinema screen, velvet curtains, wall sconces, a projection booth window. Charming lived-in architectural details, expressive hand-painted gouache texture, subdued cozy lighting, wide view from the back, no people, entirely indoors. The screen must not be glaring white; keep the whole image comfortable and softly lit."
+    },
+    {
+      "name": "retro-scifi-workshop",
+      "prompt": "Create one finished desktop wallpaper, landscape 16:9, ideally 3840x2160. Full bleed, a single image, no collage, no border, no text, no watermark, no logos. For a productivity desktop: calm composition, spacious areas, restrained highlights and detail, beautiful at full screen. No natural scenery, no plants, no forests, no mountains, no ocean, no countryside. Use case: stylized-concept. Retro-futurist analog science fiction workshop interior rendered as a sophisticated cinematic 3D scene. Built-in workstation with chunky CRT monitors showing only soft abstract glows, modular industrial wall panels, mechanical controls, a swivel chair, carefully routed cables. Strong architectural composition, matte aged materials, subtle film grain, subdued ambient lighting and small practical light sources, believable detailed model construction. No people, no exterior landscape, no readable interface text. Quiet, spacious, tasteful, not busy cyberpunk."
+    },
+    {
+      "name": "geometric-relief",
+      "prompt": "Create one finished desktop wallpaper, landscape 16:9, ideally 3840x2160. Full bleed, a single image, no collage, no border, no text, no watermark, no logos. For a productivity desktop: calm composition, spacious areas, restrained highlights and detail, beautiful at full screen. No natural scenery, no plants, no forests, no mountains, no ocean, no countryside. Use case: stylized-concept. An elegant abstract geometric desktop wallpaper, Bauhaus-inspired composition rendered as tactile matte sculptural relief. A few large intersecting circles, arches and rectangular planes with precise spacing, subtle paper and plaster texture, gentle directional shadows and depth. Calm asymmetrical balance with ample uninterrupted areas, muted earthy colors with dark accents, no white background, no objects or scenery, no typography. Sophisticated restrained gallery-quality geometric abstraction, radically different from illustration or science fiction."
+    }
+  ]
+}

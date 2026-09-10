@@ -50,12 +50,12 @@ interface RoomSpec {
  */
 const SPECS: RoomSpec[] = [
   {
-    id: 'meadow',
-    name: 'Meadow',
-    themeId: 'golden-hour',
-    background: '/wallpapers/summer-meadow.webp',
-    ambience: { ...silent, cafe: 26 },
-    hours: [6, 15],
+    id: 'snowfall',
+    name: 'Snowfall',
+    themeId: 'snowfall',
+    background: null,
+    ambience: { ...silent, fire: 24 },
+    hours: [21, 24],
   },
   {
     id: 'midnight-observatory',
@@ -64,6 +64,14 @@ const SPECS: RoomSpec[] = [
     background: '/wallpapers/midnight-observatory.webp',
     ambience: { ...silent },
     hours: [19, 24],
+  },
+  {
+    id: 'meadow',
+    name: 'Meadow',
+    themeId: 'golden-hour',
+    background: '/wallpapers/summer-meadow.webp',
+    ambience: { ...silent, cafe: 26 },
+    hours: [6, 15],
   },
   {
     id: 'rainy-attic',
@@ -81,14 +89,6 @@ const SPECS: RoomSpec[] = [
     ambience: { ...silent },
     hours: [6, 12],
   },
-  {
-    id: 'snowfall',
-    name: 'Snowfall',
-    themeId: 'snowfall',
-    background: null,
-    ambience: { ...silent, fire: 24 },
-    hours: [21, 24],
-  },
 ];
 
 export const ROOMS: Room[] = SPECS.map((spec) => ({
@@ -96,20 +96,9 @@ export const ROOMS: Room[] = SPECS.map((spec) => ({
   theme: getTheme(spec.themeId),
 }));
 
-/**
- * The rooms with the one that suits the hour first.
- *
- * Nobody is asked what time it is — the app already knows, so a fitting room
- * is shown first.
- *
- * Among the rooms that suit the hour, a painted one comes before a gradient: the
- * first card is shown wide, and a wide empty gradient is a worse first thing to
- * see than a small one.
- */
-export function roomsForHour(hour: number): Room[] {
-  const suits = (room: Room) => hour >= room.hours[0] && hour < room.hours[1];
-  const rank = (room: Room) => Number(suits(room)) * 2 + Number(!!room.background);
-  return [...ROOMS].sort((a, b) => rank(b) - rank(a));
+/** The onboarding order stays fixed; only the greeting changes with the hour. */
+export function roomsForHour(_hour: number): Room[] {
+  return [...ROOMS];
 }
 
 /** The line above the rooms, which is different at eleven at night. */
