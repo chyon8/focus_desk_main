@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { assetUrl, isLightBackground } from '../spaces/backgrounds';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useGround } from './useTheme';
+import { sceneForPolarity } from './themes';
 import { ParticleLayer } from './ParticleLayer';
 import type { Atmosphere, Glow, SceneSpec, Theme } from './types';
 
@@ -55,7 +56,7 @@ function glowStyle(glow: Glow): React.CSSProperties {
 export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
   // 배경을 뒤집어 놓았어도 비네트는 그림 위 장식이라 그림이 실제로 어떤지를
   // 따른다. 그래서 light가 아니라 autoLight다.
-  const { autoLight } = useGround(theme);
+  const { autoLight, light } = useGround(theme);
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
   const { atmosphere } = theme;
@@ -68,7 +69,7 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
     ? override.type === 'IMAGE'
       ? { kind: 'image', src: override.value }
       : { kind: 'color', value: override.value }
-    : theme.scene;
+    : sceneForPolarity(theme, light);
 
   // Changing theme or wallpaper crossfades rather than cutting.
   const sceneKey = scene.kind === 'image' ? scene.src : scene.value;
@@ -111,12 +112,14 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
         <ParticleLayer kind={particles.kind} density={particles.density} />
       )}
 
-      <div
+      {theme.id === 'bako' && !override && <div className="absolute inset-0 bako-grid" />}
+
+      {!theme.flat && <div
         className={`absolute inset-0 ${
           lightBackdrop ? 'scene-vignette-light' : 'scene-vignette'
         }`}
-      />
-      <div className="absolute inset-0 scene-grain" />
+      />}
+      {!theme.flat && <div className="absolute inset-0 scene-grain" />}
     </div>
   );
 };

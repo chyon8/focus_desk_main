@@ -58,4 +58,6 @@ export interface Theme {
   /** Density is 0–1; omitted means still air. */
   particles?: { kind: ParticleKind; density: number };
   tokens: ThemeTokens;
+  /** Reference palettes keep their exact colours instead of deriving them from the ground. */
+  flat?: { darkTokens: ThemeTokens; darkBackground: string };
 }

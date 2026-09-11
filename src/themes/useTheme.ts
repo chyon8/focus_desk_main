@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSpaceStore } from '../stores/spaceStore';
-import { getTheme } from './themes';
-import { assetUrl, backgroundTokens, isLightBackground } from '../spaces/backgrounds';
+import { getTheme, tokensForGround } from './themes';
+import { assetUrl, isLightBackground } from '../spaces/backgrounds';
 import { photoTone } from '../spaces/photoTone';
 import type { Theme } from './types';
 
@@ -84,18 +84,7 @@ export function useThemeVariables(theme: Theme) {
   const { ground, light } = useGround(theme);
 
   const tokens = useMemo(
-    () => {
-      const derived = backgroundTokens(ground, theme.tokens, light);
-      // Paper is a deliberately coloured material, not a generic light backdrop.
-      // Keep its ivory face and stronger edge until the user chooses another background.
-      return theme.id === 'paper' && !background
-        ? {
-            ...derived,
-            surface: theme.tokens.surface,
-            panelBorder: theme.tokens.panelBorder,
-          }
-        : derived;
-    },
+    () => tokensForGround(theme, Boolean(background), ground, light),
     [background, ground, theme, light],
   );
 

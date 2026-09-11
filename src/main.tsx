@@ -6,7 +6,15 @@ import { App } from './app/App';
 import '@fontsource-variable/instrument-sans/wght.css';
 import '@fontsource/jetbrains-mono/latin-400.css';
 import '@fontsource/jetbrains-mono/latin-500.css';
+// Match the reference's loaded faces, including its Noto fallback, offline.
+import '@fontsource/ibm-plex-sans-kr/300.css';
+import '@fontsource/ibm-plex-sans-kr/400.css';
+import '@fontsource/ibm-plex-sans-kr/600.css';
+import '@fontsource/noto-sans-kr/400.css';
+import '@fontsource/noto-sans-kr/700.css';
+import '@fontsource/noto-sans-kr/900.css';
 import './index.css';
+import './themes/referenceThemes.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -1,8 +1,11 @@
 import type { Theme } from './types';
+import { backgroundTokens } from '../spaces/backgrounds';
+import { REFERENCE_THEMES } from './referenceThemes';
 
 export const DEFAULT_THEME_ID = 'golden-hour';
 
 export const THEMES: Theme[] = [
+  ...REFERENCE_THEMES,
   {
     id: 'golden-hour',
     name: 'Amber Lake',
@@ -87,5 +90,30 @@ export const THEMES: Theme[] = [
 ];
 
 export function getTheme(id: string | undefined): Theme {
-  return THEMES.find((t) => t.id === id) ?? THEMES[0];
+  return THEMES.find((t) => t.id === id) ?? THEMES.find((t) => t.id === DEFAULT_THEME_ID)!;
+}
+
+export function tokensForGround(
+  theme: Theme,
+  hasCustomBackground: boolean,
+  ground: string,
+  light: boolean,
+) {
+  if (theme.flat) return light ? theme.tokens : theme.flat.darkTokens;
+  const derived = backgroundTokens(ground, theme.tokens, light);
+  // Paper keeps its ivory material only in light mode. Keeping it in dark mode
+  // puts light text on the same light surface.
+  return theme.id === 'paper' && !hasCustomBackground && light
+    ? {
+        ...derived,
+        surface: theme.tokens.surface,
+        panelBorder: theme.tokens.panelBorder,
+      }
+    : derived;
+}
+
+export function sceneForPolarity(theme: Theme, light: boolean): Theme['scene'] {
+  return theme.flat && !light
+    ? { kind: 'color', value: theme.flat.darkBackground }
+    : theme.scene;
 }

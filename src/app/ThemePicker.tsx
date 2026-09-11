@@ -36,7 +36,7 @@ const WEATHER: { kind: ParticlesChoice['kind']; label: string; icon: LucideIcon 
 // What a kind starts at when the space has no density of its own to carry over.
 const DEFAULT_DENSITY = 0.4;
 
-const BASE_THEMES = ['paper', 'rainy-night', 'snowfall'].map(getTheme);
+const BASE_THEMES = ['bako', 'editorial', 'paper', 'rainy-night', 'snowfall'].map(getTheme);
 
 /** A theme-owned picture appears in the picker once, but still selects its theme. */
 const THEME_FOR_WALLPAPER = new Map(
@@ -50,11 +50,15 @@ const WALLPAPER_HEAD = [
   'midnight-observatory.webp',
   'quiet-snow.webp',
   'geometric-relief.png',
+  'modern-prismatic-glass.png',
   'summer-meadow.webp',
+  'anime-coastal-platform.png',
 ];
 
 /** Keep quieter secondary scenes at the end, in the order chosen for the picker. */
 const WALLPAPER_TAIL = [
+  'modern-mineral-flow.png',
+  'anime-maple-veranda.png',
   'ghibli-night-tram.png',
   'ghibli-old-cinema.png',
   'amber-lake.webp',
@@ -160,10 +164,18 @@ export const ThemePicker: React.FC = () => {
                 <button
                   key={theme.id}
                   onClick={() => setTheme(theme.id)}
+                  aria-label={theme.name}
+                  aria-pressed={themeId === theme.id && !override}
                   className="press group rounded-control overflow-hidden text-left transition-transform hover:scale-[1.04]"
                   style={ring(themeId === theme.id && !override)}
                 >
-                  <div className="aspect-video w-full" style={thumbStyle(theme.scene)} />
+                  <div className="aspect-video w-full flex items-center justify-center" style={thumbStyle(theme.scene)}>
+                    {theme.flat && <span style={{
+                      fontFamily: '"IBM Plex Sans KR", "Noto Sans KR", sans-serif',
+                      fontSize: 20, fontWeight: theme.id === 'bako' ? 900 : 700,
+                      color: theme.tokens.ink, letterSpacing: '-0.02em',
+                    }}>Aa 가</span>}
+                  </div>
                   <div
                     className="t-ink truncate px-1 py-0.5 text-micro font-medium"
                     style={{ background: 'color-mix(in srgb, var(--surface) 80%, transparent)' }}

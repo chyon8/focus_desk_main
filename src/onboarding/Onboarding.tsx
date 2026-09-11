@@ -343,21 +343,22 @@ function pullOut(target: Camera, spaceName: string) {
 }
 
 /** A heading and the line under it. Left-aligned, like everything on this screen. */
-const Title: React.FC<{ children: React.ReactNode; sub?: React.ReactNode }> = ({
+const Title: React.FC<{ children: React.ReactNode; sub?: React.ReactNode; light?: boolean }> = ({
   children,
   sub,
+  light = false,
 }) => (
   <div className="mb-6">
     <h1
       className="text-display font-semibold leading-[1.08] tracking-[-0.03em]"
-      style={{ color: PAPER }}
+      style={{ color: light ? '#141414' : PAPER }}
     >
       {children}
     </h1>
     {sub && (
       <p
         className="mt-3 text-body leading-relaxed"
-        style={{ color: 'rgba(247,246,243,0.72)' }}
+        style={{ color: light ? '#343434' : 'rgba(247,246,243,0.72)' }}
       >
         {sub}
       </p>
@@ -421,7 +422,9 @@ const RoomScene: React.FC<{ room: Room; drift?: boolean; weather?: boolean }> = 
   drift,
   weather = true,
 }) => {
-  const { scene, atmosphere, particles } = room.theme;
+  const { scene, atmosphere } = room.theme;
+  // 방이 자기 날씨를 들고 있으면 그게 테마의 것을 덮는다.
+  const particles = room.particles ?? room.theme.particles;
   const wallpaper = room.background ?? (scene.kind === 'image' ? scene.src : null);
   const background: React.CSSProperties = wallpaper
     ? {
@@ -455,10 +458,21 @@ const RoomScene: React.FC<{ room: Room; drift?: boolean; weather?: boolean }> = 
       )}
       {/* The weather goes over the photograph too. Without it four of the six
           rooms are stills, and a grid of stills is a wallpaper picker. */}
-      {particles && weather && (
+      {particles && particles.kind !== 'none' && weather && (
         <div className="absolute inset-0">
           <ParticleLayer kind={particles.kind} density={particles.density} />
         </div>
+      )}
+      {room.theme.id === 'bako' && (
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(20,20,20,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(20,20,20,0.055) 1px, transparent 1px)',
+            backgroundSize: '56px 56px',
+            maskImage: 'linear-gradient(to bottom, black 0 46%, transparent 82%)',
+          }}
+        />
       )}
     </>
   );
@@ -650,6 +664,10 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
    * which is what the cards are for.
    */
   const shown = room ?? peek ?? rooms[0] ?? null;
+  // This room is deliberately flat and light. The photo-room scrim changes its
+  // measured #f7f7f5 canvas into grey, so its hover preview uses the source
+  // palette and dark copy directly.
+  const swissPreview = step === 'room' && shown?.theme.id === 'bako';
 
   /**
    * Picking a room sets the real theme, so the scene behind the next question is
@@ -671,6 +689,8 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         chosen.background ? { type: 'IMAGE', value: chosen.background } : null,
         chosen.ambience
       );
+    // setRoom은 날씨를 테마에 돌려준다. 방이 자기 것을 들고 있으면 다시 건다.
+    if (chosen.particles) useSpaceStore.getState().setParticles(chosen.particles);
     setRoom(chosen);
     // While the window is still opening. The question is what the user came for;
     // waiting for the animation to finish before asking it is the animation
@@ -833,6 +853,12 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
       className="fixed inset-0 z-[200] overflow-y-auto"
+      style={{
+        fontFamily:
+          shown?.theme.id === 'bako'
+            ? '"IBM Plex Sans KR", "Noto Sans KR", ui-sans-serif, system-ui, sans-serif'
+            : 'var(--font-ui)',
+      }}
       onPointerMove={(e) =>
         setCursor({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight })
       }
@@ -875,7 +901,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         className="absolute inset-0"
         style={{
           backgroundImage: SCRIM,
-          opacity: room ? SCRIM_SETTLED : shown ? SCRIM_BROWSING : 0,
+          opacity: swissPreview ? 0 : room ? SCRIM_SETTLED : shown ? SCRIM_BROWSING : 0,
           transition: `opacity ${room ? REVEAL_MS : 170}ms ease-out`,
         }}
       />
@@ -900,6 +926,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           background: `radial-gradient(circle 38vmax at ${cursor.x * 100}% ${
             cursor.y * 100
           }%, rgba(247,246,243,0.055), transparent 70%)`,
+          opacity: swissPreview ? 0 : 1,
         }}
       />
 
@@ -969,7 +996,10 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                   animate={{ opacity: entering ? 0 : 1, y: entering ? -8 : 0 }}
                   transition={{ duration: CARDS_LEAVE_MS / 1000, ease: 'easeIn' }}
                 >
-                  <Title sub="A space is somewhere you are. This one is yours, and you can change it any time.">
+                  <Title
+                    light={swissPreview}
+                    sub="A space is somewhere you are. This one is yours, and you can change it any time."
+                  >
                     {greetingForHour(hour)} Where do you want to work?
                   </Title>
                 </motion.div>

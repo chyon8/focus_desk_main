@@ -13,11 +13,11 @@ describe('rooms', () => {
 
   it('offers every theme as a room', () => {
     expect(ROOMS.map((room) => room.id)).toEqual([
+      'rainy-attic',
       'snowfall',
+      'swiss-editorial',
       'midnight-observatory',
       'meadow',
-      'rainy-attic',
-      'quiet-snow',
     ]);
     for (const room of ROOMS) {
       expect(room.name).not.toBe('');
@@ -25,11 +25,11 @@ describe('rooms', () => {
     }
   });
 
-  it('keeps Snowfall first and Midnight Observatory second', () => {
+  it('keeps Rainy Attic first and Snowfall second', () => {
     for (const hour of [0, 8, 12, 18, 23]) {
       expect(roomsForHour(hour).slice(0, 2).map((room) => room.id)).toEqual([
+        'rainy-attic',
         'snowfall',
-        'midnight-observatory',
       ]);
     }
   });

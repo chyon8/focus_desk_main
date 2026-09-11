@@ -1,0 +1,137 @@
+/* User-requested references are exceptions to the shared A2 appearance.
+   Bako values: techbukket.com/bako-dictionary/assets/design-language.DEpywmip.css.
+   Editorial colours are measured; its type sizes/weights are screenshot estimates
+   scaled to app-sized controls (44px heading / 28px body becomes 22px / 14px). */
+:root:is([data-theme='editorial'], [data-theme='bako']) {
+  --font-ui: 'IBM Plex Sans KR', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif;
+  --radius-surface: 0px;
+  --radius-control: 0px;
+  --radius-mark: 0px;
+  --shadow-lift: 0 0 0 transparent;
+  --shadow-float: 0 0 0 transparent;
+  --lip: inset 0 0 0 transparent;
+  --halo: transparent;
+  --paper-fill: var(--surface);
+  --paper-edge: transparent;
+}
+
+:root[data-theme='editorial'] {
+  --text-title: 22px;
+  --accent: #111111;
+  --accent-hover: #111111;
+  --accent-ink: #fef8e9;
+  --accent-soft: rgba(17, 17, 17, 0.08);
+  --surface-2: #fef8e9;
+  --plate: #f0eadc;
+  --reference-body: #111111;
+  --reference-hover: #f0eadc;
+}
+:root[data-theme='editorial'][data-polarity='dark'] {
+  --accent: #fef8e9;
+  --accent-hover: #fef8e9;
+  --accent-ink: #191815;
+  --accent-soft: rgba(254, 248, 233, 0.1);
+  --surface-2: #211f1b;
+  --plate: #302d26;
+  --reference-body: #fef8e9;
+  --reference-hover: #302d26;
+}
+
+:root[data-theme='bako'] {
+  --text-body: 15px;
+  --accent: #111111;
+  --accent-hover: #111111;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(17, 17, 17, 0.1);
+  --surface-2: #fdfdfc;
+  --plate: #e4e4df;
+  --reference-body: #343434;
+  --reference-hover: #f2f2ef;
+  --reference-border-strong: #adada7;
+  --reference-grid-line: rgba(20, 20, 20, 0.055);
+}
+:root[data-theme='bako'][data-polarity='dark'] {
+  --accent: #ffffff;
+  --accent-hover: #ffffff;
+  --accent-ink: #060606;
+  --accent-soft: rgba(255, 255, 255, 0.12);
+  --surface-2: #101010;
+  --plate: #2d2d2d;
+  --reference-body: #d4d4d8;
+  --reference-hover: #121212;
+  --reference-border-strong: #3a3a3a;
+  --reference-grid-line: rgba(255, 255, 255, 0.055);
+}
+
+.bako-grid {
+  background-image:
+    linear-gradient(var(--reference-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--reference-grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, black 0 46%, transparent 82%);
+}
+
+:root:is([data-theme='editorial'], [data-theme='bako']) :is(.memo-paper, .clock-face) {
+  background: var(--surface);
+  box-shadow: none;
+}
+:root:is([data-theme='editorial'], [data-theme='bako']) .memo-doc {
+  color: var(--reference-body);
+}
+:root:is([data-theme='editorial'], [data-theme='bako']) .memo-doc :is(h1, h2, h3) {
+  color: var(--ink);
+}
+:root:is([data-theme='editorial'], [data-theme='bako']) .text-display {
+  font-family: var(--font-ui);
+}
+:root:is([data-theme='editorial'], [data-theme='bako']) :is(.row:hover, .chrome-button:hover) {
+  background: var(--reference-hover);
+}
+:root:is([data-theme='editorial'], [data-theme='bako']) .field::placeholder {
+  color: var(--ink-faint);
+  opacity: 1;
+}
+:root:is([data-theme='editorial'], [data-theme='bako']) .card-tile:not(.card-tile-marked) {
+  background: var(--surface-2);
+  border-color: var(--panel-border);
+}
+:root:is([data-theme='editorial'], [data-theme='bako']) .card-tile:not(.card-tile-marked):hover {
+  background: var(--reference-hover);
+}
+:root[data-theme='editorial'] .memo-doc h1 {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+:root[data-theme='editorial'] .memo-doc {
+  line-height: 1.65;
+}
+:root[data-theme='editorial'] .memo-doc hr {
+  border: 0;
+  border-top: 1px solid var(--ink);
+  margin: 16px 0;
+}
+:root[data-theme='bako'] .memo-doc {
+  line-height: 1.55;
+}
+:root[data-theme='bako'] .memo-doc h1 {
+  font-size: 31px;
+  font-weight: 900;
+  line-height: 1.03;
+  letter-spacing: -0.02em;
+}
+:root[data-theme='bako'] .memo-doc h2 {
+  font-size: 24px;
+  line-height: 1.2;
+}
+:root[data-theme='bako'] .memo-doc h3 {
+  font-size: 17px;
+  line-height: 1.25;
+}
+:root[data-theme='bako'] .memo-doc hr {
+  border-color: var(--panel-border);
+}
+:root[data-theme='bako'] :is(.field, .widget-header-always) {
+  border-color: var(--reference-border-strong);
+}

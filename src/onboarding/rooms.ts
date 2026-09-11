@@ -1,6 +1,7 @@
 import { getTheme } from '../themes/themes';
 import type { Theme } from '../themes/types';
 import type { AmbienceLevels } from '../ambience/engine';
+import type { ParticlesChoice } from '../spaces/types';
 
 /**
  * The rooms offered on the first run (D-097).
@@ -21,6 +22,8 @@ export interface Room {
   theme: Theme;
   /** A wallpaper over the theme's own scene, or null to use the theme's. */
   background: string | null;
+  /** Overrides the theme's weather. Omitted means the theme's own. */
+  particles?: ParticlesChoice;
   /** Quiet: it plays the moment the room is picked. */
   ambience: AmbienceLevels;
   /** The hours it suits, for putting the likely one first. */
@@ -40,15 +43,26 @@ interface RoomSpec {
   name: string;
   themeId: string;
   background: string | null;
+  particles?: ParticlesChoice;
   ambience: AmbienceLevels;
   hours: [number, number];
 }
 
 /**
- * The five. One uses its theme's own scene; four borrow a palette and bring a
+ * The five. Two use their theme's own scene; three borrow a palette and bring a
  * wallpaper.
  */
 const SPECS: RoomSpec[] = [
+  {
+    id: 'rainy-attic',
+    name: 'Rainy Attic',
+    themeId: 'rainy-night',
+    background: '/wallpapers/rainy-attic.webp',
+    ambience: { ...silent, rain: 46 },
+    // 벽지에 이미 비가 그려져 있다. 그 위에 파티클 비를 또 내리면 두 겹이 된다.
+    particles: { kind: 'none', density: 0 },
+    hours: [18, 24],
+  },
   {
     id: 'snowfall',
     name: 'Snowfall',
@@ -56,6 +70,14 @@ const SPECS: RoomSpec[] = [
     background: null,
     ambience: { ...silent, fire: 24 },
     hours: [21, 24],
+  },
+  {
+    id: 'swiss-editorial',
+    name: 'Swiss Editorial',
+    themeId: 'bako',
+    background: null,
+    ambience: { ...silent },
+    hours: [0, 24],
   },
   {
     id: 'midnight-observatory',
@@ -72,22 +94,6 @@ const SPECS: RoomSpec[] = [
     background: '/wallpapers/summer-meadow.webp',
     ambience: { ...silent, cafe: 26 },
     hours: [6, 15],
-  },
-  {
-    id: 'rainy-attic',
-    name: 'Rainy Attic',
-    themeId: 'rainy-night',
-    background: '/wallpapers/rainy-attic.webp',
-    ambience: { ...silent, rain: 46 },
-    hours: [18, 24],
-  },
-  {
-    id: 'quiet-snow',
-    name: 'Quiet Snow',
-    themeId: 'snowfall',
-    background: '/wallpapers/quiet-snow.webp',
-    ambience: { ...silent },
-    hours: [6, 12],
   },
 ];
 
