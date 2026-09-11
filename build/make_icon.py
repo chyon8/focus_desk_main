@@ -1,83 +1,53 @@
-"""Focus Desk app icon: a desk lamp's light pooling on a desk, in the app's palette."""
-from PIL import Image, ImageDraw, ImageFilter
+"""Build the Focus Desk PNG and macOS icon from the selected card concept."""
 
-S = 1024
-MARGIN = 96                      # macOS tiles do not run to the edge
-BOX = (MARGIN, MARGIN, S - MARGIN, S - MARGIN)
-RADIUS = 196
+from pathlib import Path
+import subprocess
+import tempfile
 
-TOP = (56, 38, 28)               # warm dark, same family as the Lofi Room theme
-BOTTOM = (19, 13, 10)
-ACCENT = (232, 168, 124)
-LIGHT = (255, 233, 205)
-
-BULB = (512, 330)
-DESK_Y = 700
+from PIL import Image
 
 
-def rounded_mask():
-    mask = Image.new('L', (S, S), 0)
-    ImageDraw.Draw(mask).rounded_rectangle(BOX, RADIUS, fill=255)
-    return mask
+ROOT = Path(__file__).resolve().parent.parent
+SOURCE = ROOT / "design-ref" / "icon-concepts" / "01-cards.png"
+PNG = ROOT / "build" / "icon.png"
+ICNS = ROOT / "build" / "icon.icns"
+
+SIZES = {
+    "icon_16x16.png": 16,
+    "icon_16x16@2x.png": 32,
+    "icon_32x32.png": 32,
+    "icon_32x32@2x.png": 64,
+    "icon_128x128.png": 128,
+    "icon_128x128@2x.png": 256,
+    "icon_256x256.png": 256,
+    "icon_256x256@2x.png": 512,
+    "icon_512x512.png": 512,
+    "icon_512x512@2x.png": 1024,
+}
 
 
-def vertical_gradient():
-    strip = Image.new('RGB', (1, S))
-    for y in range(S):
-        t = y / (S - 1)
-        strip.putpixel((0, y), tuple(round(TOP[i] + (BOTTOM[i] - TOP[i]) * t) for i in range(3)))
-    return strip.resize((S, S)).convert('RGBA')
+def clean_source() -> Image.Image:
+    icon = Image.open(SOURCE).convert("RGBA").resize((1024, 1024), Image.Resampling.LANCZOS)
+    alpha = icon.getchannel("A")
+    # Image generation left isolated alpha=1 pixels outside the visible tile.
+    alpha = alpha.point(lambda value: 0 if value <= 1 else value)
+    icon.putalpha(alpha)
+    return icon
 
 
-def glow(center, radius, color, alpha, blur):
-    layer = Image.new('RGBA', (S, S), (0, 0, 0, 0))
-    x, y = center
-    ImageDraw.Draw(layer).ellipse(
-        (x - radius, y - radius, x + radius, y + radius), fill=(*color, alpha)
-    )
-    return layer.filter(ImageFilter.GaussianBlur(blur))
+def main() -> None:
+    icon = clean_source()
+    icon.save(PNG, optimize=True)
+
+    with tempfile.TemporaryDirectory(suffix=".iconset") as directory:
+        iconset = Path(directory)
+        for name, size in SIZES.items():
+            icon.resize((size, size), Image.Resampling.LANCZOS).save(iconset / name, optimize=True)
+        subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(ICNS)], check=True)
+
+    print(f"wrote {PNG}")
+    print(f"wrote {ICNS}")
 
 
-def light_cone():
-    """A shaft of light from the bulb to the desk, fading as it falls."""
-    shape = Image.new('L', (S, S), 0)
-    ImageDraw.Draw(shape).polygon(
-        [(BULB[0] - 62, BULB[1]), (BULB[0] + 62, BULB[1]),
-         (BULB[0] + 322, DESK_Y + 34), (BULB[0] - 322, DESK_Y + 34)],
-        fill=255,
-    )
-
-    falloff = Image.new('L', (1, S), 0)
-    for y in range(S):
-        if y < BULB[1]:
-            value = 0
-        elif y > DESK_Y + 34:
-            value = 0
-        else:
-            t = (y - BULB[1]) / (DESK_Y + 34 - BULB[1])
-            value = round(150 - 96 * t)
-        falloff.putpixel((0, y), value)
-
-    alpha = Image.new('L', (S, S), 0)
-    alpha.paste(falloff.resize((S, S)), (0, 0), shape)
-
-    cone = Image.new('RGBA', (S, S), (255, 190, 138, 0))
-    cone.putalpha(alpha.filter(ImageFilter.GaussianBlur(22)))
-    return cone
-
-
-tile = vertical_gradient()
-
-tile.alpha_composite(glow(BULB, 210, (255, 176, 112), 120, 110))   # room light
-tile.alpha_composite(light_cone())
-tile.alpha_composite(glow((512, DESK_Y), 230, (255, 186, 126), 96, 70))  # pool on the desk
-tile.alpha_composite(glow(BULB, 96, (255, 214, 168), 190, 44))     # halo around the bulb
-
-draw = ImageDraw.Draw(tile)
-draw.ellipse((BULB[0] - 74, BULB[1] - 74, BULB[0] + 74, BULB[1] + 74), fill=(*LIGHT, 255))
-draw.rounded_rectangle((512 - 300, DESK_Y, 512 + 300, DESK_Y + 56), 28, fill=(*ACCENT, 255))
-
-icon = Image.new('RGBA', (S, S), (0, 0, 0, 0))
-icon.paste(tile, (0, 0), rounded_mask())
-icon.save('/Users/isangmin/Desktop/JS/focus_desk/build/icon.png')
-print('wrote build/icon.png')
+if __name__ == "__main__":
+    main()
