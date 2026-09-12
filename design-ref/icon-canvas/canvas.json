@@ -1,0 +1,17 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "A — 확정" },
+    { "id": "page-2", "name": "지난 시안" }
+  ],
+  "artboards": [
+    { "file": "Colors.dc.html", "x": 0, "y": 0, "w": 900, "h": 780, "title": "A — 색 여섯", "page": "page-1" },
+    { "file": "Main.dc.html", "x": 980, "y": 0, "w": 460, "h": 620, "title": "A — 확정 · 잉크 · 앰버", "page": "page-1" },
+
+    { "file": "Compare.dc.html", "x": 0, "y": 0, "w": 1000, "h": 440, "title": "크기별 비교", "page": "page-2" },
+    { "file": "Current.dc.html", "x": 0, "y": 560, "w": 460, "h": 620, "title": "현재 — 카드 3장", "page": "page-2" },
+    { "file": "OptionC.dc.html", "x": 540, "y": 560, "w": 460, "h": 620, "title": "C — 방 하나", "page": "page-2" },
+    { "file": "OptionD.dc.html", "x": 1080, "y": 560, "w": 460, "h": 620, "title": "D — 격자 · Swiss", "page": "page-2" },
+    { "file": "OptionE.dc.html", "x": 1620, "y": 560, "w": 460, "h": 620, "title": "E — 타이포 · Swiss", "page": "page-2" }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

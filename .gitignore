@@ -30,3 +30,4 @@ ref_images
 *.njsproj
 *.sln
 *.sw?
+design-ref/icon-canvas/*.html
