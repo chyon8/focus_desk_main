@@ -39,7 +39,9 @@ function scenePhoto(
  * 면·극성·그림자가 다 여기서 나온다. Atmosphere 패널도 "이 배경을 밝다고 읽었는지"를
  * 보여주려고 같은 값을 읽는다 — 두 군데서 따로 계산하면 언젠가 갈린다.
  */
-export function useGround(theme: Theme): { ground: string; light: boolean; autoLight: boolean } {
+export function useGround(
+  theme: Theme,
+): { ground: string; light: boolean; autoLight: boolean; overridden: boolean } {
   const background = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const chosenPolarity = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.polarity);
 
@@ -75,17 +77,16 @@ export function useGround(theme: Theme): { ground: string; light: boolean; autoL
   // 헤일로·그림자 세기·윗변 빛이 여기서 갈린다.
   const light = chosenPolarity != null ? chosenPolarity === 'light' : autoLight;
 
-  return { ground, light, autoLight };
+  return { ground, light, autoLight, overridden: background != null };
 }
 
 /** Publishes the theme's tokens as CSS variables so the whole UI can read them. */
 export function useThemeVariables(theme: Theme) {
-  const background = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
-  const { ground, light } = useGround(theme);
+  const { ground, light, overridden } = useGround(theme);
 
   const tokens = useMemo(
-    () => tokensForGround(theme, Boolean(background), ground, light),
-    [background, ground, theme, light],
+    () => tokensForGround(theme, ground, light, overridden),
+    [ground, theme, light, overridden],
   );
 
   // 그림자 색조는 UI가 실제로 놓인 색에서 뽑는다.

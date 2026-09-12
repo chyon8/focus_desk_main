@@ -463,7 +463,7 @@ const RoomScene: React.FC<{ room: Room; drift?: boolean; weather?: boolean }> = 
           <ParticleLayer kind={particles.kind} density={particles.density} />
         </div>
       )}
-      {room.theme.id === 'bako' && (
+      {room.theme.id === 'swiss' && (
         <div
           className="absolute inset-0"
           style={{
@@ -667,7 +667,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   // This room is deliberately flat and light. The photo-room scrim changes its
   // measured #f7f7f5 canvas into grey, so its hover preview uses the source
   // palette and dark copy directly.
-  const swissPreview = step === 'room' && shown?.theme.id === 'bako';
+  const swissPreview = step === 'room' && shown?.theme.id === 'swiss';
 
   /**
    * Picking a room sets the real theme, so the scene behind the next question is
@@ -855,7 +855,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       className="fixed inset-0 z-[200] overflow-y-auto"
       style={{
         fontFamily:
-          shown?.theme.id === 'bako'
+          shown?.theme.id === 'swiss'
             ? '"IBM Plex Sans KR", "Noto Sans KR", ui-sans-serif, system-ui, sans-serif'
             : 'var(--font-ui)',
       }}

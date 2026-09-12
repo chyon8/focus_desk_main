@@ -17,7 +17,6 @@
 | 8 | ✅ 최대화한 채로 `[`·`]` | 작음 | 최대화를 유지한 채 다음 위젯으로 넘어간다 |
 | 9 | ✅ 디자인 리뉴얼 | 큼 | 위젯 12종·패널 9개가 DESIGN.md 하나만 보고 그려진다 |
 | 10 | **온보딩 ← 지금 여기** | 큼 | 임포트 / 웹앱 고르기 / 건너뛰기 세 갈래가 다 끝까지 간다 |
-| 12 | 테마 = 스타일 × 배경 | 중간 | Editorial을 고르고 아무 배경이나 깔아도 위젯 색이 그 배경에서 나온다 |
 | 11 | 서명·공증 | — | **사용자만 가능.** 하드 블로커 |
 
 > ⚠️ **2026-09-05에 사용자가 시켜서 10(온보딩)을 순서보다 먼저 손댔다** — 10-A와 투어 3단계·웹앱 타일이 그때 끝났다. 10장 안의 "지금 여기"가 온보딩 안에서의 다음 줄이다. **7(겹치지 않게 놓기)은 2026-09-06에 계획에서 뺐다** — 번호는 안 당겼다.
@@ -110,9 +109,10 @@
 ### 시안과 다르게 가기로 한 것 (2026-09-08, 사용자가 정함)
 
 - **Atmosphere 패널 순서는 안 바꾼다.** 시안의 Light/Dark는 배경 목록 필터인데(배경이 4개뿐이라
-  성립한다), 앱은 Theme 8 + 내 월페이퍼 N + 단색 14다. 내 월페이퍼는 밝기를 미리 모르고,
-  Theme 8개 중 밝게 읽히는 건 2개라 Light를 누르면 목록이 빈다. `Colours`가 이미
-  윗줄 어두움·아랫줄 밝음으로 나뉘어 극성 구분을 하고 있다. UI brightness는 기본이
+  성립한다), 앱은 Theme 4 + 내 월페이퍼 N + 단색 8이다. 내 월페이퍼는 밝기를 미리 모르고,
+  Theme 4개 중 밝게 읽히는 건 1개라 Light를 누르면 목록이 빈다. `Colours`가 이미
+  윗줄 어두움·아랫줄 밝음으로 나뉘어 극성 구분을 하고 있다(4열 2행, 한 열이 한 색
+  계열이다). UI brightness는 기본이
   "Match the background"라 손댈 일이 드물어서 맨 아래에 둔다
 - **위젯 마크 8색은 액센트를 안 따른다.** DESIGN.md 2장·7장에 적었다
 - **브라우저 위젯에 탭 줄을 안 넣는다.** 페이지 여러 개를 묶는 건 컬럼이 한다 —
@@ -167,14 +167,16 @@
 **라이트는 다르게 깨진다** (2026-09-07에 고침). 셋이 한 원인에서 나왔다.
 - 배경색을 섞는 양이 극성마다 달라야 한다. 어두운 바탕에 어두운 배경색을 35% 섞으면 휘도가 안 움직이지만(0.014 → 0.013), 밝은 바탕에 섞으면 0.92에서 0.40으로 떨어진다. Light를 걸어도 면이 중간톤 라벤더(`#a8a8c3`)였다 — 밝은 쪽은 `LIGHT_GROUND_SHARE` 14%다
 - 밝은 면은 색폭이 밝기에 눌린다. HSL에서 보이는 폭은 `(1-|2L-1|)×S`라 L>0.94에서는 채도를 넣어도 색이 안 남는다(폭 3~5). `BRIGHT_SURFACE_CHROMA`로 남는 폭에 맞춰 채도를 올리고 밝기를 다시 푼다 — 휘도를 다시 맞추므로 대비는 그대로다. 어두운 면(L<0.5)은 안 건드린다
-- **밝은 배경이 Mist·Sand 둘뿐이었다.** 월페이퍼 5장은 평균 휘도가 0.05~0.21이라 전부 dark로 읽힌다(임계값 0.35). 단색 넷을 더했다 — Linen·Sage·Lilac·Blush
-- **시안에 있는 따뜻한 무채색 검정이 없었다.** 어두운 색이 전부 남색·자주·초록이 섞여 있고 가장 어두운 Ink(`#12131a`)도 남색이다. A2.html의 `solidDark`·`solidLight` 값을 그대로 넣었다 — Black `#191715` · Greige `#e9e5de`. 일곱씩 두 줄이다
+- **밝은 배경이 부족했다.** 월페이퍼 5장은 평균 휘도가 0.05~0.21이라 전부 dark로 읽힌다(임계값 0.35). 그래서 단색의 절반이 밝은 쪽이다
+- **시안에 있는 따뜻한 무채색 검정이 없었다.** 어두운 색이 전부 남색·자주·초록이 섞여 있었다. A2.html의 `solidDark`·`solidLight` 계열을 넣었다 — Black `#191715` · Greige `#ece7df`
 
 ### 손대지 않기로 한 것
 
-- **`SOLID_COLORS`의 어두운 4색은 건드리지 않는다** ([backgrounds.ts](../src/spaces/backgrounds.ts)). 2026-09-04에 최초 버전 8색으로 되돌려봤지만 사용자가 지금 값을 쓰기로 정했다
-- **`MINIMAL_THEMES`는 없앴다** (2026-09-07, 사용자가 정함). Mist·Sand·Deep Forest·Stone이 자기 `{text, border, surface}`를 들고 와서 값 층보다 위에 있었고, 그래서 Mist는 면이 순백(`#ffffff`, DESIGN.md 7장 금지 값)이고 글자가 차가운 회색(`#475569`, 대비 7.58)이라 **라이트에서 검은색이 아예 안 나왔다.** 지금은 넷 다 `SOLID_COLORS`의 배경색일 뿐이고 글자·면·테두리는 값 층이 정한다(대비 15.73). **색 값 자체는 최초 버전 그대로다**
+- **`SOLID_COLORS`는 8색이다** (2026-09-12, 사용자가 정함. [backgrounds.ts](../src/spaces/backgrounds.ts)). 열넷이었을 때 ΔE가 4~8이라 서로 구분이 안 됐다. 네 계열 × 두 밝기로 줄이고 채도를 올렸다 — 최소 ΔE 어두운 줄 11.0 / 밝은 줄 7.3. 버린 색을 쓰던 공간은 그대로 칠해진다(값이 문자열로 저장된다)
+- **`MINIMAL_THEMES`는 없앴다** (2026-09-07, 사용자가 정함). Mist·Sand·Deep Forest·Stone이 자기 `{text, border, surface}`를 들고 와서 값 층보다 위에 있었고, 그래서 Mist는 면이 순백(`#ffffff`, DESIGN.md 7장 금지 값)이고 글자가 차가운 회색(`#475569`, 대비 7.58)이라 **라이트에서 검은색이 아예 안 나왔다.** 지금은 `SOLID_COLORS`의 배경색일 뿐이고 글자·면·테두리는 값 층이 정한다(대비 15.73)
 - **단색 배경에는 scrim·glow를 얹지 않는다** ([SceneLayer.tsx](../src/themes/SceneLayer.tsx)). 사진 위에서 글자가 읽히게 하려던 것이라 단색에는 이유가 없다
+- **격자(Pattern)는 단색 위에만 깐다** (2026-09-12. [SceneLayer.tsx](../src/themes/SceneLayer.tsx)·[index.css](../src/index.css)의 `.scene-grid`). Swiss Editorial이 제 것으로 들고 있던 것을 뺐다 — 격자는 테마가 아니라 바탕의 성질이다. 사진 위에서는 얼룩으로 보여서 Atmosphere 패널의 Plain/Grid 줄도 단색일 때만 나온다
+- **Swiss Editorial에 단색을 고르면 테마가 유지된다** (2026-09-12. [spaceStore.ts](../src/stores/spaceStore.ts)의 `setBackground`). 다른 테마는 배경을 고르면 기본 테마로 돌아가는데, 그 테마는 날씨도 사진도 없고 각진 면이 사용자가 고른 것이라 단색 고르기가 곧 그 테마의 바탕 밝기 고르기다. 면·글자는 그 색에서 뽑는다(`tokensForGround`의 `overridden`). 사진을 고르면 예전대로 되돌아간다
 - **컬럼 안 카드는 마크 색을 타일 전체로 칠한다**(6-2). 위젯은 왼쪽 변 막대인데 카드만 다른 이유는 카드에 헤더가 없고 크기가 1/5이라서다
 - 최초 버전 팔레트 원본은 [legacy/components/AmbienceDock.tsx](../legacy/components/AmbienceDock.tsx)에 남아 있다. `CREATIVE_THEMES` 4개는 아직 안 가져왔다
 
@@ -200,9 +202,11 @@
 
 **온보딩 배경 구성 (2026-09-11)**: Rainy Attic·Snowfall·Swiss Editorial·Midnight Observatory·Meadow 순서다. Swiss Editorial 호버 중에는 원본 `#f7f7f5` 배경·검은 글자·IBM Plex Sans KR를 쓴다. Quiet Snow·Rainy Desk·Afternoon Records·Summer Country Room은 배경 선택 목록에만 둔다. Warm Cabin은 온보딩에서 제거했다.
 
-**추가 월페이퍼 검증 남음 (2026-09-10)**: 재시작 후 복원·공간별 독립 저장, 16:9·16:10·울트라와이드 잘림, 수동 Light/Dark 실기 확인. 교체된 온보딩 배경도 실기로 확인할 것. Paper 자체 배경의 Light·Dark는 2026-09-11에 실기로 확인했다.
+**추가 월페이퍼 검증 남음 (2026-09-10)**: 재시작 후 복원·공간별 독립 저장, 16:9·16:10·울트라와이드 잘림, 수동 Light/Dark 실기 확인. 교체된 온보딩 배경도 실기로 확인할 것.
 
-**Editorial·Swiss Editorial 테마 검증 남음 (2026-09-11)**: 패키징본에서 네트워크 없이 IBM Plex Sans KR·Noto Sans KR가 표시되는지 확인.
+**월페이퍼 시안 검토 남음 (2026-09-12)**: 1차 3장(Rainy Reading Lounge·Winter Lake Greenhouse·River Stone Bridge)과 2차 3장(Rain Window Reading V2·Snow Lake Greenhouse V2·Alpine Cycle Bridge V2)의 앱 내 선택·표시 확인. 원본의 색채 설계·표현 기법을 새 장면에 적용한 3차 시안은 사용자 품질 검토 후 반영 여부를 정한다.
+
+**Swiss Editorial 테마 검증 남음 (2026-09-11)**: 패키징본에서 네트워크 없이 IBM Plex Sans KR·Noto Sans KR가 표시되는지 확인.
 >
 > **지난 세션에 버린 것과 이유**
 > - 호버하면 그 방 소리 미리듣기 — **브라우저가 첫 클릭 전엔 소리를 안 낸다.** 이 화면의 첫 클릭은 방을 고르는 클릭이라 미리듣기는 항상 무음이 된다
@@ -368,7 +372,7 @@
 **아래 ①~④ 설명은 만들어진 것의 근거로 남긴다. 남은 것은 이것뿐이다:**
 - **줌아웃은 이 공간의 위젯만 펼친다.** 예전 STATUS에 "모든 공간이 한 화면에"라고 적혀 있었지만 **캔버스는 활성 공간만 그린다**([Canvas.tsx:23](../src/canvas/Canvas.tsx#L23)) — 여러 공간을 한 화면에 놓으려면 새 기능이 필요하다
 - **배경은 사용자가 첫 화면에서 고른다** — [rooms.ts](../src/onboarding/rooms.ts)의 방 5개. 방 = 테마(색) + 월페이퍼(선택) + 소리 + 어울리는 시간대. **월페이퍼를 갈아끼우면 이 파일만 고치면 된다.**
-- **월페이퍼 파일명은 두 군데에 박혀 있다** — [rooms.ts](../src/onboarding/rooms.ts)와 [themes.ts](../src/themes/themes.ts). `public/wallpapers/`에서 지우면 ThemePicker의 "Wallpapers" 목록은 폴더를 읽으니 자동 반영되지만, 이 두 파일이 참조하던 것이면 배경이 깨진다. `lofi-room`·`fireplace` 테마가 실제로 이렇게 깨졌고 지웠다 — 테마는 이제 4개(golden-hour·rainy-night·snowfall·paper), 기본은 `golden-hour`
+- **월페이퍼 파일명은 두 군데에 박혀 있다** — [rooms.ts](../src/onboarding/rooms.ts)와 [themes.ts](../src/themes/themes.ts). `public/wallpapers/`에서 지우면 ThemePicker의 "Wallpapers" 목록은 폴더를 읽으니 자동 반영되지만, 이 두 파일이 참조하던 것이면 배경이 깨진다. `lofi-room`·`fireplace` 테마가 실제로 이렇게 깨졌고 지웠다 — 테마는 이제 4개(swiss·golden-hour·rainy-night·snowfall), 기본은 `golden-hour`
 - **아무 카드에도 안 올라가 있으면 첫 카드의 방이 배경이다** ([Onboarding.tsx](../src/onboarding/Onboarding.tsx)의 `shown`). 검은 화면이었을 때는 첫 호버가 "화면이 켜지는" 것처럼 보였다 — 이미 방 안에 서 있으면 호버가 **방을 바꾸는** 동작이 되고, 그게 카드가 하는 일이다
 - 시간대에 맞는 방이 맨 앞 **넓은 카드**로 온다. 그중에서도 그림 있는 방이 우선 — 넓은 빈 그라데이션은 첫인상이 나쁘다
 
@@ -433,34 +437,6 @@ Chrome에 창 3개, 탭 41개가 열려 있습니다.
 **하지 않을 것**: 순차 클릭 튜토리얼, 단축키 표, 위젯 종류 나열, 텍스트로 쓴 서사, 통계·포커스 세션(1일차엔 빈 그래프), 앱 위젯·접근성 권한, 온보딩 직후 피드백 요청(겪은 게 없어서 쓸 말이 없다 — 3회차 또는 3일차에).
 
 **2회차가 진짜 훅** — 컨텍스트 복원은 두 번째 열 때 겪는다. 온보딩 마지막에 예고("내일 열면 이 화면 그대로예요"), 2회차 실행에 한 줄("어제 이 공간에서 2시간 34분").
-
-## 12. 테마 = 스타일 × 배경 — 정한 것 (2026-09-12)
-
-지금 `themeId` 하나가 배경·색 토큰·글꼴/모양을 다 들고 있다. 그래서 Editorial을 고른 채
-배경을 바꾸면 위젯이 크림색 아니면 검정 둘 중 하나로만 나온다 —
-[themes.ts](../src/themes/themes.ts)의 `tokensForGround`가 `theme.flat`이면 `ground`를 안 보고 빠져나가고,
-[referenceThemes.css](../src/themes/referenceThemes.css)가 `--surface-2`·`--plate`·`--accent`를 hex로 덮는다.
-
-**축을 둘로 나눈다.**
-
-| 축 | 정하는 것 |
-|---|---|
-| 배경 | 사진/단색/그라디언트, 날씨, 밝기. `--ink`·`--surface`·`--panel-border`는 **항상** 여기서 파생 |
-| 스타일 | 글꼴, radius, 그림자, 테두리 굵기, 타입 스케일. 색은 `var(--ink)` 같은 상대값만 |
-
-**Editorial의 크림색 바탕은 프리셋이다** — 스타일을 처음 고를 때 배경도 같이 세팅되고,
-그 뒤엔 배경을 자유롭게 바꾼다. 묶여 있는 게 아니라 시작값이다.
-
-같이 볼 것: `sceneForPolarity`(지금은 flat 테마만 극성에 따라 배경이 바뀐다),
-[SceneLayer.tsx](../src/themes/SceneLayer.tsx)의 `!theme.flat &&` (vignette·grain을 끈다).
-
-> ⚠️ **2026-09-12에 한 번 시도했다가 통째로 되돌렸다.** `flat` 팔레트를 없애고 전부 배경에서
-> 파생시켰더니 두 가지가 같이 날아갔다 — (1) Editorial·Swiss의 **다크 팔레트**(`flat.darkTokens`와
-> `sceneForPolarity`의 배경 스왑). Dark를 누르면 크림 배경 위에 갈색 위젯이 됐다. (2) **레퍼런스의
-> 정확한 색**(Swiss `#ffffff`/`#141414`, Editorial `#fef8e9`/`#111111`, 잉크 3단이 전부 같은 값).
-> **다시 할 때는 이 둘을 먼저 어떻게 지킬지 정하고 시작한다.**
-
----
 
 ## 11. 서명·공증
 Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.** 지금 빌드는 Apple Development 서명뿐이라 남에게 주면 안 열린다.

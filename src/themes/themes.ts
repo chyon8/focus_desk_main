@@ -69,47 +69,27 @@ export const THEMES: Theme[] = [
       panelBorder: 'rgba(200, 214, 245, 0.15)',
     },
   },
-  {
-    id: 'paper',
-    name: 'Paper',
-    mood: 'light',
-    scene: { kind: 'color', value: '#d7cdbd' },
-    atmosphere: {
-      scrim: 0.08,
-      scrimTint: '255, 248, 232',
-      glow: { color: 'rgba(255, 226, 176, 0.4)', x: 0.5, y: 0.16, radius: 1.1 },
-    },
-    tokens: {
-      ink: '#3b3128',
-      inkSoft: 'rgba(59, 49, 40, 0.55)',
-      inkFaint: 'rgba(59, 49, 40, 0.3)',
-      surface: '#eee7da',
-      panelBorder: 'rgba(74, 61, 48, 0.2)',
-    },
-  },
 ];
 
 export function getTheme(id: string | undefined): Theme {
   return THEMES.find((t) => t.id === id) ?? THEMES.find((t) => t.id === DEFAULT_THEME_ID)!;
 }
 
+/**
+ * `overridden`은 공간이 배경을 따로 골랐다는 뜻이다.
+ *
+ * Swiss Editorial처럼 값이 고정된 테마는 제 바탕(`#f7f7f5`/`#050505`) 위에서만 그
+ * 값을 그대로 쓴다. 사용자가 단색을 고르면 UI가 놓인 색이 그 색이므로, 면·글자는
+ * 다른 테마와 같은 식으로 그 색에서 뽑는다 — 이게 Swiss Editorial의 밝기 조절이다.
+ */
 export function tokensForGround(
   theme: Theme,
-  hasCustomBackground: boolean,
   ground: string,
   light: boolean,
+  overridden = false,
 ) {
-  if (theme.flat) return light ? theme.tokens : theme.flat.darkTokens;
-  const derived = backgroundTokens(ground, theme.tokens, light);
-  // Paper keeps its ivory material only in light mode. Keeping it in dark mode
-  // puts light text on the same light surface.
-  return theme.id === 'paper' && !hasCustomBackground && light
-    ? {
-        ...derived,
-        surface: theme.tokens.surface,
-        panelBorder: theme.tokens.panelBorder,
-      }
-    : derived;
+  if (theme.flat && !overridden) return light ? theme.tokens : theme.flat.darkTokens;
+  return backgroundTokens(ground, theme.tokens, light);
 }
 
 export function sceneForPolarity(theme: Theme, light: boolean): Theme['scene'] {

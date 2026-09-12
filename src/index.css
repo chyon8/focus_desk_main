@@ -70,6 +70,9 @@
   --danger: #e98b78;
   /* 값 층이 배경마다 다시 푼다. 이건 첫 프레임용 바닥값이다. */
   --ink-faint: #948d83;
+
+  /* 단색 배경 위 격자선. 사진 위에는 안 깐다 — SceneLayer가 막는다. */
+  --scene-grid-line: rgba(255, 255, 255, 0.055);
 }
 
 /* 극성은 배경이 정한다. themes/useTheme가 data-polarity를 단다. */
@@ -87,13 +90,7 @@
   --accent-soft: rgba(169, 88, 27, 0.12);
   --danger: #a3231a;
   --ink-faint: #726c62;
-}
-
-/* Paper uses a quieter edge than photo-backed light themes. Its flat background
-   already separates the ivory surfaces, so a white halo only makes them glare. */
-:root[data-theme='paper'] {
-  --halo: rgba(74, 61, 48, 0.18);
-  --lip: inset 0 1px 0 rgba(255, 252, 246, 0.42);
+  --scene-grid-line: rgba(20, 20, 20, 0.055);
 }
 
 body {
@@ -154,6 +151,17 @@ body {
     transparent 45%,
     rgba(120, 96, 64, 0.1) 100%
   );
+}
+
+/* 단색 배경 위 격자. Swiss Editorial이 제 것으로 들고 있었는데, 격자는 테마가
+   아니라 바탕의 성질이라 어떤 단색 위에도 깔 수 있게 뺐다. 아래로 갈수록 흐려진다 —
+   위젯이 모인 윗쪽에서만 자리를 잡아주면 된다. */
+.scene-grid {
+  background-image:
+    linear-gradient(var(--scene-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--scene-grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, black 0 46%, transparent 82%);
 }
 
 /* Fine film grain. Static noise from an inline SVG filter — no asset, no repaint. */

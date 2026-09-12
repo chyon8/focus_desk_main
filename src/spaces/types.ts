@@ -3,7 +3,7 @@ import type { Camera } from '../canvas/camera';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export type WidgetType =
   | 'todo'
@@ -76,6 +76,11 @@ export interface SpaceDoc {
    * Atmosphere에서 뒤집을 수 있고, 뒤집은 값이 여기 남는다.
    */
   polarity?: 'light' | 'dark' | null;
+  /**
+   * 단색 배경 위에 까는 무늬. 없으면 테마가 정한다 — Swiss Editorial은 격자,
+   * 나머지는 없음. 사진 배경에는 아무것도 안 깔린다(SceneLayer).
+   */
+  pattern?: 'none' | 'grid' | null;
   camera: Camera;
   ambience: AmbienceLevels;
   widgets: Record<string, WidgetDoc>;

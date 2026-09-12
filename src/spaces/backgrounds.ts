@@ -12,34 +12,31 @@ export function assetUrl(src: string) {
 /**
  * 배경 단색. 색과 이름뿐이다 — 글자·면·테두리는 값 층(DESIGN.md 2장)이 정한다.
  *
- * 예전에는 Mist·Sand·Deep Forest·Stone이 `MINIMAL_THEMES`로 따로 있으면서 자기
- * `{text, border, surface}`를 들고 왔고, `backgroundTokens`가 그 값을 값 층보다
- * 위에 뒀다. 그래서 Mist는 면이 순백(`#ffffff`, DESIGN.md 7장이 금지한 값)이고
- * 글자가 차가운 회색(`#475569`, 대비 7.58)이라 라이트에서 검은색이 안 나왔다.
- * 색 값은 최초 버전 그대로고, 이제 배경색으로만 쓴다.
+ * **네 계열 × 두 밝기.** 팔레트가 4열 2행으로 세운다 — 한 열이 한 계열이고,
+ * 윗줄이 어두운 쪽, 아랫줄이 같은 계열의 밝은 짝이다.
  *
- * 앞 일곱이 어두움, 뒤 일곱이 밝음이다. 팔레트가 한 줄에 일곱씩 두 줄로 세운다 —
- * 밝은 쪽이 Mist·Sand 둘뿐이라 배경을 골라서는 라이트 UI에 갈 길이 거의 없었다.
+ * 예전에는 열넷이었는데 서로 구분이 안 됐다. CIE Lab ΔE로 재보면 Greige/Linen과
+ * Greige/Blush가 4.0, Charcoal/Ink가 5.5, Black/Stone이 7.3이었다 — 나란히 놓아야
+ * 겨우 다른 색이고 전체 화면으로는 같은 색이다. 채도도 대부분 4 미만이라 색조가
+ * 안 보였다(Mist `#f1f5f9`는 2.5로 그냥 흰색이었다). Charcoal·Ink·Stone·Moss·
+ * Sand·Linen·Blush를 버리고 남은 여덟의 채도를 올렸다. 지금 최소 ΔE는 어두운 줄
+ * 11.0, 밝은 줄 7.3이다. 밝은 쪽이 더 못 벌어지는 건 흰색 근처라서다.
  *
- * **Black·Greige는 시안(A2.html)의 `solidDark`·`solidLight` 값 그대로다.** 앱의
- * 어두운 색은 전부 남색·자주·초록이 섞여 있어서 시안에 있는 따뜻한 무채색 검정이
- * 없었다. 가장 어두운 Ink(`#12131a`)도 남색이다.
+ * **Black·Greige는 시안(A2.html)의 `solidDark`·`solidLight` 계열이다.** 앱의
+ * 어두운 색이 전부 남색·자주·초록이 섞여 있어서 따뜻한 무채색 검정이 없었다.
+ *
+ * 버린 색을 쓰던 공간은 그대로 둔다 — 값은 문자열로 저장되어 있어서 계속 칠해지고,
+ * 팔레트에서 선택 표시만 안 된다.
  */
 export const SOLID_COLORS: { value: string; name: string }[] = [
   { value: '#191715', name: 'Black' },
-  { value: '#1e1e24', name: 'Charcoal' },
-  { value: '#12131a', name: 'Ink' },
-  { value: '#232135', name: 'Plum' },
-  { value: '#1a2420', name: 'Moss' },
-  { value: '#0f291e', name: 'Deep Forest' },
-  { value: '#292524', name: 'Stone' },
-  { value: '#e9e5de', name: 'Greige' },
-  { value: '#f1f5f9', name: 'Mist' },
-  { value: '#fdf6e3', name: 'Sand' },
-  { value: '#efe7d9', name: 'Linen' },
-  { value: '#dde4dc', name: 'Sage' },
-  { value: '#e4dfea', name: 'Lilac' },
-  { value: '#eddfda', name: 'Blush' },
+  { value: '#111a2c', name: 'Midnight' },
+  { value: '#0f2419', name: 'Forest' },
+  { value: '#2b1b30', name: 'Plum' },
+  { value: '#ece7df', name: 'Greige' },
+  { value: '#dde7f2', name: 'Mist' },
+  { value: '#d7e2d4', name: 'Sage' },
+  { value: '#e5ddee', name: 'Lilac' },
 ];
 
 /** sRGB relative luminance, 0(검정)~1(흰색). */

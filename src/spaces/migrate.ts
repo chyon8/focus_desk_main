@@ -144,6 +144,13 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     doc.background = { ...doc.background, value: currentWallpaper(doc.background.value) };
   }
 
+  if (doc.schemaVersion < 12) {
+    // v12 renamed the Swiss Editorial theme's id. Without this the stored id no
+    // longer matches a theme and the space falls back to the default one.
+    if (doc.themeId === 'bako') doc.themeId = 'swiss';
+    doc.schemaVersion = 12;
+  }
+
   doc.schemaVersion = SCHEMA_VERSION;
   return doc;
 }

@@ -36,7 +36,7 @@ const WEATHER: { kind: ParticlesChoice['kind']; label: string; icon: LucideIcon 
 // What a kind starts at when the space has no density of its own to carry over.
 const DEFAULT_DENSITY = 0.4;
 
-const BASE_THEMES = ['bako', 'editorial', 'paper', 'rainy-night', 'snowfall'].map(getTheme);
+const BASE_THEMES = ['swiss', 'rainy-night', 'snowfall'].map(getTheme);
 
 /** A theme-owned picture appears in the picker once, but still selects its theme. */
 const THEME_FOR_WALLPAPER = new Map(
@@ -50,14 +50,12 @@ const WALLPAPER_HEAD = [
   'midnight-observatory.webp',
   'quiet-snow.webp',
   'geometric-relief.png',
-  'modern-prismatic-glass.png',
   'summer-meadow.webp',
   'anime-coastal-platform.png',
 ];
 
 /** Keep quieter secondary scenes at the end, in the order chosen for the picker. */
 const WALLPAPER_TAIL = [
-  'modern-mineral-flow.png',
   'anime-maple-veranda.png',
   'ghibli-night-tram.png',
   'ghibli-old-cinema.png',
@@ -103,9 +101,12 @@ export const ThemePicker: React.FC = () => {
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
   const polarity = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.polarity);
+  const patternChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.pattern);
+  const setPattern = useSpaceStore((s) => s.setPattern);
+  const theme = getTheme(themeId);
   // Auto 버튼이 "배경이 무엇으로 읽히는지"를 써야 하므로, 지금 쓰는 값이 아니라
   // 뒤집기 전의 값을 읽는다. 뒤집어 놓고 보면 Auto가 무엇으로 돌아갈지가 궁금하다.
-  const { autoLight } = useGround(getTheme(themeId));
+  const { autoLight } = useGround(theme);
   const setPolarity = useSpaceStore((s) => s.setPolarity);
   const fileInput = useRef<HTMLInputElement>(null);
   // null while the folder is being read, so the empty state is not shown to
@@ -129,7 +130,11 @@ export const ThemePicker: React.FC = () => {
 
   // What is actually falling right now: the space's own choice, or the theme's.
   const weather: ParticlesChoice = particlesChoice ??
-    getTheme(themeId).particles ?? { kind: 'none', density: DEFAULT_DENSITY };
+    theme.particles ?? { kind: 'none', density: DEFAULT_DENSITY };
+
+  // 무늬는 단색 위에만 얹힌다 — SceneLayer가 거는 조건과 같다.
+  const onSolid = override ? override.type === 'COLOR' : theme.scene.kind === 'color';
+  const pattern = patternChoice ?? (theme.flat ? 'grid' : 'none');
 
   // A selected card gets a ring in the theme's own accent colour.
   const ring = (selected: boolean) =>
@@ -172,7 +177,7 @@ export const ThemePicker: React.FC = () => {
                   <div className="aspect-video w-full flex items-center justify-center" style={thumbStyle(theme.scene)}>
                     {theme.flat && <span style={{
                       fontFamily: '"IBM Plex Sans KR", "Noto Sans KR", sans-serif',
-                      fontSize: 20, fontWeight: theme.id === 'bako' ? 900 : 700,
+                      fontSize: 20, fontWeight: 900,
                       color: theme.tokens.ink, letterSpacing: '-0.02em',
                     }}>Aa 가</span>}
                   </div>
@@ -261,23 +266,51 @@ export const ThemePicker: React.FC = () => {
               }}
             />
 
-            {/* 단색은 전부 여기 한 줄이다. Minimal 테마를 카드로 따로 두었더니
-                같은 일(배경을 이 색으로)을 하는 목록이 둘로 나뉘어 있었다.
-                Minimal은 글자·테두리 색까지 들고 오는데, 그건 고르면 화면이
-                말해준다 — 이름표와 점 두 개가 할 일이 아니다. */}
-            {/* 일곱씩 두 줄이다 — 윗줄이 어두운 색, 아랫줄이 밝은 색.
-                `SOLID_COLORS`가 그 순서로 들고 있다. */}
-            <div className="mt-3 grid grid-cols-7 gap-1.5 mb-6">
-              {SOLID_COLORS.map(({ value, name }) => (
-                <button
-                  key={value}
-                  onClick={() => setBackground({ type: 'COLOR', value })}
-                  title={name}
-                  aria-label={name}
-                  className="border-hair aspect-square rounded-control press border transition-transform hover:scale-[1.12]"
-                  style={{ backgroundColor: value, ...ring(override?.value === value) }}
-                />
-              ))}
+            {/* 단색은 전부 여기다. Minimal 테마를 카드로 따로 두었더니 같은 일(배경을
+                이 색으로)을 하는 목록이 둘로 나뉘어 있었다.
+
+                네 열 두 줄이다 — 한 열이 한 색 계열, 윗줄이 어두운 쪽, 아랫줄이 같은
+                계열의 밝은 짝이다. `SOLID_COLORS`가 그 순서로 들고 있다. */}
+            <div className="mt-3 mb-6">
+              <div className="grid grid-cols-4 gap-2">
+                {SOLID_COLORS.map(({ value, name }) => (
+                  <button
+                    key={value}
+                    onClick={() => setBackground({ type: 'COLOR', value })}
+                    title={name}
+                    aria-label={name}
+                    aria-pressed={override?.value === value}
+                    className="press overflow-hidden rounded-control text-left transition-transform hover:scale-[1.06]"
+                    style={ring(override?.value === value)}
+                  >
+                    <span className="border-hair block aspect-square border" style={{ backgroundColor: value }} />
+                    <span className="t-ink block truncate px-1 py-0.5 text-micro" style={{ background: 'var(--surface)' }}>
+                      {name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* 격자는 단색 위에만 깐다. 사진 위에서는 얼룩으로 보여서 고를 수 있게
+                  두지 않는다 — 그래서 배경이 단색일 때만 이 줄이 나온다. */}
+              {onSolid && (
+                <div className="mt-2 flex items-center gap-1">
+                  {([
+                    ['none', 'Plain'],
+                    ['grid', 'Grid'],
+                  ] as const).map(([kind, label]) => (
+                    <button
+                      key={kind}
+                      onClick={() => setPattern(kind)}
+                      className={`chrome-button flex-1 h-9 flex items-center justify-center rounded-control text-meta ${
+                        pattern === kind ? 'chrome-button-on' : ''
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <Label>Weather</Label>

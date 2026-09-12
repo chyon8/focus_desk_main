@@ -34,7 +34,7 @@ import {
   WidgetDoc,
   WidgetType,
 } from '../spaces/types';
-import { DEFAULT_THEME_ID } from '../themes/themes';
+import { DEFAULT_THEME_ID, getTheme } from '../themes/themes';
 import { WIDGET_DEFS } from '../widgets/defs';
 
 const ACTIVE_SPACE_KEY = 'active-space-id';
@@ -82,6 +82,8 @@ interface SpaceState {
   setParticles: (particles: ParticlesChoice | null) => void;
   /** Null hands the polarity back to the background's own brightness. */
   setPolarity: (polarity: 'light' | 'dark' | null) => void;
+  /** Null hands the pattern back to the theme's own. */
+  setPattern: (pattern: 'none' | 'grid' | null) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
   fitToWidgets: () => void;
   /**
@@ -538,7 +540,22 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   setTheme: (themeId) =>
     updateActive(set, (space) => ({ ...space, themeId, background: null, particles: null })),
 
-  setBackground: (background) => updateActive(set, (space) => ({ ...space, background })),
+  // 배경을 고르면 테마도 기본으로 돌아간다. 테마가 배경만이 아니라 위젯 모양과
+  // 날씨까지 들고 있어서(Swiss Editorial의 각진 면, Rainy Night의 비), 테마를
+  // 남겨두면 고르지 않은 모양과 날씨가 새 배경 위에 따라온다.
+  //
+  // 예외는 Swiss Editorial에 단색을 고를 때다. 그 테마는 날씨도 사진도 없고
+  // 각진 면·그림자 없음이 사용자가 고른 것이라, 단색을 고르는 것은 배경을 바꾸는
+  // 게 아니라 그 테마의 바탕 밝기를 고르는 일이다. 사진은 예전대로 되돌린다.
+  setBackground: (background) =>
+    updateActive(set, (space) => ({
+      ...space,
+      themeId:
+        getTheme(space.themeId).flat && background?.type === 'COLOR'
+          ? space.themeId
+          : DEFAULT_THEME_ID,
+      background,
+    })),
 
   /**
    * One write, because `SceneLayer` crossfades whenever the scene changes and
@@ -557,6 +574,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   setParticles: (particles) => updateActive(set, (space) => ({ ...space, particles })),
 
   setPolarity: (polarity) => updateActive(set, (space) => ({ ...space, polarity })),
+
+  setPattern: (pattern) => updateActive(set, (space) => ({ ...space, pattern })),
 
   // Fill the canvas with the widgets in play, then frame the result.
   arrangeWidgets: (mode = 'grid', columns) => {

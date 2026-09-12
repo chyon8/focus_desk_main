@@ -59,6 +59,7 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
   const { autoLight, light } = useGround(theme);
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
+  const patternChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.pattern);
   const { atmosphere } = theme;
 
   // The space's own weather wins over the theme's; 'none' is a real choice, so
@@ -112,7 +113,11 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
         <ParticleLayer kind={particles.kind} density={particles.density} />
       )}
 
-      {theme.id === 'bako' && !override && <div className="absolute inset-0 bako-grid" />}
+      {/* 무늬는 단색 위에만 깐다. 사진 위 격자는 얼룩으로 보인다. 공간이 고른 게
+          없으면 테마가 정한다 — Swiss Editorial은 격자, 나머지는 없음. */}
+      {flat && (patternChoice ?? (theme.flat ? 'grid' : 'none')) === 'grid' && (
+        <div className="absolute inset-0 scene-grid" />
+      )}
 
       {!theme.flat && <div
         className={`absolute inset-0 ${
