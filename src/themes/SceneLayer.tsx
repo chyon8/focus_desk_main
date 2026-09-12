@@ -116,7 +116,10 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
       {/* 무늬는 단색 위에만 깐다. 사진 위 격자는 얼룩으로 보인다. 공간이 고른 게
           없으면 테마가 정한다 — Swiss Editorial은 격자, 나머지는 없음. */}
       {flat && (patternChoice ?? (theme.flat ? 'grid' : 'none')) === 'grid' && (
-        <div className="absolute inset-0 scene-grid" />
+        <div
+          className="absolute inset-0 scene-grid"
+          data-backdrop={lightBackdrop ? 'light' : 'dark'}
+        />
       )}
 
       {!theme.flat && <div
