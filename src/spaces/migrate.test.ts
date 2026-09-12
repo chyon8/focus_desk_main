@@ -78,6 +78,9 @@ describe('migrateSpace', () => {
   it.each([
     ['ghibli.jpg', 'summer-meadow.webp'],
     ['winterhut.jpg', 'quiet-snow.webp'],
+    ['rainiywindow.jpg', 'autumn-breakfast-nook.webp'],
+    ['rainy-desk.webp', 'autumn-breakfast-nook.webp'],
+    ['ghibli-old-cinema.png', 'autumn-breakfast-nook.webp'],
     ['warm-cabin.webp', 'quiet-snow.webp'],
     ['sunset_landscape.png', 'amber-lake.webp'],
     ['morning-studio.webp', 'coastal-mist.webp'],
@@ -88,7 +91,7 @@ describe('migrateSpace', () => {
     const [base] = migrateLegacySpaces(legacy);
     const raw: SpaceDoc = {
       ...base,
-      schemaVersion: 10,
+      schemaVersion: 12,
       background: { type: 'IMAGE', value: `/wallpapers/${old}` },
     };
     const migrated = migrateSpace(raw);

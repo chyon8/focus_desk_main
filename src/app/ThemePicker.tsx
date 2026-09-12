@@ -58,7 +58,6 @@ const WALLPAPER_HEAD = [
 const WALLPAPER_TAIL = [
   'anime-maple-veranda.png',
   'ghibli-night-tram.png',
-  'ghibli-old-cinema.png',
   'amber-lake.webp',
   'afternoon-records.webp',
 ];

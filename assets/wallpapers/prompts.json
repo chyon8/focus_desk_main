@@ -1,13 +1,7 @@
 {
   "generator": "Built-in ImageGen",
-  "date": "2026-09-10",
+  "date": "2026-09-12",
   "assets": [
-    {
-      "id": "rainy-desk",
-      "original": "originals/rainy-desk.png",
-      "wallpaper": "../../public/wallpapers/rainy-desk.webp",
-      "prompt": "Create Rainy Desk, a premium desktop workspace wallpaper. Wide 16:9 landscape, target 2560x1440. Lofi hand-painted illustration of a quiet navy-blue study at night, rain on a broad window, distant soft city silhouettes, a small warm amber desk lamp and modest desk along the right edge. Large calm low-detail central area, subdued highlights, rich muted blue palette, cozy believable lighting, restrained fine texture. Composition must survive center-cover cropping to 16:10 and ultrawide. No people, text, lettering, logos, watermark or UI. Full bleed single finished image."
-    },
     {
       "id": "summer-meadow",
       "original": "originals/summer-meadow.png",
@@ -43,6 +37,12 @@
       "original": "originals/rainy-attic.png",
       "wallpaper": "../../public/wallpapers/rainy-attic.webp",
       "prompt": "Rainy Attic. Create a beautiful authentic lofi anime wallpaper, widescreen 16:9 target 2560x1440. A small lived-in attic bedroom in a quiet neighborhood on a rainy blue evening. Wide interior view: low sloped wood ceiling, broad dormer window showing softly drawn rooftops and rain, small wooden writing desk and warm orange shaded lamp to the right, soft rumpled bed on the left, a few books and a mug. Strong tasteful composition, warm terracotta lamp pool against muted blue-purple exterior, intimate cozy everyday atmosphere. IMPORTANT ART DIRECTION: unmistakably TWO-DIMENSIONAL hand-drawn illustration, visible delicate ink contours, simple cel shaded forms, matte gouache color fills, gently irregular shapes, charming stylization. NOT a photograph, NOT photorealistic, NOT a 3D render, no glossy surfaces or hyper-detailed textures, no epic fantasy landscape, no dramatic god rays. Broad quiet middle floor and wall for desktop widgets; warm medium shadows that retain detail, not nearly-black image. No people, no lettering on books, no logos, no watermark, no UI. One full-bleed finished image with crop-safe composition."
+    },
+    {
+      "id": "autumn-breakfast-nook",
+      "original": "originals/autumn-breakfast-nook.png",
+      "wallpaper": "../../public/wallpapers/autumn-breakfast-nook.webp",
+      "prompt": "Autumn Breakfast Nook. Create one original cozy illustrated desktop wallpaper, wide 16:9. A small lived-in kitchen and breakfast nook on a clear early-autumn morning, with warm cream plaster walls, honey-toned wood cabinetry, a round wooden breakfast table with a plain ceramic teapot and cups, a cushioned built-in bench, simple open shelves, restrained houseplants, and an open doorway revealing a dry sunlit courtyard, pale blue sky, and muted amber leaves. Unmistakably hand-drawn 2D lofi animation background with delicate irregular dark ink contours, gently uneven forms, simple two- or three-tone cel shading, matte gouache fills, selective detail, and soft analog grain. Gentle sunlight makes broad warm shapes across the wall and floor while cooler dusty blue-violet shadows retain detail. Keep the central floor and wall calm for widgets and the composition crop-safe. No rain, wet glass, puddles, snow, fog, night, fireplace, attic, bedroom, bed, cat, people, text, logos, watermark, UI, photorealism, 3D, glossy materials, bloom, or clutter."
     },
     {
       "id": "afternoon-records",

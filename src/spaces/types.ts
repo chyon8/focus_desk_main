@@ -3,7 +3,7 @@ import type { Camera } from '../canvas/camera';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export type WidgetType =
   | 'todo'

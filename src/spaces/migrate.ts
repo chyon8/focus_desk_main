@@ -9,6 +9,9 @@ import { columnHeight, COLUMN_WIDTH } from '../canvas/columns';
 const RETIRED_WALLPAPERS: Record<string, string> = {
   '/wallpapers/ghibli.jpg': '/wallpapers/summer-meadow.webp',
   '/wallpapers/winterhut.jpg': '/wallpapers/quiet-snow.webp',
+  '/wallpapers/rainiywindow.jpg': '/wallpapers/autumn-breakfast-nook.webp',
+  '/wallpapers/rainy-desk.webp': '/wallpapers/autumn-breakfast-nook.webp',
+  '/wallpapers/ghibli-old-cinema.png': '/wallpapers/autumn-breakfast-nook.webp',
   '/wallpapers/warm-cabin.webp': '/wallpapers/quiet-snow.webp',
   '/wallpapers/sunset_landscape.png': '/wallpapers/amber-lake.webp',
   '/wallpapers/morning-studio.webp': '/wallpapers/coastal-mist.webp',
@@ -139,8 +142,8 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     doc.schemaVersion = 9;
   }
 
-  // v11 also replaces the three rejected images from v10.
-  if (doc.schemaVersion < 11 && doc.background?.type === 'IMAGE') {
+  // v13 also replaces bundled wallpapers retired after v12.
+  if (doc.schemaVersion < 13 && doc.background?.type === 'IMAGE') {
     doc.background = { ...doc.background, value: currentWallpaper(doc.background.value) };
   }
 

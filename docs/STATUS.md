@@ -202,9 +202,9 @@
 
 **온보딩 배경 구성 (2026-09-11)**: Rainy Attic·Snowfall·Swiss Editorial·Midnight Observatory·Meadow 순서다. Swiss Editorial 호버 중에는 원본 `#f7f7f5` 배경·검은 글자·IBM Plex Sans KR를 쓴다. Quiet Snow·Rainy Desk·Afternoon Records·Summer Country Room은 배경 선택 목록에만 둔다. Warm Cabin은 온보딩에서 제거했다.
 
-**추가 월페이퍼 검증 남음 (2026-09-10)**: 재시작 후 복원·공간별 독립 저장, 16:9·16:10·울트라와이드 잘림, 수동 Light/Dark 실기 확인. 교체된 온보딩 배경도 실기로 확인할 것.
+**추가 월페이퍼 검증 남음 (2026-09-12)**: Autumn Breakfast Nook을 포함해 재시작 후 복원·공간별 독립 저장, 16:9·16:10·울트라와이드 잘림, 수동 Light/Dark 실기 확인. 교체된 온보딩 배경도 실기로 확인할 것.
 
-**월페이퍼 시안 검토 남음 (2026-09-12)**: 1차 3장(Rainy Reading Lounge·Winter Lake Greenhouse·River Stone Bridge)과 2차 3장(Rain Window Reading V2·Snow Lake Greenhouse V2·Alpine Cycle Bridge V2)의 앱 내 선택·표시 확인. 원본의 색채 설계·표현 기법을 새 장면에 적용한 3차 시안은 사용자 품질 검토 후 반영 여부를 정한다.
+**월페이퍼 시안 검토 남음 (2026-09-12)**: 1차 3장(Rainy Reading Lounge·Winter Lake Greenhouse·River Stone Bridge), 2차 3장(Rain Window Reading V2·Snow Lake Greenhouse V2·Alpine Cycle Bridge V2), 3차 3장(Rainy Laundrette·Snowy Railway Halt·Summer Lake Landing), 4차 3장(Late Summer Aquarium·Autumn Apple Orchard·Spring Kite Cove)의 앱 내 선택·표시 확인. 새 장면 생성 기준은 [WALLPAPER-GENERATION-PROMPT.md](../design-ref/WALLPAPER-GENERATION-PROMPT.md)에 둔다.
 
 **Swiss Editorial 테마 검증 남음 (2026-09-11)**: 패키징본에서 네트워크 없이 IBM Plex Sans KR·Noto Sans KR가 표시되는지 확인.
 >
