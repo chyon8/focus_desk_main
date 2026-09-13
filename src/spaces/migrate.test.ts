@@ -82,11 +82,11 @@ describe('migrateSpace', () => {
     ['rainy-desk.webp', 'autumn-breakfast-nook.webp'],
     ['ghibli-old-cinema.png', 'autumn-breakfast-nook.webp'],
     ['warm-cabin.webp', 'quiet-snow.webp'],
-    ['sunset_landscape.png', 'amber-lake.webp'],
     ['morning-studio.webp', 'coastal-mist.webp'],
     ['cloudtop-sanctuary.webp', 'summer-country-room.webp'],
     ['aurora-fjord.webp', 'rainy-attic.webp'],
     ['moonlit-conservatory.webp', 'afternoon-records.webp'],
+    ['summer-lake-landing.png', 'summer-lake-landing.webp'],
   ])('replaces removed wallpaper %s without changing other space settings', (old, replacement) => {
     const [base] = migrateLegacySpaces(legacy);
     const raw: SpaceDoc = {

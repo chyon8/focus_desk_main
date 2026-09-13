@@ -16,7 +16,8 @@ src/
   focus/            # 포커스 세션, 통계
   stores/           # zustand: spaceStore / focusStore / uiStore
   index.css         # 테마 토큰을 소비하는 공용 클래스
-legacy/             # 기존 MVP — 이식 완료됨, 삭제 대기 (STATUS "다음 할 일" 5번)
+public/wallpapers/  # 앱에 들어가는 월페이퍼 webp(2880px). `npm run wallpapers`로 만든다
+wallpapers-originals/ # 원본 PNG(3344px). 깃에 안 올린다
 docs/
 ```
 
@@ -74,13 +75,3 @@ docs/
 - `tokens`는 `useThemeVariables`가 `:root`에 CSS 변수로 주입(`--ink`, `--panel`, `--surface`, `--accent`, `--font-ui` …). UI 전체가 여기서 색을 읽는다
 - **배경은 카메라를 따라가지 않는다**. 배경에 움직임을 넣으려면 카메라와 무관하게 스스로 움직이는 것(파티클·글로우)으로 할 것
 - 코드로 씬을 그리는 시도(SVG·three.js)는 폐기됨. 다시 하려면 아트 디렉션부터
-
-## Legacy 이식 맵
-| legacy | 이식처 | 비고 |
-|---|---|---|
-| components/widgets/* | src/widgets/* | registry로 재포장, 중복 위젯 통합 |
-| AmbienceDock, 라디오 로직 | src/ambience/ | App.tsx의 오디오 로직 포함 |
-| FocusSessionBar, FocusInsights, 통계 | src/focus/ | |
-| electron/main.ts IPC | electron/ipc/* | browser-view 핸들러는 개선하며 이식 |
-| GlassCard, 디자인 토큰 | src/index.css | 컴포넌트가 아니라 토큰 클래스로 |
-| MVP 사용자 데이터 (electron-store v13) | 마이그레이션 1회 | 스페이스별 JSON으로 변환 |

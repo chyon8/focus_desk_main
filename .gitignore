@@ -33,3 +33,7 @@ ref_images
 design-ref/icon-canvas/*.html
 
 design-ref/landing-canvas/focus-desk-landing.html
+design-ref/onboarding-rooms-canvas/onboarding-room-picker.html
+
+# 월페이퍼 원본 PNG(장당 10MB). 앱에는 `npm run wallpapers`로 만든 webp만 들어간다
+wallpapers-originals

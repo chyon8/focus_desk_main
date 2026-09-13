@@ -10,6 +10,7 @@
     "dev": "npm run build:helper && vite",
     "build": "tsc && vite build",
     "test": "vitest run",
+    "wallpapers": "sh scripts/wallpapers.sh",
     "dist": "npm run build:helper && npm run build && electron-builder",
     "dev:fresh": "rm -rf \"$HOME/Library/Application Support/focus-desk-test\" && FOCUS_DESK_PROFILE=test npm run dev"
   },

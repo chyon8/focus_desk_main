@@ -11,7 +11,7 @@ Focus Desk용 새 월페이퍼를 만들 때 쓰는 프롬프트다.
 
 참조 이미지:
 
-- `assets/wallpapers/originals/rainy-attic.png`
+- `wallpapers-originals/rainy-attic.png` (깃에 안 올린다. 없으면 사용자에게 받는다)
 
 Codex에 짧게 지시할 때는 이렇게 말한다.
 

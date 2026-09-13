@@ -4,6 +4,14 @@ import { DEFAULT_THEME_ID, THEMES } from '../themes/themes';
 import { ColumnData, SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from './types';
 import { columnHeight, COLUMN_WIDTH } from '../canvas/columns';
 
+// 2026-09-13에 장당 10MB PNG를 webp로 바꿨다. 그림은 같고 확장자만 다르다.
+const PNG_TO_WEBP = [
+  'alpine-cycle-bridge-v2', 'anime-coastal-platform', 'autumn-apple-orchard', 'cozy-cafe',
+  'ghibli-night-tram', 'late-summer-aquarium', 'rain-window-reading-v2', 'rainy-laundrette',
+  'rainy-reading-lounge', 'river-stone-bridge', 'snow-lake-greenhouse-v2', 'snowy-railway-halt',
+  'spring-kite-cove', 'summer-lake-landing', 'winter-lake-greenhouse',
+];
+
 // Removed bundled assets need replacements in saved spaces and imported backups.
 // Exact paths preserve user uploads, even when their filenames are the same.
 const RETIRED_WALLPAPERS: Record<string, string> = {
@@ -13,11 +21,13 @@ const RETIRED_WALLPAPERS: Record<string, string> = {
   '/wallpapers/rainy-desk.webp': '/wallpapers/autumn-breakfast-nook.webp',
   '/wallpapers/ghibli-old-cinema.png': '/wallpapers/autumn-breakfast-nook.webp',
   '/wallpapers/warm-cabin.webp': '/wallpapers/quiet-snow.webp',
-  '/wallpapers/sunset_landscape.png': '/wallpapers/amber-lake.webp',
   '/wallpapers/morning-studio.webp': '/wallpapers/coastal-mist.webp',
   '/wallpapers/cloudtop-sanctuary.webp': '/wallpapers/summer-country-room.webp',
   '/wallpapers/aurora-fjord.webp': '/wallpapers/rainy-attic.webp',
   '/wallpapers/moonlit-conservatory.webp': '/wallpapers/afternoon-records.webp',
+  ...Object.fromEntries(
+    PNG_TO_WEBP.map((name) => [`/wallpapers/${name}.png`, `/wallpapers/${name}.webp`])
+  ),
 };
 
 function currentWallpaper(src: string): string {

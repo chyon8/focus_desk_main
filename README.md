@@ -13,6 +13,4 @@
 npm install
 npm run dev
 ```
-
-> 현재 리빌드 준비 단계. 기존 MVP 코드는 Phase 0에서 `legacy/`로 이동 예정.
 # focus_desk_main

@@ -10,7 +10,12 @@ export const THEMES: Theme[] = [
     id: 'golden-hour',
     name: 'Amber Lake',
     mood: 'dark',
-    scene: { kind: 'image', src: '/wallpapers/amber-lake.webp' },
+    // 사진(amber-lake.webp)은 2026-09-12에 뺐다. 이 테마는 사진 배경 위 scrim·glow를 맡고,
+    // 배경을 안 고른 새 공간에서만 이 그라데이션이 보인다.
+    scene: {
+      kind: 'gradient',
+      value: 'radial-gradient(ellipse 120% 85% at 50% 30%, #4a2c20 0%, #2a1812 50%, #150c09 100%)',
+    },
     atmosphere: {
       scrim: 0.34,
       scrimTint: '44, 22, 14',
