@@ -31,3 +31,5 @@ ref_images
 *.sln
 *.sw?
 design-ref/icon-canvas/*.html
+
+design-ref/landing-canvas/focus-desk-landing.html

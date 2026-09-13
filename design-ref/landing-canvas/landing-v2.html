@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus Desk — landing draft v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css">
+<style>
+
+  .hero { height: 100vh; min-height: 720px; }
+  .stage { position: absolute; inset: 0; z-index: 2; }
+  .hero-copy {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(880px, 62vw); text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 26px;
+    color: var(--room-ink);
+  }
+  .hero-copy p { color: rgba(246, 241, 232, 0.78); max-width: 560px; }
+  .hero-form { display: flex; gap: 10px; align-items: center; }
+  .hero-note { font-size: 13px; color: rgba(246, 241, 232, 0.55); letter-spacing: 0.02em; }
+  .room-name { position: absolute; left: 28px; bottom: 26px; z-index: 5; }
+  .scroll-hint { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 5; color: rgba(246,241,232,.5); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+
+  section.block { padding: 132px 0; }
+  .kicker { color: var(--ink-3); margin-bottom: 22px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+
+  .tabstrip { display: flex; gap: 6px; margin-top: 44px; overflow: hidden; mask-image: linear-gradient(to right, #000 72%, transparent); }
+  .tab { flex: none; width: 128px; height: 34px; border-radius: 9px 9px 0 0; background: var(--paper-2); box-shadow: inset 0 0 0 1px rgba(30,28,25,.09); display: flex; align-items: center; padding: 0 12px; gap: 7px; }
+  .tab i { width: 11px; height: 11px; border-radius: 3px; background: rgba(30,28,25,.16); }
+  .tab s { display: block; height: 6px; border-radius: 3px; background: rgba(30,28,25,.14); flex-grow: 1; }
+
+  .zoomwrap { position: relative; height: 760px; overflow: hidden; }
+  .zoom-stage { position: absolute; left: 50%; top: 50%; width: 2600px; height: 1480px; transform: translate(-50%, -50%) scale(1); transition: transform 1500ms var(--ease); }
+  .zoomwrap.pulled .zoom-stage { transform: translate(-50%, -50%) scale(0.42); }
+  .zoom-cap { position: absolute; left: 0; right: 0; bottom: 34px; z-index: 6; text-align: center; color: var(--room-ink); opacity: 0; transition: opacity 700ms var(--ease) 900ms; }
+  .zoomwrap.pulled .zoom-cap { opacity: 1; }
+  .mini-room { position: absolute; border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 2px rgba(255,255,255,.1), 0 40px 90px -30px rgba(0,0,0,.7); background-size: cover; background-position: center; }
+
+  .demo { position: relative; height: 420px; border-radius: 18px; overflow: hidden; background: #1b1613; box-shadow: 0 0 0 1px rgba(30,28,25,.14), var(--lift); }
+  .demo .w { transition: all 900ms var(--ease); }
+
+  .rooms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; height: 440px; background: var(--ink); }
+  .room-tile { position: relative; overflow: hidden; background-size: cover; background-position: center; filter: saturate(0.92); transition: filter 500ms var(--ease), transform 900ms var(--ease); }
+  .room-tile:hover { filter: saturate(1.08); transform: scale(1.02); }
+  .room-tile span { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 18px; color: #fff; background: linear-gradient(to top, rgba(0,0,0,.6), transparent); }
+
+  .closer { height: 620px; }
+  .closer .hero-copy { width: min(760px, 70vw); }
+  footer { padding: 34px 0 46px; display: flex; justify-content: space-between; color: var(--ink-3); }
+
+  @media (max-width: 1080px) {
+    .stage .w { display: none; }
+    .hero-copy { width: 86vw; }
+    .two { grid-template-columns: 1fr; gap: 32px; }
+    .rooms { grid-template-columns: repeat(2, 1fr); height: 620px; }
+  }
+
+
+  /* B: 종이 위에 물건을 늘어놓은 책상. 위젯은 밝은 방의 값을 쓴다 */
+  .hero { height: 100vh; min-height: 720px; position: relative; }
+  .w.light {
+    background: #f7f6f3;
+    box-shadow: 0 0 0 1px rgba(30,28,25,.12), 0 0 0 2.5px rgba(255,255,255,.7),
+                0 1px 2px rgba(46,38,28,.10), 0 12px 26px -10px rgba(46,38,28,.22), 0 32px 60px -30px rgba(46,38,28,.3);
+  }
+  .w.light .w-head { color: #8b8479; }
+  .w.light .bar { background: rgba(30,28,25,.13); }
+  .w.light .bar.lead { background: rgba(30,28,25,.62); }
+  .w.light .check { border-color: rgba(30,28,25,.28); }
+  .w.light .plate { background: rgba(30,28,25,.07); }
+  .paper .hero-copy { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(900px,64vw); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .paper .hero-copy p { color: var(--ink-2); max-width: 540px; }
+  .field.on-paper { width: 260px; }
+  .photo-card { position: absolute; border-radius: 16px; overflow: hidden; background-size: cover; background-position: center;
+    box-shadow: 0 0 0 1px rgba(30,28,25,.12), 0 0 0 2.5px rgba(255,255,255,.7), 0 18px 40px -14px rgba(46,38,28,.35); }
+  @media (max-width: 1080px) { .hero .w, .photo-card { display: none; } .paper .hero-copy { width: 86vw; } }
+
+  .paper .hero-copy { color: var(--ink); }
+  /* v2: 첫 화면이 종이라서 스크롤하자마자 방이 화면을 채운다 */
+  .zoomwrap { height: 100vh; min-height: 760px; }
+</style>
+</head>
+<body>
+
+<!-- ── 1. 히어로: 종이 책상 ── -->
+<section class="hero paper">
+  <div class="bar-top" style="color:var(--ink)">
+    <div class="mark" style="color:var(--ink)">
+      <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><rect x="1.2" y="1.2" width="17.6" height="17.6" rx="4.4" stroke="currentColor" stroke-width="1.3"/><rect x="4.7" y="4.7" width="8.2" height="8.2" rx="2.2" fill="currentColor"/><rect x="11.3" y="11.3" width="4.1" height="4.1" rx="1.2" fill="#e9a23b"/></svg>
+      <span style="font-size:15px;font-weight:600">Focus Desk</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="label" style="color:var(--ink-3)">macOS</span>
+      <button class="cta" style="height:40px;font-size:14px;padding:0 18px">Join the waitlist</button>
+    </div>
+  </div>
+
+  <div class="w light settle" style="left:5%;top:19%;width:280px;transform:rotate(-2.4deg);animation-delay:120ms">
+    <div class="w-head">Notes</div>
+    <div class="w-body"><div class="bar lead" style="width:62%"></div><div class="bar"></div><div class="bar" style="width:92%"></div><div class="bar" style="width:70%"></div></div>
+  </div>
+
+  <div class="photo-card settle" style="left:13%;bottom:12%;width:330px;height:206px;transform:rotate(1.7deg);animation-delay:300ms;background-image:url(../../public/wallpapers/rainy-attic.webp)">
+    <span class="label" style="position:absolute;left:0;right:0;bottom:0;padding:12px 14px;color:#fff;background:linear-gradient(to top,rgba(0,0,0,.6),transparent)">Rainy Attic</span>
+  </div>
+
+  <div class="w light settle" style="right:6.5%;top:16%;width:240px;transform:rotate(2deg);animation-delay:220ms">
+    <div class="w-head">To do</div>
+    <div class="w-body" style="gap:13px">
+      <div class="row"><span class="check on"></span><span class="bar" style="flex-grow:1;opacity:.5"></span></div>
+      <div class="row"><span class="check"></span><span class="bar" style="flex-grow:1"></span></div>
+      <div class="row"><span class="check"></span><span class="bar" style="width:66%"></span></div>
+    </div>
+  </div>
+
+  <div class="w light settle" style="right:9%;bottom:15%;width:300px;transform:rotate(-1.2deg);animation-delay:420ms">
+    <div class="w-head">figma.com</div>
+    <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:9px">
+      <div class="plate" style="height:24px"></div><div class="plate" style="height:96px"></div>
+    </div>
+  </div>
+
+  <div class="w light settle" style="left:32%;top:9%;width:150px;transform:rotate(1.2deg);animation-delay:520ms">
+    <div class="w-head">Timer</div>
+    <div style="height:92px;display:flex;align-items:center;justify-content:center"><span class="mono" style="font-size:30px;letter-spacing:-.03em">24:00</span></div>
+  </div>
+
+  <div class="hero-copy">
+    <h1 class="display">Your new desktop.</h1>
+    <p class="lead">Every project gets its own space — tabs, notes and tools, exactly where you left them.</p>
+    <div style="display:flex;gap:10px;align-items:center"><div class="field on-paper">[YOUR EMAIL]</div><button class="cta">Join the waitlist</button></div>
+    <span class="label" style="color:var(--ink-3)">macOS only · Shipping [LAUNCH DATE]</span>
+  </div>
+</section>
+
+<!-- ── 3. 줌: 화면에 들어오면 한 번 물러난다 ── -->
+<section class="room zoomwrap" id="zoomwrap">
+  <div class="room-layer on" id="zoomA" style="background-image:url(../../public/wallpapers/summer-lake-landing.png)"></div>
+  <div class="room-layer" id="zoomB" style="background-image:url(../../public/wallpapers/midnight-observatory.webp)"></div>
+  <div class="room-scrim" style="background:radial-gradient(ellipse 80% 60% at 50% 82%, rgba(12,9,7,.72), transparent 72%)"></div>
+  <div class="zoom-stage">
+    <div class="w" style="left:820px;top:420px;width:620px"><div class="w-head">Notes</div><div class="w-body"><div class="bar lead" style="width:58%"></div><div class="bar"></div><div class="bar" style="width:94%"></div><div class="bar" style="width:88%"></div><div class="bar" style="width:62%"></div><div class="bar" style="width:91%"></div></div></div>
+    <div class="w" style="left:1500px;top:420px;width:360px"><div class="w-head">To do</div><div class="w-body" style="gap:14px"><div class="row"><span class="check on"></span><span class="bar" style="flex-grow:1;opacity:.45"></span></div><div class="row"><span class="check"></span><span class="bar" style="flex-grow:1"></span></div><div class="row"><span class="check"></span><span class="bar" style="width:70%"></span></div></div></div>
+    <div class="w" style="left:820px;top:790px;width:1040px"><div class="w-head">figma.com</div><div style="padding:0 14px 14px"><div class="plate" style="height:210px;background:rgba(246,241,232,.12)"></div></div></div>
+    <div class="w" style="left:250px;top:300px;width:420px"><div class="w-head">Board</div><div class="w-body" style="gap:8px"><div class="plate" style="height:46px"></div><div class="plate" style="height:46px"></div><div class="plate" style="height:34px;background:rgba(233,162,59,.3)"></div></div></div>
+    <div class="w" style="left:250px;top:800px;width:420px"><div class="w-head">Calendar</div><div class="w-body" style="gap:7px"><div class="plate" style="height:26px"></div><div class="plate" style="height:26px"></div><div class="plate" style="height:26px"></div></div></div>
+    <div class="w" style="left:1960px;top:300px;width:390px"><div class="w-head">Timer</div><div style="height:150px;display:flex;align-items:center;justify-content:center"><span class="mono" style="font-size:54px;color:var(--room-ink)">24:00</span></div></div>
+    <div class="w" style="left:1960px;top:600px;width:390px"><div class="w-head">Notes</div><div class="w-body"><div class="bar" style="width:88%"></div><div class="bar" style="width:72%"></div><div class="bar" style="width:94%"></div></div></div>
+    <div class="mini-room" style="left:-60px;top:-120px;width:520px;height:330px;background-image:url(../../public/wallpapers/snowy-railway-halt.png)"></div>
+    <div class="mini-room" style="right:-80px;bottom:-140px;width:560px;height:350px;background-image:url(../../public/wallpapers/summer-lake-landing.png)"></div>
+  </div>
+  <div class="zoom-cap">
+    <h3 class="title" style="font-size:38px">Zoom out. It is all still there.</h3>
+    <p class="lead" style="color:rgba(246,241,232,.7);margin-top:10px">One canvas per project. Pull back to see the whole thing, push in to work.</p>
+  </div>
+</section>
+
+
+<!-- ── 2. 문제 ── -->
+<section class="paper block">
+  <div class="wrap">
+    <span class="label kicker">The problem</span>
+    <h2 class="title" style="max-width:760px">Three projects. Forty tabs. One window.</h2>
+    <p class="body" style="max-width:560px;margin-top:20px">Every switch costs the same twenty minutes: find the tabs, find the note, remember where you were. The work was never lost — it was just piled on top of other work.</p>
+    <div class="tabstrip">
+      <div class="tab"><i></i><s></s></div><div class="tab"><i></i><s></s></div><div class="tab"><i></i><s></s></div>
+      <div class="tab"><i></i><s></s></div><div class="tab"><i></i><s></s></div><div class="tab"><i></i><s></s></div>
+      <div class="tab"><i></i><s></s></div><div class="tab"><i></i><s></s></div><div class="tab"><i></i><s></s></div>
+      <div class="tab"><i></i><s></s></div><div class="tab"><i></i><s></s></div><div class="tab"><i></i><s></s></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ── 4. 컬럼 ── -->
+<section class="paper block">
+  <div class="wrap two">
+    <div>
+      <span class="label kicker">Layout</span>
+      <h2 class="title">Stack it, or spread it out.</h2>
+      <p class="body" style="margin-top:20px">Drag a page into a column and it becomes a card in a list. Drag it back out and it stands on the canvas at full size. Notes, to-dos, timers and live web pages all sit on the same surface.</p>
+    </div>
+    <div class="demo" id="demo">
+      <div class="w" id="dw1" style="left:34px;top:46px;width:180px"><div class="w-head">Docs</div><div class="w-body"><div class="bar" style="width:80%"></div><div class="bar" style="width:60%"></div></div></div>
+      <div class="w" id="dw2" style="left:250px;top:120px;width:200px"><div class="w-head">Specs</div><div class="w-body"><div class="bar" style="width:70%"></div><div class="bar" style="width:88%"></div></div></div>
+      <div class="w" id="dw3" style="left:120px;top:250px;width:220px"><div class="w-head">Tickets</div><div class="w-body"><div class="bar" style="width:64%"></div><div class="bar" style="width:78%"></div></div></div>
+      <span class="chip" style="position:absolute;right:20px;bottom:18px;z-index:4">Drag to stack</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── 5. 세션 ── -->
+<section class="paper block" style="padding-top:0">
+  <div class="wrap two">
+    <div class="demo" style="height:360px;background:#181310;display:flex;align-items:center;justify-content:center;gap:22px">
+      <div class="w" style="position:static;width:230px"><div class="w-head"><span style="width:12px;height:12px;border-radius:4px;background:var(--amber);display:block"></span>mail · studio</div><div class="w-body"><div class="bar" style="width:86%"></div><div class="bar" style="width:64%"></div><div class="bar" style="width:74%"></div></div></div>
+      <div class="w" style="position:static;width:230px"><div class="w-head"><span style="width:12px;height:12px;border-radius:4px;background:#f6f1e8;display:block"></span>mail · personal</div><div class="w-body"><div class="bar" style="width:70%"></div><div class="bar" style="width:88%"></div><div class="bar" style="width:52%"></div></div></div>
+    </div>
+    <div>
+      <span class="label kicker">Sessions</span>
+      <h2 class="title">Two accounts, one site.</h2>
+      <p class="body" style="margin-top:20px">Client work and your own work do not share a session. Each space keeps its own logins, so the same site can be two different accounts in two rooms — no logging out, no second browser profile.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── 6. 방 고르기 ── -->
+<section>
+  <div class="wrap" style="padding-bottom:36px">
+    <span class="label kicker">Atmosphere</span>
+    <h2 class="title" style="max-width:700px">Your ideas deserve their own spaces.</h2>
+  </div>
+  <div class="rooms">
+    <div class="room-tile" style="background-image:url(../../public/wallpapers/rainy-attic.webp)"><span class="label">Rainy Attic</span></div>
+    <div class="room-tile" style="background-image:url(../../public/wallpapers/midnight-observatory.webp);background-position:84% center"><span class="label">Midnight Observatory</span></div>
+    <div class="room-tile" style="background-image:url(../../public/wallpapers/snowy-railway-halt.png)"><span class="label">Snowy Railway</span></div>
+    <div class="room-tile" style="background-image:url(../../public/wallpapers/summer-lake-landing.png)"><span class="label">Summer Lake</span></div>
+  </div>
+</section>
+
+<!-- ── 7. 경계 ── -->
+<section class="paper block">
+  <div class="wrap">
+    <p class="title" style="max-width:940px;font-weight:400;letter-spacing:-.02em">Not a browser replacement. A second screen for the project you are on — the tabs, files and tools that belong to it, and nothing else.</p>
+  </div>
+</section>
+
+<!-- ── 8. 마지막: 처음의 방으로 돌아온다 ── -->
+<section class="room closer">
+  <div class="room-layer on" id="layerC"></div>
+  <div class="room-scrim"></div>
+  <div class="grain"></div>
+  <div class="hero-copy" style="position:absolute">
+    <h2 class="display" style="font-size:clamp(40px,4.6vw,66px)">Get it when it ships.</h2>
+    <p class="lead">Your spaces stay on your Mac. No account, no sync, nothing leaves the machine.</p>
+    <div class="hero-form">
+      <div class="field">[YOUR EMAIL]</div>
+      <button class="cta">Join the waitlist</button>
+    </div>
+  </div>
+</section>
+
+<footer class="paper">
+  <div class="wrap" style="display:flex;justify-content:space-between;width:100%">
+    <span class="label">Focus Desk</span>
+    <span class="label">macOS · [LAUNCH DATE]</span>
+  </div>
+</footer>
+
+
+<script>
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.getElementById('layerC').style.backgroundImage = 'url(../../public/wallpapers/rainy-attic.webp)';
+
+  // 줌 섹션은 방 네 개를 돈다. 줌이 끝난 뒤부터 4.5초마다
+  const ZOOM_ROOMS = [
+    '../../public/wallpapers/summer-lake-landing.png',
+    '../../public/wallpapers/snowy-railway-halt.png',
+    '../../public/wallpapers/midnight-observatory.webp',
+    '../../public/wallpapers/rainy-attic.webp',
+  ];
+  const zw = document.getElementById('zoomwrap');
+  let zFront = document.getElementById('zoomA'), zBack = document.getElementById('zoomB'), zAt = 0, zTimer = null;
+  zFront.style.backgroundImage = 'url(' + ZOOM_ROOMS[0] + ')';
+
+  function nextRoom() {
+    zAt = (zAt + 1) % ZOOM_ROOMS.length;
+    zBack.style.backgroundImage = 'url(' + ZOOM_ROOMS[zAt] + ')';
+    zBack.classList.add('on'); zFront.classList.remove('on');
+    [zFront, zBack] = [zBack, zFront];
+  }
+
+  new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    // 물러나는 것과 방이 바뀌는 것은 따로 논다 — 줌이 끝나고 한참 뒤에 첫 교체
+    setTimeout(() => zw.classList.add('pulled'), 350);
+    if (!calm && !zTimer) zTimer = setTimeout(() => {
+      nextRoom();
+      zTimer = setInterval(nextRoom, 4500);
+    }, 3600);
+  }), { threshold: 0.5 }).observe(zw);
+
+  const demo = document.getElementById('demo');
+  new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting || calm) return;
+    setTimeout(() => {
+      [['dw1', 46], ['dw2', 152], ['dw3', 258]].forEach(([id, top]) => {
+        const el = document.getElementById(id);
+        el.style.left = '150px'; el.style.top = top + 'px'; el.style.width = '220px';
+      });
+    }, 600);
+  }), { threshold: 0.6 }).observe(demo);
+</script>
+</body>
+</html>

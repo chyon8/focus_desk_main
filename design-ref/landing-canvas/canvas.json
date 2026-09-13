@@ -1,0 +1,38 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Hero A — 방 안에 글자", "is_interactive": true },
+    { "file": "HeroB.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "Hero B — 종이 책상", "is_interactive": true },
+    { "file": "HeroC.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 900, "title": "Hero C — 넓은 방", "is_interactive": true }
+  ],
+  "annotations": [
+    {
+      "id": "note-a",
+      "x": 0,
+      "y": -240,
+      "w": 440,
+      "text": "v1 — 히어로 A (방 안에 글자)\n제목이 위젯들 사이에 놓인 또 하나의 물체다. 방은 5초마다 바뀐다 — Rainy Attic · Night Tram · Snowy Railway · Summer Lake.\n\n로컬: landing.html"
+    },
+    {
+      "id": "note-b",
+      "x": 1560,
+      "y": -240,
+      "w": 440,
+      "text": "v2 — 히어로 B (종이 책상)\n첫 화면은 따뜻한 종이 + 옅은 격자. 사진이 없으니 스크롤하자마자 방이 화면을 가득 채우고 한 번 물러난다.\n\n로컬: landing-v2.html"
+    },
+    {
+      "id": "note-c",
+      "x": 3120,
+      "y": -240,
+      "w": 440,
+      "text": "C — 넓은 방 (대안, 아직 안 씀)\n방을 넓게 두고 글자는 왼쪽 아래, 위젯은 오른쪽에 책상처럼. 셋 중 제일 조용하다.\n\n로컬: hero-c.html"
+    },
+    {
+      "id": "note-shared",
+      "x": 0,
+      "y": 1010,
+      "w": 980,
+      "text": "버전 둘 다 섹션 구성은 같다 — 문제 · 줌 · 컬럼 · 세션 · 방 4개 · 경계 · 마지막 CTA. 순서만 다르다: v1은 사진으로 시작해서 종이로, v2는 종이로 시작해서 사진으로.\n\nAfternoon Records를 빼고 Snowy Railway를 넣었다. 여기 아트보드는 움직임 없이 첫 화면만 비교하려고 올린 것 — 실제 움직임은 로컬 HTML에 있다."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

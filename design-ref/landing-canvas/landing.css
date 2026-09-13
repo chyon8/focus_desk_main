@@ -1,0 +1,131 @@
+/* Focus Desk 랜딩 시안 — 값은 앱 디자인 시스템(design-ref/DESIGN.md)에서 가져왔다.
+   다른 점: 타입 위쪽 3단과 큰 스페이싱은 랜딩에만 있다. */
+:root {
+  --paper: #efe7d9;
+  --paper-2: #e7dcc9;
+  --paper-line: rgba(120, 96, 62, 0.09);
+  --ink: #1e1c19;
+  --ink-2: #5c574f;
+  --ink-3: #726c62;
+  --amber: #e9a23b;
+  --amber-ink: #231f1a;
+  --room-ink: #f6f1e8;
+  --room-ink-2: rgba(246, 241, 232, 0.62);
+  --surf: rgba(30, 25, 22, 0.93);
+  --surf-line: rgba(255, 255, 255, 0.13);
+  --halo: rgba(0, 0, 0, 0.4);
+  --lift: 0 10px 22px -8px rgba(0, 0, 0, 0.45), 0 28px 56px -26px rgba(0, 0, 0, 0.6);
+  --ease: cubic-bezier(0.22, 0.72, 0.16, 1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; border: 0; }
+h1, h2, h3, p { margin: 0; }
+
+/* ── 방: 배경 사진 두 장을 겹쳐두고 번갈아 페이드한다 ── */
+.room { position: relative; overflow: hidden; background: #14100d; }
+.room-layer {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0; transition: opacity 1100ms var(--ease), transform 6000ms linear;
+  transform: scale(1.04);
+}
+.room-layer.on { opacity: 1; transform: scale(1); }
+/* 사진 전체에 고르게 한 겹. 가운데만 어둡게 하면 검은 얼룩으로 보인다 */
+.room-scrim {
+  position: absolute; inset: 0;
+  background: rgba(12, 9, 7, 0.40);
+}
+.grain {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.16; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* ── 위젯: 앱의 표면 규칙 그대로 — 불투명 면, 이중 테두리, 넓고 따뜻한 그림자 ── */
+.w {
+  position: absolute;
+  background: var(--surf);
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px var(--surf-line), 0 0 0 2.5px var(--halo), var(--lift);
+  overflow: hidden;
+  backdrop-filter: blur(2px);
+}
+.w-head {
+  height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 12px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(246, 241, 232, 0.45);
+}
+.w-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 9px; }
+.bar { height: 7px; border-radius: 4px; background: rgba(246, 241, 232, 0.18); }
+.bar.lead { height: 11px; background: rgba(246, 241, 232, 0.7); }
+.check { width: 15px; height: 15px; border-radius: 5px; border: 1.5px solid rgba(246, 241, 232, 0.34); flex: none; }
+.check.on { background: var(--amber); border-color: var(--amber); }
+.row { display: flex; align-items: center; gap: 10px; }
+.plate { border-radius: 9px; background: rgba(246, 241, 232, 0.08); }
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+/* 로드될 때 위젯이 제자리로 내려앉는다 — 한 번만, 계단식 */
+.settle { opacity: 0; animation: settle 720ms var(--ease) forwards; }
+@keyframes settle { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; } }
+
+/* ── 타입 ── */
+.display { font-size: clamp(48px, 6.1vw, 88px); line-height: 0.98; font-weight: 600; letter-spacing: -0.042em; }
+.title { font-size: clamp(34px, 3.6vw, 52px); line-height: 1.04; font-weight: 600; letter-spacing: -0.032em; }
+.lead { font-size: 19px; line-height: 1.52; }
+.label { font-size: 11px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; }
+.body { font-size: 16px; line-height: 1.6; color: var(--ink-2); }
+
+/* ── 컨트롤 ── */
+.cta {
+  height: 52px; padding: 0 26px; border-radius: 12px;
+  background: var(--amber); color: var(--amber-ink);
+  font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+  transition: transform 160ms var(--ease), filter 160ms var(--ease);
+}
+.cta:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.cta:active { transform: translateY(0); }
+.field {
+  height: 52px; width: 260px; border-radius: 12px; padding: 0 16px;
+  display: flex; align-items: center; font-size: 16px;
+  background: rgba(246, 241, 232, 0.1); box-shadow: inset 0 0 0 1px rgba(246, 241, 232, 0.22);
+  color: rgba(246, 241, 232, 0.5);
+}
+.field.on-paper { background: #fff; box-shadow: inset 0 0 0 1px rgba(30, 28, 25, 0.18); color: var(--ink-3); }
+
+.bar-top {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 22px 28px;
+}
+.mark { display: flex; align-items: center; gap: 10px; color: var(--room-ink); }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px;
+  border-radius: 10px; background: rgba(20, 16, 13, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(246, 241, 232, 0.16);
+  color: var(--room-ink-2); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+
+/* ── 종이 섹션 ── */
+.paper {
+  background-color: var(--paper);
+  background-image: linear-gradient(to right, var(--paper-line) 1px, transparent 1px),
+                    linear-gradient(to bottom, var(--paper-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 48px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .settle { opacity: 1; animation: none; }
+  .room-layer { transition: none; transform: none; }
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
