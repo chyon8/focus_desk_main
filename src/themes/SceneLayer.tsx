@@ -113,9 +113,9 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
         <ParticleLayer kind={particles.kind} density={particles.density} />
       )}
 
-      {/* 무늬는 단색 위에만 깐다. 사진 위 격자는 얼룩으로 보인다. 공간이 고른 게
-          없으면 테마가 정한다 — Swiss Editorial은 격자, 나머지는 없음. */}
-      {flat && (patternChoice ?? (theme.flat ? 'grid' : 'none')) === 'grid' && (
+      {/* 무늬는 단색 위에만 깐다. 사진 위 격자는 얼룩으로 보인다. 기본은 끔이다 —
+          배경이 카메라를 안 따라가서 격자가 위젯 위치 기준이 못 되므로, 켜는 건 사용자가 고른다. */}
+      {flat && patternChoice === 'grid' && (
         <div
           className="absolute inset-0 scene-grid"
           data-backdrop={lightBackdrop ? 'light' : 'dark'}

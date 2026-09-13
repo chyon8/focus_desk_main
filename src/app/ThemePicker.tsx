@@ -36,7 +36,7 @@ const WEATHER: { kind: ParticlesChoice['kind']; label: string; icon: LucideIcon 
 // What a kind starts at when the space has no density of its own to carry over.
 const DEFAULT_DENSITY = 0.4;
 
-const BASE_THEMES = ['swiss', 'rainy-night', 'snowfall'].map(getTheme);
+const BASE_THEMES = ['swiss', 'paper', 'rainy-night', 'snowfall'].map(getTheme);
 
 /** A theme-owned picture appears in the picker once, but still selects its theme. */
 const THEME_FOR_WALLPAPER = new Map(
@@ -133,7 +133,7 @@ export const ThemePicker: React.FC = () => {
 
   // 무늬는 단색 위에만 얹힌다 — SceneLayer가 거는 조건과 같다.
   const onSolid = override ? override.type === 'COLOR' : theme.scene.kind === 'color';
-  const pattern = patternChoice ?? (theme.flat ? 'grid' : 'none');
+  const pattern = patternChoice ?? 'none';
 
   // A selected card gets a ring in the theme's own accent colour.
   const ring = (selected: boolean) =>
@@ -163,20 +163,25 @@ export const ThemePicker: React.FC = () => {
             <Label>Background</Label>
             {/* Plain and weather-backed choices stay compact. Pictures get the
                 width they need below, while all of them remain one setting. */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {BASE_THEMES.map((theme) => (
                 <button
                   key={theme.id}
                   onClick={() => setTheme(theme.id)}
+                  title={theme.name}
                   aria-label={theme.name}
                   aria-pressed={themeId === theme.id && !override}
                   className="press group rounded-control overflow-hidden text-left transition-transform hover:scale-[1.04]"
                   style={ring(themeId === theme.id && !override)}
                 >
                   <div className="aspect-video w-full flex items-center justify-center" style={thumbStyle(theme.scene)}>
+                    {/* 썸네일 글자는 그 테마의 폰트로 쓴다. `--font-ui`는 지금 켜진
+                        테마를 따라가서 못 쓴다 — Swiss가 켜져 있으면 Paper 칸도 Plex가 된다. */}
                     {theme.flat && <span style={{
-                      fontFamily: '"IBM Plex Sans KR", "Noto Sans KR", sans-serif',
-                      fontSize: 20, fontWeight: 900,
+                      fontFamily: theme.id === 'swiss'
+                        ? '"IBM Plex Sans KR", "Noto Sans KR", sans-serif'
+                        : '"Instrument Sans Variable", system-ui, sans-serif',
+                      fontSize: 16, fontWeight: 900,
                       color: theme.tokens.ink, letterSpacing: '-0.02em',
                     }}>Aa 가</span>}
                   </div>

@@ -2,22 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_THEME_ID, getTheme, sceneForPolarity, THEMES, tokensForGround } from './themes';
 
 describe('reference themes', () => {
-  it('puts Swiss Editorial first', () => {
-    expect(THEMES[0]).toMatchObject({ id: 'swiss', name: 'Swiss Editorial' });
+  it('puts Editorial first', () => {
+    expect(THEMES[0]).toMatchObject({ id: 'swiss', name: 'Editorial' });
   });
 
   it('preserves the previous fallback theme', () => {
     expect(getTheme('missing').id).toBe(DEFAULT_THEME_ID);
   });
 
-  it('falls back for the removed Editorial and Paper themes', () => {
-    for (const id of ['editorial', 'paper']) {
-      expect(getTheme(id).id).toBe(DEFAULT_THEME_ID);
-    }
+  it('falls back for the removed Editorial theme', () => {
+    expect(getTheme('editorial').id).toBe(DEFAULT_THEME_ID);
   });
 
-  it('keeps Swiss Editorial exact in both polarities whatever the ground', () => {
-    const theme = getTheme('swiss');
+  it.each(['swiss', 'paper'])('keeps %s exact in both polarities whatever the ground', (id) => {
+    const theme = getTheme(id);
+    expect(theme.id).toBe(id);
     for (const ground of ['#ffffff', '#050505', '#ff0000']) {
       expect(tokensForGround(theme, ground, true)).toEqual(theme.tokens);
       expect(tokensForGround(theme, ground, false)).toEqual(theme.flat!.darkTokens);

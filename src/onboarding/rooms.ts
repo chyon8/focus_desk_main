@@ -73,7 +73,7 @@ const SPECS: RoomSpec[] = [
   },
   {
     id: 'swiss-editorial',
-    name: 'Swiss Editorial',
+    name: 'Editorial',
     themeId: 'swiss',
     background: null,
     ambience: { ...silent },

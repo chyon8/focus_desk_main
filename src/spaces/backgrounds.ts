@@ -20,10 +20,15 @@ export function assetUrl(src: string) {
  * 겨우 다른 색이고 전체 화면으로는 같은 색이다. 채도도 대부분 4 미만이라 색조가
  * 안 보였다(Mist `#f1f5f9`는 2.5로 그냥 흰색이었다). Charcoal·Ink·Stone·Moss·
  * Sand·Linen·Blush를 버리고 남은 여덟의 채도를 올렸다. 지금 최소 ΔE는 어두운 줄
- * 11.0, 밝은 줄 7.3이다. 밝은 쪽이 더 못 벌어지는 건 흰색 근처라서다.
+ * 11.0, 밝은 줄 7.4다. 밝은 쪽이 더 못 벌어지는 건 흰색 근처라서다.
  *
- * **Black·Greige는 시안(A2.html)의 `solidDark`·`solidLight` 계열이다.** 앱의
- * 어두운 색이 전부 남색·자주·초록이 섞여 있어서 따뜻한 무채색 검정이 없었다.
+ * **Black은 시안(A2.html)의 `solidDark` 계열이다.** 앱의 어두운 색이 전부
+ * 남색·자주·초록이 섞여 있어서 따뜻한 무채색 검정이 없었다.
+ *
+ * **Rose는 Greige `#ece7df` 자리다(2026-09-13).** 따뜻한 베이지는 Paper 테마
+ * (`#efe7d9`)가 맡으므로 같은 색을 두 번 두지 않았다. 밝은 줄이 파랑·초록·보라뿐이라
+ * 빈 따뜻한 색조(Lab 색상각 27°)로 채우고, 밝기·채도는 나머지 셋에 맞췄다
+ * (L 88 / C 9). Paper·Swiss 바탕과도 ΔE 9 이상 떨어진다.
  *
  * 버린 색을 쓰던 공간은 그대로 둔다 — 값은 문자열로 저장되어 있어서 계속 칠해지고,
  * 팔레트에서 선택 표시만 안 된다.
@@ -33,7 +38,7 @@ export const SOLID_COLORS: { value: string; name: string }[] = [
   { value: '#111a2c', name: 'Midnight' },
   { value: '#0f2419', name: 'Forest' },
   { value: '#2b1b30', name: 'Plum' },
-  { value: '#ece7df', name: 'Greige' },
+  { value: '#f0d8d6', name: 'Rose' },
   { value: '#dde7f2', name: 'Mist' },
   { value: '#d7e2d4', name: 'Sage' },
   { value: '#e5ddee', name: 'Lilac' },
