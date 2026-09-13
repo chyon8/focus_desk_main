@@ -8,6 +8,7 @@ import {
   minZoomFor,
   inReadingOrder,
   isFullyVisible,
+  placeInView,
   Box,
 } from './layout';
 import { MIN_ZOOM, worldToScreen } from './camera';
@@ -315,5 +316,36 @@ describe('clampCamera', () => {
   it('has nothing to hold an empty space to', () => {
     const cam = { x: 9000, y: 9000, zoom: 0.02 };
     expect(clampCamera(cam, [], area)).toBe(cam);
+  });
+});
+
+describe('placeInView', () => {
+  const inset = { y: 84, width: 1400, height: 900 };
+  const browser = { width: 900, height: 620 };
+
+  it('puts the top-left on the point when the widget fits there', () => {
+    const cam = { x: 0, y: 0, zoom: 1 };
+    expect(placeInView(cam, browser, { x: 200, y: 150 }, inset)).toEqual({ x: 200, y: 150 });
+  });
+
+  it('keeps the whole widget on screen near the bottom-right corner', () => {
+    const cam = { x: 100, y: 50, zoom: 0.5 };
+    const at = { x: cam.x + 1350 / cam.zoom, y: cam.y + 950 / cam.zoom };
+    const placed = placeInView(cam, browser, at, inset);
+    expect(isFullyVisible(cam, { id: 'w', ...browser, ...placed }, inset)).toBe(true);
+  });
+
+  it('never goes above the top chrome', () => {
+    const cam = { x: 0, y: 0, zoom: 1.5 };
+    const placed = placeInView(cam, browser, { x: 10, y: 0 }, inset);
+    expect(worldToScreen(cam, placed).y).toBeGreaterThanOrEqual(inset.y);
+  });
+
+  it('aligns a widget bigger than the view to the top-left', () => {
+    const cam = { x: 0, y: 0, zoom: 3 };
+    const placed = placeInView(cam, browser, { x: 300, y: 300 }, inset);
+    const screen = worldToScreen(cam, placed);
+    expect(screen.x).toBeCloseTo(16);
+    expect(screen.y).toBeCloseTo(inset.y + 16);
   });
 });

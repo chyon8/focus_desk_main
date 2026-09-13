@@ -12,6 +12,7 @@ import {
   inReadingOrder,
   isFullyVisible,
   minZoomFor,
+  placeInView,
 } from '../canvas/layout';
 import {
   columnAt,
@@ -88,12 +89,15 @@ interface SpaceState {
   fitToWidgets: () => void;
   /**
    * `at` is a world point the widget is centred on — where the palette icon was
-   * dropped. Hands back the new id, so a caller can look at where it landed.
+   * dropped. With `inView`, `at` is instead where the user pointed (a
+   * double-click): the widget's top-left goes there and it is kept on screen.
+   * Hands back the new id, so a caller can look at where it landed.
    */
   addWidget: (
     type: WidgetType,
     data?: Record<string, unknown>,
-    at?: { x: number; y: number }
+    at?: { x: number; y: number },
+    inView?: boolean
   ) => string;
   /** Copies widgets, contents and all, offset so the copy is visible on top. */
   duplicateWidgets: (ids: string[]) => void;
@@ -630,20 +634,25 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       return camera ? { ...space, camera } : space;
     }),
 
-  addWidget: (type, data, at) => {
+  addWidget: (type, data, at, inView) => {
     const def = WIDGET_DEFS[type];
     let created = '';
     updateActive(set, (space) => {
       // Dropped from the palette: centre it on the pointer. Clicked: the middle of
-      // the canvas area the user is looking at.
+      // the canvas area the user is looking at. Double-clicked: `placeInView`.
       const area = canvasArea();
+      const spot = at && inView ? placeInView(space.camera, def.defaultSize, at, area) : null;
       const widget: WidgetDoc = {
         id: crypto.randomUUID(),
         type,
-        x: at
+        x: spot
+          ? spot.x
+          : at
           ? at.x - def.defaultSize.width / 2
           : space.camera.x + (area.width / space.camera.zoom - def.defaultSize.width) / 2,
-        y: at
+        y: spot
+          ? spot.y
+          : at
           ? at.y - def.defaultSize.height / 2
           : space.camera.y +
             (area.y + (area.height - def.defaultSize.height * space.camera.zoom) / 2) /

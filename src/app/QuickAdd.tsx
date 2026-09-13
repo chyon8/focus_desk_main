@@ -11,6 +11,32 @@ const PANEL_WIDTH = 304;
 // 늘 때마다 상수를 같이 고쳐야 했고, 안 고쳐서 마지막 줄이 창 밖으로 잘렸다.
 const PANEL_HEIGHT_GUESS = 260;
 const EDGE = 12;
+/** Space between the pointer and the panel's corner. */
+const GAP = 4;
+
+/**
+ * The panel's top-left: the pointer at its top-left corner, flipped to the other
+ * side of the pointer when it would run off the right or bottom edge, and pushed
+ * inside the window only if it fits on neither side.
+ *
+ * It used to be centred on the pointer horizontally, so the pointer sat in the
+ * middle of the title and the panel read as having opened somewhere else
+ * (2026-09-13).
+ */
+export function panelPosition(
+  pointer: { x: number; y: number },
+  size: { width: number; height: number },
+  view: { width: number; height: number }
+) {
+  let left = pointer.x + GAP;
+  if (left + size.width > view.width - EDGE) left = pointer.x - GAP - size.width;
+  let top = pointer.y + GAP;
+  if (top + size.height > view.height - EDGE) top = pointer.y - GAP - size.height;
+  return {
+    left: Math.max(EDGE, Math.min(left, view.width - size.width - EDGE)),
+    top: Math.max(EDGE, Math.min(top, view.height - size.height - EDGE)),
+  };
+}
 
 /**
  * Opens the quick-add palette in the middle of the canvas — what N does, since a
@@ -55,19 +81,16 @@ export const QuickAdd: React.FC = () => {
 
   if (!quickAdd) return null;
 
-  // 접는 순서: 먼저 아래·오른쪽 변에 맞추고, 그래도 넘치면 위·왼쪽 변이 이긴다.
-  // 반대로 하면 화면보다 큰 팝오버가 위로 잘려서 첫 줄을 못 누른다.
-  const left = Math.max(
-    EDGE,
-    Math.min(quickAdd.screen.x - PANEL_WIDTH / 2, window.innerWidth - PANEL_WIDTH - EDGE)
-  );
-  const top = Math.max(
-    EDGE,
-    Math.min(quickAdd.screen.y - 12, window.innerHeight - height - EDGE)
+  // 넘칠 때는 위·왼쪽 변이 이긴다(panelPosition의 마지막 max). 반대로 하면
+  // 화면보다 큰 팝오버가 위로 잘려서 첫 줄을 못 누른다.
+  const { left, top } = panelPosition(
+    quickAdd.screen,
+    { width: PANEL_WIDTH, height },
+    { width: window.innerWidth, height: window.innerHeight }
   );
 
   const add = (item: PaletteEntry) => {
-    useSpaceStore.getState().addWidget(item.payload.type, item.payload.data, quickAdd.world);
+    useSpaceStore.getState().addWidget(item.payload.type, item.payload.data, quickAdd.world, true);
     useUiStore.getState().closeQuickAdd();
   };
 
@@ -82,7 +105,14 @@ export const QuickAdd: React.FC = () => {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.12 }}
         ref={panel}
-        style={{ left, top, width: PANEL_WIDTH, maxHeight: `calc(100vh - ${EDGE * 2}px)` }}
+        style={{
+          left,
+          top,
+          width: PANEL_WIDTH,
+          maxHeight: `calc(100vh - ${EDGE * 2}px)`,
+          // Grows out of the corner nearest the pointer.
+          transformOrigin: `${left < quickAdd.screen.x ? 'right' : 'left'} ${top < quickAdd.screen.y ? 'bottom' : 'top'}`,
+        }}
         className="glass-panel fixed z-[96] overflow-y-auto p-2 rounded-surface"
       >
         {view === 'quick' ? (

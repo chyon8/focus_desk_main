@@ -560,3 +560,32 @@ export function isFullyVisible(
     top + box.height * cam.zoom <= area.y + area.height
   );
 }
+
+/** Screen pixels kept between a placed widget and the edge of the view. */
+const VIEW_MARGIN = 16;
+
+/**
+ * Where a widget made at a point the user picked goes: its top-left on the point,
+ * then pulled back inside the view so the whole widget is on screen.
+ *
+ * It used to be centred on the point with no check at all. A browser is 620
+ * tall, so a double-click in the upper half of the screen put its header above
+ * the top chrome or off screen (2026-09-13). A box bigger than the view is
+ * aligned to the view's top-left, where its header can still be reached.
+ */
+export function placeInView(
+  cam: Camera,
+  size: { width: number; height: number },
+  at: { x: number; y: number },
+  area: { y: number; width: number; height: number }
+): { x: number; y: number } {
+  const margin = VIEW_MARGIN / cam.zoom;
+  const left = cam.x + margin;
+  const top = cam.y + area.y / cam.zoom + margin;
+  const right = cam.x + area.width / cam.zoom - margin;
+  const bottom = cam.y + (area.y + area.height) / cam.zoom - margin;
+  return {
+    x: Math.max(left, Math.min(at.x, right - size.width)),
+    y: Math.max(top, Math.min(at.y, bottom - size.height)),
+  };
+}
