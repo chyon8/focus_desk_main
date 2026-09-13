@@ -6,7 +6,6 @@ import { AmbienceEngineHost, SoundPanel } from '../ambience/AmbienceDock';
 import { FocusInsights } from '../focus/FocusInsights';
 import { FocusSessionBar } from '../focus/FocusSessionBar';
 import { useSpaceTimeTracker } from '../focus/useSpaceTimeTracker';
-import { useWelcomeBack } from '../focus/useWelcomeBack';
 import { useSpaceApps } from '../apps/useSpaceApps';
 import { useAppTimeStore } from '../stores/appTimeStore';
 import { usePrefsStore } from '../stores/prefsStore';
@@ -60,7 +59,6 @@ export const App: React.FC = () => {
 
   useThemeVariables(theme);
   useSpaceTimeTracker();
-  useWelcomeBack();
   useSpaceApps();
 
   useEffect(() => {

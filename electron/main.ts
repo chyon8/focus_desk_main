@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, Menu } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, Menu } from 'electron';
 import path from 'node:path';
 import { NEW_TAB_FRAME } from '../src/widgets/browserLinks';
 import { createHelper } from './apps/helperClient';
@@ -52,6 +52,129 @@ app.userAgentFallback = app.userAgentFallback
   .replace(/ Electron\/[\d.]+/, '')
   .replace(` ${app.getName()}/${app.getVersion()}`, '')
   .replace(/Chrome\/(\d+)[\d.]*/, 'Chrome/$1.0.0.0');
+
+// Pages in widgets used to get every permission they asked for: with no handler
+// Electron grants all of them, so a site could turn the camera or microphone on
+// without a word (2026-09-13). Now a request is what Chrome does: what Chrome
+// allows without asking is allowed, the rest is asked, once per site until the
+// app quits. The app's own page is not a website and is allowed everything.
+//
+// The check (`permissions.query`, `Notification.permission`) reads "granted"
+// unless the user chose Block. Chrome would say "prompt", which Electron cannot
+// express — its check is yes or no — and "denied" was worse: a site that reads
+// denied treats the permission as blocked and never asks (Meet shows its
+// "camera blocked" help instead of requesting it). Camera, microphone, location,
+// screen and clipboard still go through the request below when they are used.
+const ALLOWED_WITHOUT_ASKING = new Set<string>([
+  'clipboard-sanitized-write',
+  'fullscreen',
+  'pointerLock',
+  // DRM playback — Spotify, YouTube Music, Netflix.
+  'mediaKeySystem',
+]);
+
+/** What the question says each permission is for. A permission not listed here is refused. */
+const PERMISSION_ASKS: Record<string, string> = {
+  'clipboard-read': 'read your clipboard',
+  'display-capture': 'share your screen',
+  geolocation: 'know your location',
+  'idle-detection': 'know when you are away',
+  midi: 'use your MIDI devices',
+  midiSysex: 'use your MIDI devices',
+  notifications: 'show notifications',
+  keyboardLock: 'take over keyboard shortcuts',
+  openExternal: 'open another app',
+  'speaker-selection': 'choose your speakers',
+  'storage-access': 'use its sign-in here',
+  'top-level-storage-access': 'use its sign-in here',
+  'window-management': 'place windows on your screens',
+  fileSystem: 'edit files on your Mac',
+};
+
+/** `<origin> <permission>` → the answer given this run. Camera and microphone are kept apart. */
+const permissionAnswers = new Map<string, boolean>();
+/** Questions on screen, so a page asking twice gets one dialog. */
+const permissionQuestions = new Map<string, Promise<boolean>>();
+
+function isAppPage(contents: Electron.WebContents | null) {
+  return !!contents && !!win && !win.isDestroyed() && contents.id === win.webContents.id;
+}
+
+function originOf(url: string) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
+  }
+}
+
+function askPermission(origin: string, what: string): Promise<boolean> {
+  const key = `${origin} ${what}`;
+  const open = permissionQuestions.get(key);
+  if (open) return open;
+  const options = {
+    type: 'question' as const,
+    buttons: ['Allow', 'Block'],
+    defaultId: 1,
+    cancelId: 1,
+    message: `${originOf(origin).replace(/^https?:\/\//, '')} wants to ${what}`,
+    detail: 'Focus Desk asks again after it quits.',
+  };
+  const question = (win && !win.isDestroyed()
+    ? dialog.showMessageBox(win, options)
+    : dialog.showMessageBox(options)
+  )
+    .then(({ response }) => response === 0)
+    .finally(() => permissionQuestions.delete(key));
+  permissionQuestions.set(key, question);
+  return question;
+}
+
+app.on('session-created', (ses) => {
+  ses.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
+    if (isAppPage(contents) || ALLOWED_WITHOUT_ASKING.has(permission)) return true;
+    const origin = originOf(requestingOrigin);
+    const key =
+      permission === 'media' ? `${origin} media:${details.mediaType}` : `${origin} ${permission}`;
+    return permissionAnswers.get(key) !== false;
+  });
+
+  ses.setPermissionRequestHandler((contents, permission, callback, details) => {
+    if (isAppPage(contents) || ALLOWED_WITHOUT_ASKING.has(permission)) return callback(true);
+    const origin = originOf(details.requestingUrl || contents.getURL());
+
+    if (permission === 'media') {
+      const types = ('mediaTypes' in details && details.mediaTypes?.length
+        ? details.mediaTypes
+        : ['video', 'audio']) as Array<'video' | 'audio'>;
+      const keys = types.map((type) => `${origin} media:${type}`);
+      if (keys.every((key) => permissionAnswers.has(key))) {
+        return callback(keys.every((key) => permissionAnswers.get(key)));
+      }
+      const what =
+        types.length === 2
+          ? 'use your camera and microphone'
+          : types[0] === 'video'
+            ? 'use your camera'
+            : 'use your microphone';
+      void askPermission(origin, what).then((allowed) => {
+        for (const key of keys) permissionAnswers.set(key, allowed);
+        callback(allowed);
+      });
+      return;
+    }
+
+    const what = PERMISSION_ASKS[permission];
+    if (!what) return callback(false);
+    const key = `${origin} ${permission}`;
+    const answered = permissionAnswers.get(key);
+    if (answered !== undefined) return callback(answered);
+    void askPermission(origin, what).then((allowed) => {
+      permissionAnswers.set(key, allowed);
+      callback(allowed);
+    });
+  });
+});
 
 process.env.DIST = path.join(__dirname, '../dist');
 process.env.VITE_PUBLIC = app.isPackaged

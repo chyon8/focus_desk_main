@@ -73,3 +73,57 @@ export function siteOf(host: string) {
   const keep = country && SECOND_LEVEL.has(parts[parts.length - 2]) ? 3 : 2;
   return parts.slice(-keep).join('.');
 }
+
+/**
+ * Google's per-visit search parameters. They are issued for one request from one
+ * network address and mean nothing on the next load — sent again later, from
+ * another address, they are what Google's "unusual traffic" page reports as
+ * `IP주소: A ≠ B`. `q` and the other parameters that say what was searched stay.
+ */
+const GOOGLE_VISIT_PARAMS = new Set([
+  'ei', 'sei', 'sxsrf', 'iflsig', 'ved', 'uact', 'gs_lp', 'gs_lcrp', 'oq', 'sclient',
+  'source', 'sca_esv', 'aqs', 'sourceid', 'ie', 'zx', 'no_sw_cr', 'biw', 'bih', 'dpr',
+]);
+
+const GOOGLE_HOST = /(^|\.)google\.[a-z.]+$/i;
+
+/**
+ * The address a browser widget keeps for next time.
+ *
+ * A widget reopens the address it saved, on every launch and every switch into
+ * its space. It used to save whatever the page was on, and that included Google's
+ * block page: one "unusual traffic" page on 2026-08-29 was saved as
+ * `/sorry/index?continue=…`, and that address — bound to the request it was
+ * issued for — showed the block page again every time the space opened
+ * (2026-09-13). What is kept instead:
+ *
+ * - a block or challenge page: the page it was guarding (`continue`), not itself
+ * - a Google search: without the per-visit parameters above
+ * - Cloudflare's challenge parameters (`__cf_chl_*`): dropped for the same reason
+ */
+export function addressToSave(url: string): string {
+  let address: URL;
+  try {
+    address = new URL(url);
+  } catch {
+    return url;
+  }
+  const google = GOOGLE_HOST.test(address.hostname);
+
+  if (google && address.pathname.startsWith('/sorry/')) {
+    const next = address.searchParams.get('continue');
+    return next && !next.includes('/sorry/') ? addressToSave(next) : `${address.origin}/`;
+  }
+
+  let changed = false;
+  for (const key of [...address.searchParams.keys()]) {
+    const visitOnly =
+      key.startsWith('__cf_chl_') ||
+      (google && address.pathname === '/search' && GOOGLE_VISIT_PARAMS.has(key));
+    if (visitOnly) {
+      address.searchParams.delete(key);
+      changed = true;
+    }
+  }
+  return changed ? address.toString() : url;
+}

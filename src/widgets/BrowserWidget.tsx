@@ -5,7 +5,7 @@ import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 import { useWebAppStore } from '../stores/webappStore';
-import { hostOf, toAddress } from './browserAddress';
+import { addressToSave, hostOf, toAddress } from './browserAddress';
 import { BrowserStartPage } from './BrowserStartPage';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
 import { ALLOW_POPUPS, ERR_ABORTED, LINK_SHIM } from './browserLinks';
@@ -140,12 +140,15 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   onFavicon,
 }) => {
   const [data, update] = useWidgetData<BrowserData>(id);
+  // An address saved before `addressToSave` existed — Google's block page among
+  // them — is corrected before anything loads it.
+  const savedUrl = addressToSave(data.url);
   // Read by the page's event handlers, which must not re-subscribe on every render.
   const onFaviconRef = useRef(onFavicon);
   onFaviconRef.current = onFavicon;
   const favorites = useWebAppStore((s) => s.apps);
   const spaceId = useSpaceStore((s) => s.activeSpaceId);
-  const [address, setAddress] = useState(data.url);
+  const [address, setAddress] = useState(savedUrl);
   const [history, setHistory] = useState({ back: false, forward: false });
   const [isLoading, setIsLoading] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -156,7 +159,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   // src is set once: after that the page navigates itself, and re-rendering with
   // a new src would yank it back. Empty means the start page is showing, and the
   // first address typed is what mounts the guest.
-  const initialUrl = useRef(data.url);
+  const initialUrl = useRef(savedUrl);
   // Page zoom — the browser's own ⌘+/⌘−. It re-lays the page out at a new size,
   // which the canvas zoom cannot do: that only scales what is already drawn.
   const zoom = data.zoom ?? 1;
@@ -169,6 +172,10 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   // Set on the first dom-ready: which guest this is, and proof it can be zoomed
   // at all (setZoomFactor throws before the element is attached).
   const contentsId = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (savedUrl !== data.url) update({ url: savedUrl });
+  }, [savedUrl, data.url, update]);
 
   const hasPage = !!data.url;
   // Undefined is loaded, so only a widget created closed shows the card.
@@ -295,7 +302,8 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
       // last page's title sits there, and on a site with no favicon at all the
       // last page's icon would stay for good.
       const sameSite = hostOf(e.url) === hostOf(urlRef.current);
-      update(sameSite ? { url: e.url } : { url: e.url, title: '', favicon: '' });
+      const url = addressToSave(e.url);
+      update(sameSite ? { url } : { url, title: '', favicon: '' });
       // What the start page offers next time. Only full loads: a single-page
       // site would otherwise count a dozen times for one visit.
       useSiteVisitStore.getState().record(e.url);
@@ -308,7 +316,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     const onNavigateInPage = (e: Electron.DidNavigateInPageEvent) => {
       if (e.isMainFrame) {
         setAddress(e.url);
-        update({ url: e.url });
+        update({ url: addressToSave(e.url) });
       }
       readHistory();
     };

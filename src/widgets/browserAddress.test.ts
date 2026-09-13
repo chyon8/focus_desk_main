@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hostOf, toAddress } from './browserAddress';
+import { addressToSave, hostOf, toAddress } from './browserAddress';
 
 describe('toAddress', () => {
   it('adds a scheme to a bare host', () => {
@@ -45,5 +45,38 @@ describe('hostOf', () => {
 
   it('hands back what it cannot parse', () => {
     expect(hostOf('not a url')).toBe('not a url');
+  });
+});
+
+describe('addressToSave', () => {
+  it('keeps the page a Google block page was guarding, not the block page', () => {
+    const blocked =
+      'https://www.google.com/sorry/index?continue=' +
+      encodeURIComponent('https://www.google.com/search?q=major+7&ei=zR2Mau6TG&sxsrf=APpeQ&sca_esv=6712') +
+      '&q=EhAkBlkAEF_0YpC4eUgq8DP3';
+    expect(addressToSave(blocked)).toBe('https://www.google.com/search?q=major+7');
+  });
+
+  it('falls back to the Google home page when the block page guards nothing', () => {
+    expect(addressToSave('https://www.google.com/sorry/index?q=abc')).toBe('https://www.google.com/');
+  });
+
+  it('drops per-visit parameters from a Google search and keeps the query', () => {
+    expect(
+      addressToSave('https://www.google.com/search?q=focus+desk&tbm=isch&ei=abc&sei=def&ved=0ah&oq=focus')
+    ).toBe('https://www.google.com/search?q=focus+desk&tbm=isch');
+  });
+
+  it('drops Cloudflare challenge parameters on any site', () => {
+    expect(addressToSave('https://www.producthunt.com/?__cf_chl_tk=abc&ref=home')).toBe(
+      'https://www.producthunt.com/?ref=home'
+    );
+  });
+
+  it('leaves every other address exactly as it was', () => {
+    const url = 'https://www.youtube.com/watch?v=abc&ei=keep';
+    expect(addressToSave(url)).toBe(url);
+    expect(addressToSave('https://www.google.com/maps?ei=keep')).toBe('https://www.google.com/maps?ei=keep');
+    expect(addressToSave('not a url')).toBe('not a url');
   });
 });
