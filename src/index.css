@@ -165,6 +165,16 @@ body {
   --scene-grid-line: rgba(20, 20, 20, 0.12);
 }
 
+/* Paper의 격자는 랜딩 페이지(design-ref/landing-canvas/landing.css의 .paper)와 같은 값이다.
+   온보딩 Paper 칸도 이 클래스를 쓴다 — 고르기 전에 본 격자와 들어간 뒤의 격자가 같아야 한다. */
+.scene-grid-paper {
+  background-size: 44px 44px;
+}
+
+.scene-grid-paper[data-backdrop='light'] {
+  --scene-grid-line: rgba(120, 96, 62, 0.09);
+}
+
 /* Fine film grain. Static noise from an inline SVG filter — no asset, no repaint. */
 .scene-grain {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");

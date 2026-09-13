@@ -21,49 +21,20 @@
 
 | # | 할 일 | 왜 |
 |---|---|---|
-| 6 | **방 다섯 재구성 ← 다음** | 첫 화면 다섯 장이 앱에서 제일 좋은 다섯 장이어야 한다 |
-| 7 | 온보딩 디자인 검토 | 출시 전 한 번. 방 재구성 뒤에 본다 |
+| 7 | **첫 화면(방 고르기) 레이아웃 — A ← 다음** | 사진이 320px 카드라 화면을 못 쓰고, 제일 밝은 Paper 칸으로 눈이 먼저 간다 |
+| 8 | 온보딩 디자인 검토 | 레이아웃을 바꾼 뒤 한 번 |
 
-**지금 온보딩 배경**: Rainy Attic · Snowfall · Swiss Editorial · Midnight Observatory · Meadow 순서.
-Swiss Editorial 호버 중에는 원본 `#f7f7f5` 배경·검은 글자·IBM Plex Sans KR를 쓴다.
+**지금 온보딩 방**: Rainy Attic · Midnight Observatory · Summer Lake · Snowy Railway · Paper (2026-09-13). 사진 넷은 랜딩 페이지의 방 넷과 같다. 순서는 7번에서 바꾼다.
+Paper가 보이는 동안(호버·고른 뒤)은 어두운 층을 걷고 글자를 어둡게 쓴다 — [Onboarding.tsx](../src/onboarding/Onboarding.tsx)의 `--ob-*` 변수.
 
-### 10-6. 방 다섯 재구성 — 정한 것 (2026-09-12)
+### 10-7. 첫 화면 레이아웃 — A (2026-09-13 사용자 결정)
 
-**문제는 "그라데이션이라 심심하다"가 아니라 썸네일에 초점이 없는 것이다.** `quiet-snow`·`midnight-observatory`·`snow-lake-greenhouse-v2`는 눈밭·능선·흐린 호수뿐이라 300px로 줄이면 회색 사각형이 된다. `rainy-attic`은 창·램프·침대가 있어서 작아도 읽힌다.
+- 시안: https://claude.ai/code/artifact/ae5d5e0d-7482-4f84-950c-60b6b64bbfe2 — 작업 파일은 [design-ref/onboarding-rooms-canvas/](../design-ref/onboarding-rooms-canvas/) (지금 · A~F)
+- **A · 전체 화면 + 썸네일 줄**: 가리킨 방이 화면 전체가 되고, 아래에 썸네일 5개(208×130)가 한 줄. 어두운 층은 아래쪽 그라데이션만. 방 레이어는 이미 전부 전체 화면으로 올라와 있으니(`rooms.map`) `SCRIM_BROWSING` 층을 아래 그라데이션으로, 카드 격자를 썸네일 줄로 바꾸면 된다. 호버 = 방 바꾸기, 클릭 = 고르기 그대로
+- **순서(사용자 지시)**: Summer Lake → Rainy Attic → Midnight Observatory → Snowy Railway → Paper. [rooms.ts](../src/onboarding/rooms.ts)의 `SPECS`와 `rooms.test.ts`의 순서 테스트를 같이 바꾼다
+- **확인 안 된 것**: 사진 방을 고른 뒤 다음 질문 화면. 색 값만 옮겼고, 눈으로는 Paper만 끝까지 봤다
 
-**고르는 기준 셋**
-1. 썸네일에 읽히는 대상이 있을 것 (창·램프·사람·건물)
-2. 다섯 장의 계절·시간·안팎이 다 다를 것 — 골라야 할 이유가 생긴다
-3. 가운데가 조용할 것 — 위젯이 그 위에 놓인다
-
-**추천 다섯** (22장 다 보고 고름)
-
-| | 파일 | 무엇이 다른가 |
-|---|---|---|
-| 1 | `rainy-attic` | 비 · 밤 · 실내. 지금도 제일 강하다 |
-| 2 | `afternoon-records` | 오후 햇빛 · 실내. 유일한 따뜻한 낮 |
-| 3 | `ghibli-night-tram` | 밤 · 이동 중. 제일 독특하다 |
-| 4 | `summer-lake-landing` | 여름 · 야외 · 밝음. 유일한 바깥 낮 |
-| 5 | `winter-lake-greenhouse` | 겨울 · 밤 · 야외. 유일한 겨울 |
-
-- **온보딩에서 뺄 것**: `quiet-snow` · `midnight-observatory` · `snow-lake-greenhouse-v2`. 배경 목록에는 남긴다
-- **대기 후보**: `rainy-laundrette`(독특함 최고) · `late-summer-aquarium` · `spring-kite-cove`
-- **카페 후보 검토**: `assets/wallpapers/originals/morning-coast-cafe.png` — 배경 목록에 추가할지 결정
-- **`sunset_landscape`는 혼자 플랫 벡터라 화풍이 안 맞는다.** 어디에 두든 튄다
-
-### 10-6-1. 흰/검정 무지 카드를 섞는 안 — 다음 세션에 시안 두 개 (2026-09-12)
-
-사진 다섯이면 "어느 그림이 예쁜가"를 고르게 되고, 무지가 섞이면 "어떤 성격의 공간인가"를 고르게 된다. 질문이 더 좋아진다. **단 조건이 둘이다.**
-
-- **무지 카드를 진짜로 디자인해야 한다.** 지금 Swiss Editorial이 빈 사각형으로 보이는 건 그라데이션이라서가 아니라 아무것도 안 그려져 있어서다. 사진 옆에 빈 면을 같은 크기로 놓으면 "아직 안 만든 칸"으로 읽힌다. 격자 선·큰 타이포·색 블록이 실제로 카드 안에 들어가야 스타일로 읽힌다
-- ⚠️ **흰 방은 위젯이 안 보인다.** 앱 위젯이 반투명 흰 글래스라 흰 바탕에서 사라진다. 지금은 Swiss Editorial 호버 중에만 검은 글자로 뒤집는데, **흰 방을 정식으로 넣으려면 그 방에 들어간 뒤에도 위젯이 계속 뒤집혀 있어야 한다.** 그게 없으면 고르는 순간 못 쓰는 방이 된다. 이게 이 안의 진짜 비용이다
-- **순서는 사진 먼저.** 흰 → 검정 → 사진이 아니라 사진 → 사진 → 무지 → 사진 → 무지. 첫 칸이 흰 면이면 앱이 밋밋해 보인다
-
-**만들 시안 두 개** — 둘 다 온보딩 화면 통째로(제목·카드 격자·다음 버튼) 그린다. 카드만 놓으면 판단이 안 된다.
-- **섞기**: 사진 3(`rainy-attic`·`afternoon-records`·`summer-lake-landing`) + Swiss 화이트 1 + Swiss 다크 1
-- **사진만**: 위 추천 다섯
-
-### 10-7. 온보딩 디자인 검토 — 평가는 이 다섯으로만
+### 10-8. 온보딩 디자인 검토 — 평가는 이 다섯으로만
 
 | 기준 | 묻는 것 |
 |---|---|
@@ -105,7 +76,7 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 - **사이드바가 배경색을 따라가는 것** — 사용자가 이 앱에서 마음에 들어한 것이다. 약하게 만들지 말 것. `backgroundTokens.test.ts`가 대비와 색조를 같이 지킨다 — 값을 만지면 둘 중 하나가 조용히 깨지므로 **테스트를 먼저 보고 고칠 것**
 - **`SOLID_COLORS`는 8색** (2026-09-12, [backgrounds.ts](../src/spaces/backgrounds.ts)). Greige 자리는 Rose `#f0d8d6`. 랜딩 바탕색 `#efe7d9`는 단색이 아니라 **Paper 테마**로 올렸다(2026-09-13, [referenceThemes.ts](../src/themes/referenceThemes.ts)). 배경 패널 윗줄이 Editorial · Paper · Rainy Night · Snowfall 네 칸이다
 - **`MINIMAL_THEMES`는 없앴다** (2026-09-07)
-- **격자(Pattern)는 단색 위에만** (2026-09-12, [SceneLayer.tsx](../src/themes/SceneLayer.tsx)). 아래로 흐려지지 않고 화면 전체에 고르게 깐다. **기본은 모든 테마에서 끔**(2026-09-13) — 배경이 카메라를 안 따라가서 위치 기준이 못 된다
+- **격자(Pattern)는 단색 위에만** (2026-09-12, [SceneLayer.tsx](../src/themes/SceneLayer.tsx)). 아래로 흐려지지 않고 화면 전체에 고르게 깐다. **기본은 격자, 단색 전체**(2026-09-13) — 끄는 건 Atmosphere의 Plain. Paper가 제 색일 때는 랜딩 격자 값(44px·갈색 9%)
 - **Editorial(옛 Swiss Editorial, id `swiss`)·Paper에 단색을 고르면 테마가 유지된다** (2026-09-12, [spaceStore.ts](../src/stores/spaceStore.ts)의 `setBackground`)
 - **위젯 마크 8색은 액센트를 안 따른다** · **브라우저 위젯에 탭 줄을 안 넣는다**(묶는 건 컬럼이 한다) · **Atmosphere 패널 순서는 안 바꾼다**
 - **CSS 변수 + 토큰 클래스 12종 구조** — 배경을 바꾸면 전부 따라온다. 갈아엎지 말 것
@@ -146,7 +117,7 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 ## 코드 위치
 
 - **온보딩** = [Onboarding.tsx](../src/onboarding/Onboarding.tsx) · [FirstSteps.tsx](../src/onboarding/FirstSteps.tsx) · [samplePage.ts](../src/onboarding/samplePage.ts). ④의 답이 기본 공간의 이름이 되고 배경·앰비언스도 거기 붙는다
-- **온보딩 화면의 색은 토큰을 안 쓴다.** 사진 위에 얹히는 화면이라 `glass-panel`·`chrome-button-on`이 너무 옅게 나온다 — 흰색 알파를 직접 쓴다
+- **온보딩 화면의 색은 토큰을 안 쓴다.** 사진 위에 얹히는 화면이라 `glass-panel`·`chrome-button-on`이 너무 옅게 나온다 — 흰색 알파를 직접 쓴다. Paper 같은 단색 방에서는 `--ob-*` 변수로 밝은 색과 어두운 색이 자리를 바꾼다
 - **첫 실행 판정** = `spaceStore.needsOnboarding`. 공간은 **비어 있게** 만든다
 - **테스트 프로필** = `npm run dev:fresh`. 실제 프로필과 안 섞이므로 실사용 앱과 동시에 켜도 된다
 - **공간 모양** = [ThemePicker.tsx](../src/app/ThemePicker.tsx) — 배경·날씨·UI 밝기를 현재 공간에만 건다. 값은 [backgrounds.ts](../src/spaces/backgrounds.ts) · [SceneLayer.tsx](../src/themes/SceneLayer.tsx)
@@ -164,3 +135,5 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 - git 명령은 사용자가 직접 실행 (CLAUDE.md 워크플로우)
 - dev 실행 시 `unset ELECTRON_RUN_AS_NODE` 필요(VSCode 확장 변수)
 - **main 프로세스 변경은 Electron 완전 재시작이 필요하다.** 렌더러 새로고침으로는 옛 핸들러가 계속 돈다
+- **dev 중에 md 파일을 고치면 vite가 페이지를 새로 고친다** — 온보딩 진행 상태가 날아간다. 확인하는 동안은 문서를 안 고친다
+- **다른 세션이 `dev:fresh`(test 프로필)를 쓰고 있을 수 있다.** 확인용은 따로 띄운다: `rm -rf "$HOME/Library/Application Support/focus-desk-check" && FOCUS_DESK_PROFILE=check FOCUS_DESK_DEBUG_PORT=9333 npx vite` → CDP로 누르고 찍는다

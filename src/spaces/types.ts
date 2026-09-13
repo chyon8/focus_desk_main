@@ -77,8 +77,7 @@ export interface SpaceDoc {
    */
   polarity?: 'light' | 'dark' | null;
   /**
-   * 단색 배경 위에 까는 무늬. 없으면 테마가 정한다 — Swiss Editorial은 격자,
-   * 나머지는 없음. 사진 배경에는 아무것도 안 깔린다(SceneLayer).
+   * 단색 배경 위에 까는 무늬. 없으면 격자다. 사진 배경에는 아무것도 안 깔린다(SceneLayer).
    */
   pattern?: 'none' | 'grid' | null;
   camera: Camera;

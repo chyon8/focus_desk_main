@@ -51,14 +51,13 @@ const WALLPAPER_HEAD = [
   'quiet-snow.webp',
   'geometric-relief.png',
   'summer-meadow.webp',
-  'anime-coastal-platform.png',
+  'anime-coastal-platform.webp',
 ];
 
 /** Keep quieter secondary scenes at the end, in the order chosen for the picker. */
 const WALLPAPER_TAIL = [
   'anime-maple-veranda.png',
-  'ghibli-night-tram.png',
-  'amber-lake.webp',
+  'ghibli-night-tram.webp',
   'afternoon-records.webp',
 ];
 
@@ -133,7 +132,7 @@ export const ThemePicker: React.FC = () => {
 
   // 무늬는 단색 위에만 얹힌다 — SceneLayer가 거는 조건과 같다.
   const onSolid = override ? override.type === 'COLOR' : theme.scene.kind === 'color';
-  const pattern = patternChoice ?? 'none';
+  const pattern = patternChoice ?? 'grid';
 
   // A selected card gets a ring in the theme's own accent colour.
   const ring = (selected: boolean) =>

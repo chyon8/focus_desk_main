@@ -49,8 +49,12 @@ interface RoomSpec {
 }
 
 /**
- * The five. Two use their theme's own scene; three borrow a palette and bring a
- * wallpaper.
+ * The five. Four bring a wallpaper over a borrowed palette; Paper is its theme's
+ * own colour, with the grid a plain background starts with.
+ *
+ * 사진 넷은 랜딩 페이지가 보여주는 방 넷과 같다(2026-09-13). 사이트에서 본 방을 앱 첫
+ * 화면에서 그대로 고른다. 칸은 사진이거나 격자 바탕이다 — 무늬 없는 단색 칸은 사진
+ * 옆에서 아직 안 채운 칸으로 보인다.
  */
 const SPECS: RoomSpec[] = [
   {
@@ -64,22 +68,6 @@ const SPECS: RoomSpec[] = [
     hours: [18, 24],
   },
   {
-    id: 'snowfall',
-    name: 'Snowfall',
-    themeId: 'snowfall',
-    background: null,
-    ambience: { ...silent, fire: 24 },
-    hours: [21, 24],
-  },
-  {
-    id: 'swiss-editorial',
-    name: 'Editorial',
-    themeId: 'swiss',
-    background: null,
-    ambience: { ...silent },
-    hours: [0, 24],
-  },
-  {
     id: 'midnight-observatory',
     name: 'Midnight Observatory',
     themeId: 'golden-hour',
@@ -88,12 +76,28 @@ const SPECS: RoomSpec[] = [
     hours: [19, 24],
   },
   {
-    id: 'meadow',
-    name: 'Meadow',
+    id: 'summer-lake',
+    name: 'Summer Lake',
     themeId: 'golden-hour',
-    background: '/wallpapers/summer-meadow.webp',
+    background: '/wallpapers/summer-lake-landing.webp',
     ambience: { ...silent, cafe: 26 },
     hours: [6, 15],
+  },
+  {
+    id: 'snowy-railway',
+    name: 'Snowy Railway',
+    themeId: 'snowfall',
+    background: '/wallpapers/snowy-railway-halt.webp',
+    ambience: { ...silent, fire: 24 },
+    hours: [21, 24],
+  },
+  {
+    id: 'paper',
+    name: 'Paper',
+    themeId: 'paper',
+    background: null,
+    ambience: { ...silent },
+    hours: [0, 24],
   },
 ];
 

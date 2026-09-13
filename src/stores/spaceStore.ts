@@ -82,7 +82,7 @@ interface SpaceState {
   setParticles: (particles: ParticlesChoice | null) => void;
   /** Null hands the polarity back to the background's own brightness. */
   setPolarity: (polarity: 'light' | 'dark' | null) => void;
-  /** Null means no pattern, same as 'none'. */
+  /** Null means the default, which is a grid. */
   setPattern: (pattern: 'none' | 'grid' | null) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
   fitToWidgets: () => void;

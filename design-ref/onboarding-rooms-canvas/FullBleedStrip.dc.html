@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&amp;display=swap">
+  <style>
+    body { margin: 0; background: #14110d; font-family: 'Instrument Sans', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #f7f6f3; } a:hover { color: #e9a23b; }
+    .bg { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 320ms ease; }
+    .bg1 { opacity: 1; }
+    .stage:has(.t2:hover) .bg1, .stage:has(.t3:hover) .bg1, .stage:has(.t4:hover) .bg1, .stage:has(.t5:hover) .bg1 { opacity: 0; }
+    .stage:has(.t2:hover) .bg2, .stage:has(.t3:hover) .bg3, .stage:has(.t4:hover) .bg4, .stage:has(.t5:hover) .bg5 { opacity: 1; }
+    .thumb { cursor: pointer; box-shadow: 0 0 0 1px rgba(247,246,243,0.16), 0 12px 28px -12px rgba(0,0,0,0.6); transition: transform 220ms ease, box-shadow 220ms ease; }
+    .thumb.t1, .thumb:hover { box-shadow: 0 0 0 2px #f7f6f3, 0 12px 28px -12px rgba(0,0,0,0.6); }
+    .thumb:hover { transform: translateY(-4px); }
+    .stage:has(.t2:hover) .t1, .stage:has(.t3:hover) .t1, .stage:has(.t4:hover) .t1, .stage:has(.t5:hover) .t1 { box-shadow: 0 0 0 1px rgba(247,246,243,0.16), 0 12px 28px -12px rgba(0,0,0,0.6); }
+    .shade, .copy h1, .copy p { transition: opacity 320ms ease, color 320ms ease; }
+    .stage:has(.t5:hover) .shade { opacity: 0; }
+    .stage:has(.t5:hover) .copy h1 { color: #201e1b !important; }
+    .stage:has(.t5:hover) .copy p { color: rgba(32,30,27,0.72) !important; }
+  </style>
+</helmet>
+<div class="stage" style="position: relative; width: 1440px; height: 900px; overflow: hidden; background: #14110d;">
+  <div class="bg bg1"><img src="summer-lake.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; display: block;"></div>
+  <div class="bg bg2"><img src="rainy-attic.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; display: block;"></div>
+  <div class="bg bg3"><img src="midnight-observatory.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 50%; display: block;"></div>
+  <div class="bg bg4"><img src="snowy-railway.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; display: block;"></div>
+  <div class="bg bg5" style="background-color: #efe7d9; background-image: linear-gradient(rgba(120,96,62,0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(120,96,62,0.09) 1px, transparent 1px); background-size: 44px 44px;"></div>
+  <div class="shade" style="position: absolute; inset: 0; background-image: linear-gradient(to top, rgba(20,17,13,0.82) 0%, rgba(20,17,13,0.4) 30%, rgba(20,17,13,0) 55%);"></div>
+  <div class="copy" style="position: absolute; left: 56px; bottom: 214px; width: 760px;">
+    <h1 style="margin: 0; font-size: 34px; font-weight: 600; line-height: 1.08; letter-spacing: -0.03em; color: #f7f6f3;">Afternoon. Where do you want to work?</h1>
+    <p style="margin: 12px 0 0; font-size: 14px; line-height: 1.625; color: rgba(247,246,243,0.72);">A space is somewhere you are. This one is yours, and you can change it any time.</p>
+  </div>
+  <div style="position: absolute; left: 56px; bottom: 52px; display: flex; gap: 12px;">
+    <div class="thumb t1" style="position: relative; width: 208px; height: 130px; overflow: hidden; border-radius: 12px;"><img src="summer-lake.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; display: block;">
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 55%; background-image: linear-gradient(to top, rgba(20,17,13,0.72), transparent);"></div>
+      <span style="position: absolute; left: 10px; bottom: 8px; font-size: 12px; font-weight: 500; color: #f7f6f3;">Summer Lake</span>
+    </div>
+    <div class="thumb t2" style="position: relative; width: 208px; height: 130px; overflow: hidden; border-radius: 12px;"><img src="rainy-attic.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; display: block;">
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 55%; background-image: linear-gradient(to top, rgba(20,17,13,0.72), transparent);"></div>
+      <span style="position: absolute; left: 10px; bottom: 8px; font-size: 12px; font-weight: 500; color: #f7f6f3;">Rainy Attic</span>
+    </div>
+    <div class="thumb t3" style="position: relative; width: 208px; height: 130px; overflow: hidden; border-radius: 12px;"><img src="midnight-observatory.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 80% 50%; display: block;">
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 55%; background-image: linear-gradient(to top, rgba(20,17,13,0.72), transparent);"></div>
+      <span style="position: absolute; left: 10px; bottom: 8px; font-size: 12px; font-weight: 500; color: #f7f6f3;">Midnight Observatory</span>
+    </div>
+    <div class="thumb t4" style="position: relative; width: 208px; height: 130px; overflow: hidden; border-radius: 12px;"><img src="snowy-railway.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; display: block;">
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 55%; background-image: linear-gradient(to top, rgba(20,17,13,0.72), transparent);"></div>
+      <span style="position: absolute; left: 10px; bottom: 8px; font-size: 12px; font-weight: 500; color: #f7f6f3;">Snowy Railway</span>
+    </div>
+    <div class="thumb t5" style="position: relative; width: 208px; height: 130px; overflow: hidden; border-radius: 12px; background-color: #efe7d9; background-image: linear-gradient(rgba(120,96,62,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(120,96,62,0.1) 1px, transparent 1px); background-size: 22px 22px;">
+      <span style="position: absolute; left: 10px; bottom: 8px; font-size: 12px; font-weight: 500; color: #201e1b;">Paper</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

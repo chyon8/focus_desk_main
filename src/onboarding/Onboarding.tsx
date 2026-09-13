@@ -4,7 +4,7 @@ import { ArrowRight, Check, Chrome, LayoutGrid, Plus } from 'lucide-react';
 import type { Camera } from '../canvas/camera';
 import { arrange, fitCamera, type ArrangeMode, type Box } from '../canvas/layout';
 import { WIDGET_DEFS } from '../widgets/defs';
-import { assetUrl } from '../spaces/backgrounds';
+import { assetUrl, isLightBackground } from '../spaces/backgrounds';
 import { OPEN_TABS, spacesFrom, windowChoices, type WindowChoice } from '../spaces/chromeImport';
 import { newSpace, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
@@ -50,6 +50,34 @@ type Step = 'room' | 'work' | 'fill' | 'chrome' | 'tools' | 'name';
    전에는 남보라 검정(6,5,10 · #14121a · #070609)과 순수 흰색이었다. --- */
 const PAPER = '#f7f6f3';
 const INK = '#201e1b';
+
+/* 사진 방은 어두운 층 위에 밝은 글자를, 단색 방(Paper)은 밝은 바탕 위에 어두운 글자를
+   쓴다. 둘이 자리를 바꾸는 값만 변수로 두고 화면 맨 바깥에서 한 번 건다.
+
+     --ob-ink          바탕 위 글자·옅은 면·테두리. rgb 세 값이고 알파는 쓰는 곳에서 준다
+     --ob-fill         제목, 채운 버튼의 면
+     --ob-on-fill      채운 면 위 글자
+     --ob-on-fill-ink  채운 면 위의 옅은 것. rgb 세 값
+     --ob-lift         채운 버튼 그림자
+     --ob-card-shadow  방 카드 그림자 */
+const ON_PHOTO = {
+  '--ob-ink': '247,246,243',
+  '--ob-fill': PAPER,
+  '--ob-on-fill': INK,
+  '--ob-on-fill-ink': '32,30,27',
+  '--ob-lift': '0 10px 26px -10px rgba(20,17,13,0.8)',
+  '--ob-card-shadow': '0 18px 40px -18px rgba(20,17,13,0.9), inset 0 1px 0 rgba(247,246,243,0.07)',
+} as React.CSSProperties;
+
+/** 랜딩 페이지 사진 카드와 같은 그림자: 테두리 바깥 2.5px 흰 선, 넓고 따뜻한 그림자. */
+const ON_PAPER = {
+  '--ob-ink': '32,30,27',
+  '--ob-fill': INK,
+  '--ob-on-fill': PAPER,
+  '--ob-on-fill-ink': '247,246,243',
+  '--ob-lift': '0 10px 26px -12px rgba(46,38,28,0.35)',
+  '--ob-card-shadow': '0 0 0 2.5px rgba(255,255,255,0.7), 0 18px 40px -14px rgba(46,38,28,0.35)',
+} as React.CSSProperties;
 
 /** What this space is for: orders the tools, and picks the last question's example. */
 interface Work {
@@ -343,22 +371,21 @@ function pullOut(target: Camera, spaceName: string) {
 }
 
 /** A heading and the line under it. Left-aligned, like everything on this screen. */
-const Title: React.FC<{ children: React.ReactNode; sub?: React.ReactNode; light?: boolean }> = ({
+const Title: React.FC<{ children: React.ReactNode; sub?: React.ReactNode }> = ({
   children,
   sub,
-  light = false,
 }) => (
   <div className="mb-6">
     <h1
       className="text-display font-semibold leading-[1.08] tracking-[-0.03em]"
-      style={{ color: light ? '#141414' : PAPER }}
+      style={{ color: 'var(--ob-fill)' }}
     >
       {children}
     </h1>
     {sub && (
       <p
         className="mt-3 text-body leading-relaxed"
-        style={{ color: light ? '#343434' : 'rgba(247,246,243,0.72)' }}
+        style={{ color: 'rgba(var(--ob-ink),0.72)' }}
       >
         {sub}
       </p>
@@ -380,8 +407,8 @@ const Go: React.FC<{ onClick: () => void; disabled?: boolean; children: React.Re
     className="px-6 py-3 rounded-control text-body font-semibold"
     style={
       disabled
-        ? { background: 'rgba(247,246,243,0.06)', color: 'rgba(247,246,243,0.3)' }
-        : { background: PAPER, color: INK, boxShadow: '0 10px 26px -10px rgba(20,17,13,0.8)' }
+        ? { background: 'rgba(var(--ob-ink),0.06)', color: 'rgba(var(--ob-ink),0.3)' }
+        : { background: 'var(--ob-fill)', color: 'var(--ob-on-fill)', boxShadow: 'var(--ob-lift)' }
     }
   >
     {children}
@@ -396,9 +423,9 @@ const Quiet: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
   <button
     onClick={onClick}
     className="text-ui transition-colors"
-    style={{ color: 'rgba(247,246,243,0.4)' }}
-    onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(247,246,243,0.82)')}
-    onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(247,246,243,0.4)')}
+    style={{ color: 'rgba(var(--ob-ink),0.4)' }}
+    onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(var(--ob-ink),0.82)')}
+    onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(var(--ob-ink),0.4)')}
   >
     {children}
   </button>
@@ -463,15 +490,11 @@ const RoomScene: React.FC<{ room: Room; drift?: boolean; weather?: boolean }> = 
           <ParticleLayer kind={particles.kind} density={particles.density} />
         </div>
       )}
-      {room.theme.id === 'swiss' && (
+      {/* 단색 방은 앱과 같은 격자를 깐다 — 고르기 전에 본 바탕과 들어간 뒤의 바탕이 같아야 한다. */}
+      {!wallpaper && scene.kind === 'color' && (
         <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(20,20,20,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(20,20,20,0.055) 1px, transparent 1px)',
-            backgroundSize: '56px 56px',
-            maskImage: 'linear-gradient(to bottom, black 0 46%, transparent 82%)',
-          }}
+          className={`absolute inset-0 scene-grid ${room.theme.id === 'paper' ? 'scene-grid-paper' : ''}`}
+          data-backdrop={isLightBackground(scene.value) ? 'light' : 'dark'}
         />
       )}
     </>
@@ -529,8 +552,8 @@ const RoomCard: React.FC<{
         wide ? 'col-span-2 aspect-[8/3]' : 'aspect-[4/3]'
       }`}
       style={{
-        border: '1px solid rgba(247,246,243,0.1)',
-        boxShadow: '0 18px 40px -18px rgba(20,17,13,0.9), inset 0 1px 0 rgba(247,246,243,0.07)',
+        border: '1px solid rgba(var(--ob-ink),0.1)',
+        boxShadow: 'var(--ob-card-shadow)',
       }}
     >
       <RoomScene room={room} drift />
@@ -597,23 +620,23 @@ const Tile: React.FC<{ preset: Pickable; mark: string; on: boolean; onClick: () 
     className="flex items-center gap-3 px-3 py-3 rounded-control text-left"
     style={
       on
-        ? { background: PAPER }
-        : { background: 'rgba(247,246,243,0.06)', border: '1px solid rgba(247,246,243,0.1)' }
+        ? { background: 'var(--ob-fill)' }
+        : { background: 'rgba(var(--ob-ink),0.06)', border: '1px solid rgba(var(--ob-ink),0.1)' }
     }
   >
     <span
       className="w-7 h-6 shrink-0 rounded-control flex items-center justify-center text-micro font-semibold uppercase tracking-tight"
       style={
         on
-          ? { background: 'rgba(32,30,27,0.12)', color: INK }
-          : { background: 'rgba(247,246,243,0.1)', color: 'rgba(247,246,243,0.85)' }
+          ? { background: 'rgba(var(--ob-on-fill-ink),0.12)', color: 'var(--ob-on-fill)' }
+          : { background: 'rgba(var(--ob-ink),0.1)', color: 'rgba(var(--ob-ink),0.85)' }
       }
     >
       {mark}
     </span>
     <span
       className="text-ui truncate"
-      style={{ color: on ? INK : 'rgba(247,246,243,0.82)' }}
+      style={{ color: on ? 'var(--ob-on-fill)' : 'rgba(var(--ob-ink),0.82)' }}
     >
       {preset.name}
     </span>
@@ -664,10 +687,10 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
    * which is what the cards are for.
    */
   const shown = room ?? peek ?? rooms[0] ?? null;
-  // This room is deliberately flat and light. The photo-room scrim changes its
-  // measured #f7f7f5 canvas into grey, so its hover preview uses the source
-  // palette and dark copy directly.
-  const swissPreview = step === 'room' && shown?.theme.id === 'swiss';
+  // 단색 방(Paper)은 밝은 바탕이 그대로 보여야 한다. 사진 방에 까는 어두운 층이 그 색을
+  // 회색으로 바꾸므로, 이 방이 보이는 동안은 — 호버 중이든 고른 뒤든 — 층을 걷고 글자를
+  // 어둡게 쓴다.
+  const flatRoom = shown?.theme.scene.kind === 'color';
 
   /**
    * Picking a room sets the real theme, so the scene behind the next question is
@@ -853,12 +876,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
       className="fixed inset-0 z-[200] overflow-y-auto"
-      style={{
-        fontFamily:
-          shown?.theme.id === 'swiss'
-            ? '"IBM Plex Sans KR", "Noto Sans KR", ui-sans-serif, system-ui, sans-serif'
-            : 'var(--font-ui)',
-      }}
+      style={{ fontFamily: 'var(--font-ui)', ...(flatRoom ? ON_PAPER : ON_PHOTO) }}
       onPointerMove={(e) =>
         setCursor({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight })
       }
@@ -901,7 +919,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         className="absolute inset-0"
         style={{
           backgroundImage: SCRIM,
-          opacity: swissPreview ? 0 : room ? SCRIM_SETTLED : shown ? SCRIM_BROWSING : 0,
+          opacity: flatRoom ? 0 : room ? SCRIM_SETTLED : shown ? SCRIM_BROWSING : 0,
           transition: `opacity ${room ? REVEAL_MS : 170}ms ease-out`,
         }}
       />
@@ -910,7 +928,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: POOL,
-          opacity: room ? 1 : 0,
+          opacity: room && !flatRoom ? 1 : 0,
           // The same length as the window opening, so the two agree at the end
           // of it and handing over between them changes nothing.
           transition: `opacity ${REVEAL_MS}ms ease-out`,
@@ -926,7 +944,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           background: `radial-gradient(circle 38vmax at ${cursor.x * 100}% ${
             cursor.y * 100
           }%, rgba(247,246,243,0.055), transparent 70%)`,
-          opacity: swissPreview ? 0 : 1,
+          opacity: flatRoom ? 0 : 1,
         }}
       />
 
@@ -969,7 +987,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
             }}
           >
             <RoomScene room={entering.room} weather={false} />
-            <Settled />
+            {entering.room.theme.scene.kind !== 'color' && <Settled />}
           </motion.div>
         )}
       </AnimatePresence>
@@ -997,7 +1015,6 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                   transition={{ duration: CARDS_LEAVE_MS / 1000, ease: 'easeIn' }}
                 >
                   <Title
-                    light={swissPreview}
                     sub="A space is somewhere you are. This one is yours, and you can change it any time."
                   >
                     {greetingForHour(hour)} Where do you want to work?
@@ -1034,9 +1051,9 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                       whileTap={{ scale: 0.97 }}
                       className="px-6 py-3 rounded-control text-body"
                       style={{
-                        background: 'rgba(247,246,243,0.07)',
-                        border: '1px solid rgba(247,246,243,0.14)',
-                        color: 'rgba(247,246,243,0.88)',
+                        background: 'rgba(var(--ob-ink),0.07)',
+                        border: '1px solid rgba(var(--ob-ink),0.14)',
+                        color: 'rgba(var(--ob-ink),0.88)',
                       }}
                     >
                       {w.label}
@@ -1062,17 +1079,17 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     whileTap={{ scale: 0.985 }}
                     className="flex flex-col items-start gap-3 p-6 rounded-surface text-left disabled:opacity-60"
                     style={{
-                      background: 'rgba(247,246,243,0.07)',
-                      border: '1px solid rgba(247,246,243,0.14)',
+                      background: 'rgba(var(--ob-ink),0.07)',
+                      border: '1px solid rgba(var(--ob-ink),0.14)',
                     }}
                   >
-                    <Chrome size={22} style={{ color: PAPER }} />
-                    <span className="text-body font-medium" style={{ color: PAPER }}>
+                    <Chrome size={22} style={{ color: 'var(--ob-fill)' }} />
+                    <span className="text-body font-medium" style={{ color: 'var(--ob-fill)' }}>
                       {reading ? 'Reading Chrome…' : 'Bring in my Chrome tabs'}
                     </span>
                     <span
                       className="text-meta leading-snug"
-                      style={{ color: 'rgba(247,246,243,0.5)' }}
+                      style={{ color: 'rgba(var(--ob-ink),0.5)' }}
                     >
                       Each window becomes a space of its own.
                     </span>
@@ -1084,17 +1101,17 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     whileTap={{ scale: 0.985 }}
                     className="flex flex-col items-start gap-3 p-6 rounded-surface text-left"
                     style={{
-                      background: 'rgba(247,246,243,0.07)',
-                      border: '1px solid rgba(247,246,243,0.14)',
+                      background: 'rgba(var(--ob-ink),0.07)',
+                      border: '1px solid rgba(var(--ob-ink),0.14)',
                     }}
                   >
-                    <LayoutGrid size={22} style={{ color: PAPER }} />
-                    <span className="text-body font-medium" style={{ color: PAPER }}>
+                    <LayoutGrid size={22} style={{ color: 'var(--ob-fill)' }} />
+                    <span className="text-body font-medium" style={{ color: 'var(--ob-fill)' }}>
                       Pick the tools I use
                     </span>
                     <span
                       className="text-meta leading-snug"
-                      style={{ color: 'rgba(247,246,243,0.5)' }}
+                      style={{ color: 'rgba(var(--ob-ink),0.5)' }}
                     >
                       Tap a few and they stand in this room.
                     </span>
@@ -1127,8 +1144,8 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                           on ? '' : 'opacity-40'
                         }`}
                         style={{
-                          background: 'rgba(247,246,243,0.06)',
-                          border: '1px solid rgba(247,246,243,0.12)',
+                          background: 'rgba(var(--ob-ink),0.06)',
+                          border: '1px solid rgba(var(--ob-ink),0.12)',
                         }}
                       >
                         <button
@@ -1142,8 +1159,8 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                           className="w-[18px] h-[18px] shrink-0 mt-0.5 rounded-control border flex items-center justify-center"
                           style={
                             on
-                              ? { background: PAPER, borderColor: PAPER, color: INK }
-                              : { borderColor: 'rgba(247,246,243,0.3)', color: 'transparent' }
+                              ? { background: 'var(--ob-fill)', borderColor: 'var(--ob-fill)', color: 'var(--ob-on-fill)' }
+                              : { borderColor: 'rgba(var(--ob-ink),0.3)', color: 'transparent' }
                           }
                         >
                           <Check size={11} />
@@ -1157,16 +1174,16 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                               }
                               disabled={!on}
                               className="flex-1 min-w-0 bg-transparent text-body font-medium outline-none"
-                              style={{ color: PAPER }}
+                              style={{ color: 'var(--ob-fill)' }}
                             />
                             <span
                               className="shrink-0 text-meta tabular-nums"
-                              style={{ color: 'rgba(247,246,243,0.45)' }}
+                              style={{ color: 'rgba(var(--ob-ink),0.45)' }}
                             >
                               {choice.tabs.length} tabs
                             </span>
                           </div>
-                          <div className="text-meta truncate" style={{ color: 'rgba(247,246,243,0.4)' }}>
+                          <div className="text-meta truncate" style={{ color: 'rgba(var(--ob-ink),0.4)' }}>
                             {choice.tabs
                               .slice(0, 5)
                               .map((t) => hostOf(t.url))
@@ -1209,7 +1226,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                       <div key={group} className="mb-4">
                         <div
                           className="text-micro font-semibold uppercase tracking-[0.18em] mb-2"
-                          style={{ color: 'rgba(247,246,243,0.35)' }}
+                          style={{ color: 'rgba(var(--ob-ink),0.35)' }}
                         >
                           {group}
                         </div>
@@ -1248,17 +1265,17 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                   }}
                   className="flex items-center gap-2 mt-2 px-3 py-2 rounded-control max-w-[34rem]"
                   style={{
-                    background: 'rgba(247,246,243,0.05)',
-                    border: '1px solid rgba(247,246,243,0.1)',
+                    background: 'rgba(var(--ob-ink),0.05)',
+                    border: '1px solid rgba(var(--ob-ink),0.1)',
                   }}
                 >
-                  <Plus size={13} style={{ color: 'rgba(247,246,243,0.35)' }} />
+                  <Plus size={13} style={{ color: 'rgba(var(--ob-ink),0.35)' }} />
                   <input
                     value={ownUrl}
                     onChange={(e) => setOwnUrl(e.target.value)}
                     placeholder="Paste the address of something else you use"
                     className="flex-1 min-w-0 bg-transparent text-ui outline-none placeholder:opacity-40"
-                    style={{ color: PAPER }}
+                    style={{ color: 'var(--ob-fill)' }}
                   />
                 </form>
 
@@ -1283,10 +1300,10 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                   }}
                   className="flex items-center gap-2 p-2 pl-6 rounded-surface max-w-[30rem] transition-colors focus-within:bg-white/12 focus-within:border-white/35"
                   style={{
-                    background: 'rgba(247,246,243,0.08)',
+                    background: 'rgba(var(--ob-ink),0.08)',
                     borderWidth: 1,
                     borderStyle: 'solid',
-                    borderColor: 'rgba(247,246,243,0.16)',
+                    borderColor: 'rgba(var(--ob-ink),0.16)',
                   }}
                 >
                   <input
@@ -1295,12 +1312,12 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     onChange={(e) => setAnswer(e.target.value)}
                     placeholder={(work ?? ANY_WORK).example}
                     className="flex-1 min-w-0 bg-transparent text-title outline-none placeholder:opacity-35"
-                    style={{ color: PAPER }}
+                    style={{ color: 'var(--ob-fill)' }}
                   />
                   <button
                     type="submit"
                     className="shrink-0 w-10 h-10 flex items-center justify-center rounded-control"
-                    style={{ background: PAPER, color: INK }}
+                    style={{ background: 'var(--ob-fill)', color: 'var(--ob-on-fill)' }}
                   >
                     <ArrowRight size={15} />
                   </button>
@@ -1310,7 +1327,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                   <Quiet onClick={finish}>Skip</Quiet>
                   {/* What this app is for happens on the second opening, not this
                       one. Saying so is part of making it happen. */}
-                  <span className="text-ui" style={{ color: 'rgba(247,246,243,0.35)' }}>
+                  <span className="text-ui" style={{ color: 'rgba(var(--ob-ink),0.35)' }}>
                     Tomorrow you’ll open this exactly as you left it.
                   </span>
                 </div>

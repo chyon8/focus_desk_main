@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&amp;display=swap">
+  <style>
+    body { margin: 0; background: #14110d; font-family: 'Instrument Sans', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #f7f6f3; } a:hover { color: #e9a23b; }
+    .bg { position: absolute; inset: 0; background-size: cover; opacity: 0; transition: opacity 320ms ease; }
+    .bg1 { opacity: 1; }
+    .stage:has(.n2:hover) .bg1, .stage:has(.n3:hover) .bg1, .stage:has(.n4:hover) .bg1, .stage:has(.n5:hover) .bg1 { opacity: 0; }
+    .stage:has(.n2:hover) .bg2, .stage:has(.n3:hover) .bg3, .stage:has(.n4:hover) .bg4, .stage:has(.n5:hover) .bg5 { opacity: 1; }
+    .n { color: rgba(247,246,243,0.3); cursor: pointer; transition: color 200ms ease; }
+    .n1, .n:hover { color: #f7f6f3; }
+    .stage:has(.n2:hover) .n1, .stage:has(.n3:hover) .n1, .stage:has(.n4:hover) .n1, .stage:has(.n5:hover) .n1 { color: rgba(247,246,243,0.3); }
+  </style>
+</helmet>
+<div class="stage" style="position: relative; width: 1440px; height: 900px; overflow: hidden; background: #14110d;">
+  <div style="position: absolute; left: 560px; top: 0; right: 0; bottom: 0; overflow: hidden;">
+    <div class="bg bg1"><img src="summer-lake.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 50%; display: block;"></div>
+    <div class="bg bg2"><img src="rainy-attic.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 55% 50%; display: block;"></div>
+    <div class="bg bg3"><img src="midnight-observatory.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 84% 50%; display: block;"></div>
+    <div class="bg bg4"><img src="snowy-railway.jpg" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 50%; display: block;"></div>
+    <div class="bg bg5" style="background-color: #efe7d9; background-image: linear-gradient(rgba(120,96,62,0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(120,96,62,0.09) 1px, transparent 1px); background-size: 44px 44px;"></div>
+  </div>
+  <div style="position: absolute; left: 72px; top: 72px; width: 440px;">
+    <p style="margin: 0; font-size: 14px; line-height: 1.625; color: rgba(247,246,243,0.55);">Afternoon.</p>
+    <h1 style="margin: 4px 0 0; font-size: 34px; font-weight: 600; line-height: 1.08; letter-spacing: -0.03em; color: #f7f6f3;">Where do you want to work?</h1>
+    <p style="margin: 12px 0 0; font-size: 14px; line-height: 1.625; color: rgba(247,246,243,0.72);">A space is somewhere you are. This one is yours, and you can change it any time.</p>
+  </div>
+  <div style="position: absolute; left: 72px; top: 400px; display: flex; flex-direction: column; gap: 6px;">
+    <span class="n n1" style="font-size: 42px; font-weight: 600; line-height: 1.2; letter-spacing: -0.035em; white-space: nowrap;">Summer Lake</span>
+    <span class="n n2" style="font-size: 42px; font-weight: 600; line-height: 1.2; letter-spacing: -0.035em; white-space: nowrap;">Rainy Attic</span>
+    <span class="n n3" style="font-size: 42px; font-weight: 600; line-height: 1.2; letter-spacing: -0.035em; white-space: nowrap;">Midnight Observatory</span>
+    <span class="n n4" style="font-size: 42px; font-weight: 600; line-height: 1.2; letter-spacing: -0.035em; white-space: nowrap;">Snowy Railway</span>
+    <span class="n n5" style="font-size: 42px; font-weight: 600; line-height: 1.2; letter-spacing: -0.035em; white-space: nowrap;">Paper</span>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -113,11 +113,14 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
         <ParticleLayer kind={particles.kind} density={particles.density} />
       )}
 
-      {/* 무늬는 단색 위에만 깐다. 사진 위 격자는 얼룩으로 보인다. 기본은 끔이다 —
-          배경이 카메라를 안 따라가서 격자가 위젯 위치 기준이 못 되므로, 켜는 건 사용자가 고른다. */}
-      {flat && patternChoice === 'grid' && (
+      {/* 무늬는 단색 위에만 깐다. 사진 위 격자는 얼룩으로 보인다. 기본은 격자다
+          (2026-09-13) — 끄는 건 사용자가 Atmosphere에서 Plain으로 고른다.
+          Paper가 제 색 그대로일 때는 랜딩 페이지와 같은 격자를 쓴다. */}
+      {flat && patternChoice !== 'none' && (
         <div
-          className="absolute inset-0 scene-grid"
+          className={`absolute inset-0 scene-grid ${
+            theme.id === 'paper' && !override ? 'scene-grid-paper' : ''
+          }`}
           data-backdrop={lightBackdrop ? 'light' : 'dark'}
         />
       )}
