@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Home, RotateCw, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Home, RotateCw, Star, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { BrowserData } from '../spaces/types';
 import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
+import { useWebAppStore } from '../stores/webappStore';
 import { hostOf, toAddress } from './browserAddress';
 import { BrowserStartPage } from './BrowserStartPage';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
@@ -128,9 +129,21 @@ const BrowserCard: React.FC<{ data: BrowserData; onOpen: () => void }> = ({ data
  * A widget with no address shows a start page rather than loading a placeholder
  * site, and the address bar takes what people type into address bars: a host, a
  * full URL, or words to search for (D-075).
+ *
+ * A favorite (the `webapp` widget) shows its open page with this same widget, so
+ * the two behave the same — the web app page once had its own copy and drifted
+ * (it missed the narrow-width scaling below). `onFavicon` is the one thing a
+ * favorite adds: the page's icon is noted on the saved favorite.
  */
-export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
+export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => void }> = ({
+  id,
+  onFavicon,
+}) => {
   const [data, update] = useWidgetData<BrowserData>(id);
+  // Read by the page's event handlers, which must not re-subscribe on every render.
+  const onFaviconRef = useRef(onFavicon);
+  onFaviconRef.current = onFavicon;
+  const favorites = useWebAppStore((s) => s.apps);
   const spaceId = useSpaceStore((s) => s.activeSpaceId);
   const [address, setAddress] = useState(data.url);
   const [history, setHistory] = useState({ back: false, forward: false });
@@ -256,6 +269,7 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
   const inlinePage = data.url.startsWith('data:');
   const showChrome =
     !inlinePage && (pageSize.width === 0 || pageSize.width >= CHROME_MIN_WIDTH);
+  const starred = Object.values(favorites).some((app) => app.url === data.url);
 
   /** Goes somewhere, mounting the guest if this widget has not been anywhere yet. */
   const go = (url: string) => {
@@ -313,7 +327,9 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
     const onTitle = (e: Electron.PageTitleUpdatedEvent) => update({ title: e.title });
     const onFavicon = (e: Electron.PageFaviconUpdatedEvent) => {
       const src = e.favicons?.[0];
-      if (src) update({ favicon: src });
+      if (!src) return;
+      update({ favicon: src });
+      onFaviconRef.current?.(src);
     };
 
     // A click inside the page goes to the guest, so the frame never learns it
@@ -455,6 +471,30 @@ export const BrowserWidget: React.FC<{ id: string }> = ({ id }) => {
           placeholder="Search, or enter an address"
           className="field flex-1 min-w-0 rounded-control px-2 py-1 text-ui outline-none"
         />
+
+        {/* Adds this page to the favorites list, or takes it off again. The
+            widget itself stays as it is; the list is where favorites are
+            picked from. */}
+        <NavButton
+          label={starred ? 'Remove from favorites' : 'Add to favorites'}
+          disabled={!data.url}
+          onClick={() => {
+            const store = useWebAppStore.getState();
+            if (starred) {
+              for (const app of Object.values(store.apps)) {
+                if (app.url === data.url) store.remove(app.id);
+              }
+              return;
+            }
+            store.save({
+              name: data.title || hostOf(data.url),
+              url: data.url,
+              icon: data.favicon ? { kind: 'image', src: data.favicon } : null,
+            });
+          }}
+        >
+          <Star size={12} fill={starred ? 'currentColor' : 'none'} />
+        </NavButton>
 
         <NavButton
           label="Zoom out (⌘−)"

@@ -36,13 +36,13 @@ export const BrowserStartPage: React.FC<{ onOpen: (url: string) => void }> = ({ 
         <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center">
           <span className="t-soft text-body">Type an address or a search above.</span>
           <span className="t-faint text-ui max-w-[34ch]">
-            Sites you visit show up here, and so do the web apps you save.
+            Sites you visit show up here, and so do your favorites.
           </span>
         </div>
       ) : (
         <>
           {saved.length > 0 && (
-            <Section title="Your web apps">
+            <Section title="Your favorites">
               {saved.map((app) => (
                 <Tile key={app.id} label={app.name} onOpen={() => onOpen(app.url)}>
                   <WebAppMark icon={app.icon} name={app.name} size={28} />

@@ -195,6 +195,20 @@ export const Canvas: React.FC = () => {
     if (e.button !== 0 || isSpaceHeld) return;
     // ⇧ bands from anywhere, widgets included: the frames let the event through.
     if (!e.shiftKey && e.target !== e.currentTarget) return;
+    // A favorite widget whose picker was left without choosing anything goes away
+    // on a click on bare canvas — the way a menu closes when you click elsewhere.
+    // It held nothing, so no undo toast either.
+    if (e.target === e.currentTarget) {
+      const store = useSpaceStore.getState();
+      const unpicked = Object.values(store.spaces[store.activeSpaceId]?.widgets ?? {})
+        .filter((w) => w.type === 'webapp' && !(w.data as { appId?: string }).appId)
+        .map((w) => w.id);
+      if (unpicked.length > 0) {
+        const previous = store.lastRemoved;
+        store.removeWidgets(unpicked);
+        useSpaceStore.setState({ lastRemoved: previous });
+      }
+    }
     const point = pointIn(e);
     setMarquee({ x0: point.x, y0: point.y, x1: point.x, y1: point.y, additive: e.shiftKey });
     e.currentTarget.setPointerCapture(e.pointerId);

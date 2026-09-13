@@ -125,15 +125,20 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
    * 바가 없는 위젯은 본문이 프레임을 다 쓰고, 이름·최대화·닫기는 hover할 때만
    * 본문 위에 겹쳐 뜬다(index.css의 `.widget-header-float`).
    */
-  const hasHeader = widget.type === 'browser' || widget.type === 'column' || isFull;
+  // A favorite (webapp) is a browser widget underneath and wears the same header.
+  const hasHeader =
+    widget.type === 'browser' || widget.type === 'webapp' || widget.type === 'column' || isFull;
 
   const mark = colorOf(widget.color);
   const isMarked = !!mark && !isFull;
 
-  // A browser widget's header shows the page it is on, and a web app's shows
-  // which app it is. Open three of either and the registry's fixed label makes
-  // all three look the same.
-  const page = widget.type === 'browser' ? (widget.data as Partial<BrowserData>) : null;
+  // A browser widget's header shows the page it is on, and so does a favorite's.
+  // Open three of either and the registry's fixed label makes all three look the
+  // same.
+  const page =
+    widget.type === 'browser' || widget.type === 'webapp'
+      ? (widget.data as Partial<BrowserData>)
+      : null;
   const app = widget.type === 'webapp' ? (widget.data as Partial<WebAppData>) : null;
   const columnTitle =
     widget.type === 'column' ? (widget.data as Partial<ColumnData>).title : undefined;

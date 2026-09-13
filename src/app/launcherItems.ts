@@ -162,7 +162,7 @@ export function buildLauncherSections(
     }))
     .filter((item) => matches(needle, item.name, item.hint))
     .sort(byRelevance(needle));
-  push('Your web apps', webApps);
+  push('Your favorites', webApps);
 
   // Installed apps and presets are long lists, so they wait to be asked for.
   if (needle) {
@@ -215,7 +215,7 @@ export function buildLauncherSections(
       }))
       .filter((item) => matches(needle, item.name, item.hint))
       .sort(byRelevance(needle));
-    push('Web apps to add', presets);
+    push('Favorites to add', presets);
   }
 
   const widgets = PALETTE_ITEMS.map<LauncherItem>((item) => ({

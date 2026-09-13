@@ -37,7 +37,7 @@ export const WebAppForm: React.FC<{
     <div className="t-ink h-full w-full flex flex-col p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="t-soft text-ui font-semibold uppercase tracking-widest">
-          {onDelete ? 'Edit web app' : 'New web app'}
+          {onDelete ? 'Edit favorite' : 'New favorite'}
         </span>
         <button onClick={onCancel} className="t-faint hover:t-ink ml-auto">
           <X size={12} />
@@ -125,7 +125,7 @@ export const WebAppForm: React.FC<{
           {onDelete && (
             <button
               onClick={() => setConfirmingDelete(true)}
-              title="Remove from your web apps"
+              title="Remove from your favorites"
               className="row px-2 py-1.5 rounded-control t-danger"
             >
               <Trash2 size={12} />

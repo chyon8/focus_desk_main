@@ -1,26 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Home, Pencil, Plus, RotateCw, Search, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pencil, Plus, Search, X } from 'lucide-react';
 import { WebAppData, WebAppIcon } from '../spaces/types';
-import { useSpaceStore } from '../stores/spaceStore';
 import { useWebAppStore, type WebApp } from '../stores/webappStore';
 import { WEB_APP_PRESETS, hostOf } from '../webapps/presets';
 import type { WebAppPreset } from '../webapps/presets';
 import { WebAppForm } from '../webapps/WebAppForm';
 import { WebAppMark } from '../webapps/WebAppMark';
-import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
-import { ALLOW_POPUPS, ERR_ABORTED, LINK_SHIM } from './browserLinks';
-import { openTabBeside, sendToCanvas } from './newTab';
+import { BrowserWidget } from './BrowserWidget';
 import { useWidgetData } from './useWidgetData';
-
-// The levels a browser's ⌘+/⌘− walks through.
-const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
-
-function stepZoom(zoom: number, direction: 1 | -1) {
-  const nearest = ZOOM_STEPS.reduce((best, step) =>
-    Math.abs(step - zoom) < Math.abs(best - zoom) ? step : best
-  );
-  return ZOOM_STEPS[ZOOM_STEPS.indexOf(nearest) + direction] ?? nearest;
-}
 
 function iconsEqual(a: WebAppIcon | null, b: WebAppIcon | null) {
   if (!a || !b) return a === b;
@@ -84,7 +71,10 @@ export const WebAppWidget: React.FC<{ id: string }> = ({ id }) => {
   }
 
   return data.open ? (
-    <WebAppPage id={id} data={data} update={update} />
+    <BrowserWidget
+      id={id}
+      onFavicon={(src) => useWebAppStore.getState().noteFavicon(data.appId, src)}
+    />
   ) : (
     <WebAppTile
       data={data}
@@ -173,7 +163,7 @@ const WebAppTile: React.FC<{
             e.stopPropagation();
             onEdit();
           }}
-          title="Change which web app this is"
+          title="Change which favorite this is"
           className="t-faint press hover:t-ink shrink-0 opacity-0 group-hover/tile:opacity-100"
         >
           <Pencil size={12} />
@@ -182,205 +172,6 @@ const WebAppTile: React.FC<{
     </button>
   );
 };
-
-/** The open state: the page, with only the controls a single-site window needs. */
-const WebAppPage: React.FC<{
-  id: string;
-  data: WebAppData;
-  update: (patch: Partial<WebAppData>) => void;
-}> = ({ id, data, update }) => {
-  const spaceId = useSpaceStore((s) => s.activeSpaceId);
-  const [canGoBack, setCanGoBack] = useState(false);
-  // 브라우저 위젯과 같은 두 상태(DESIGN.md 6장). 같은 webview를 쓰는데 한쪽만
-  // 실패를 알리면 위젯 종류마다 다른 걸 배워야 한다.
-  const [isLoading, setIsLoading] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const view = useRef<Electron.WebviewTag>(null);
-  // Set once: after this the page navigates itself, and a changing src would
-  // yank it back to where it started.
-  const initialUrl = useRef(data.url || data.homeUrl);
-  const zoom = data.zoom ?? 1;
-  const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
-  const contentsId = useRef<number | null>(null);
-  const appId = data.appId;
-
-  useEffect(() => {
-    const el = view.current;
-    if (!el) return;
-
-    const remember = (url: string) => {
-      update({ url });
-      setCanGoBack(el.canGoBack());
-      setFailure(null);
-    };
-    const onNavigate = (e: Electron.DidNavigateEvent) => remember(e.url);
-    // Single-page sites change page with history.pushState, which surfaces only
-    // here — without it the widget reopens on whatever the last full load was.
-    const onNavigateInPage = (e: Electron.DidNavigateInPageEvent) => {
-      if (e.isMainFrame) remember(e.url);
-      else setCanGoBack(el.canGoBack());
-    };
-    // Every load gets a fresh page, so the shims go in on every dom-ready.
-    const onStart = () => setIsLoading(true);
-    const onStop = () => setIsLoading(false);
-    const onFail = (e: Electron.DidFailLoadEvent) => {
-      if (!e.isMainFrame || e.errorCode === ERR_ABORTED) return;
-      setFailure(e.errorDescription || 'The page could not be loaded.');
-    };
-    const onDomReady = () => {
-      contentsId.current = el.getWebContentsId();
-      el.setZoomFactor(zoomRef.current);
-      void el.insertCSS(FULLSCREEN_CSS);
-      void el.executeJavaScript(FULLSCREEN_SHIM);
-      void el.executeJavaScript(LINK_SHIM);
-    };
-    // The site's own icon, which is the one the tile should be wearing. Taken
-    // from the page rather than fetched from an icon service: this is a request
-    // the page makes anyway, so it tells nobody new which sites the user uses.
-    const onFavicon = (e: Electron.PageFaviconUpdatedEvent) => {
-      const src = e.favicons?.[0];
-      if (src) useWebAppStore.getState().noteFavicon(appId, src);
-    };
-
-    el.addEventListener('dom-ready', onDomReady);
-    el.addEventListener('did-navigate', onNavigate);
-    el.addEventListener('did-navigate-in-page', onNavigateInPage);
-    el.addEventListener('page-favicon-updated', onFavicon);
-    el.addEventListener('did-start-loading', onStart);
-    el.addEventListener('did-stop-loading', onStop);
-    el.addEventListener('did-fail-load', onFail);
-    return () => {
-      el.removeEventListener('dom-ready', onDomReady);
-      el.removeEventListener('did-navigate', onNavigate);
-      el.removeEventListener('did-navigate-in-page', onNavigateInPage);
-      el.removeEventListener('page-favicon-updated', onFavicon);
-      el.removeEventListener('did-start-loading', onStart);
-      el.removeEventListener('did-stop-loading', onStop);
-      el.removeEventListener('did-fail-load', onFail);
-    };
-  }, [update, appId]);
-
-  useEffect(() => {
-    if (contentsId.current !== null) view.current?.setZoomFactor(zoom);
-  }, [zoom]);
-
-  // ⌘+/⌘−/⌘0 pressed inside the page never reach the app, so the main process
-  // forwards them with the id of the guest they happened in.
-  useEffect(() => {
-    const off = window.windowMode?.onGuestKey((key, guestId) => {
-      if (guestId === undefined || guestId !== contentsId.current) return;
-      if (key === 'zoom-in') update({ zoom: stepZoom(zoomRef.current, 1) });
-      else if (key === 'zoom-out') update({ zoom: stepZoom(zoomRef.current, -1) });
-      else if (key === 'zoom-reset') update({ zoom: 1 });
-    });
-    return () => off?.();
-  }, [update]);
-
-  // A link that asked for a new tab becomes a browser widget beside this one —
-  // the same rule the browser widget follows (D-065). A browser rather than
-  // another web app: what a link opens is a page, not a tool worth saving.
-  useEffect(() => {
-    const off = window.windowMode?.onGuestOpenUrl((url, guestId) => {
-      if (guestId !== contentsId.current) return;
-      openTabBeside(id, url);
-    });
-    return () => off?.();
-  }, [id]);
-
-  // "Send to the canvas" from the page's context menu (D-081).
-  useEffect(() => {
-    const off = window.windowMode?.onGuestToCanvas((kind, value, guestId) => {
-      if (guestId !== contentsId.current) return;
-      void sendToCanvas(id, kind, value);
-    });
-    return () => off?.();
-  }, [id]);
-
-  return (
-    <div className="h-full w-full flex flex-col">
-      <div className="border-hair h-9 shrink-0 flex items-center px-2 gap-1.5 border-b">
-        <WebAppMark icon={data.icon} name={data.name} size={16} className="shrink-0" />
-        <span className="t-ink flex-1 min-w-0 text-ui truncate">{data.name}</span>
-
-        <ToolButton label="Back" disabled={!canGoBack} onClick={() => view.current?.goBack()}>
-          <ArrowLeft size={13} />
-        </ToolButton>
-        <ToolButton
-          label={`Back to ${hostOf(data.homeUrl)}`}
-          onClick={() => view.current?.loadURL(data.homeUrl)}
-        >
-          <Home size={12} />
-        </ToolButton>
-        <ToolButton label="Reload" onClick={() => view.current?.reload()}>
-          <RotateCw size={12} />
-        </ToolButton>
-        {zoom !== 1 && (
-          <button
-            type="button"
-            title="Reset zoom (⌘0)"
-            onClick={() => update({ zoom: 1 })}
-            className="chrome-button press shrink-0 px-1 h-6 rounded-control text-micro tabular-nums"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-        )}
-        {/* Back to the tile. The address is kept, so opening it again lands where
-            the user left off. */}
-        <ToolButton label="Close and go back to the icon" onClick={() => update({ open: false })}>
-          <X size={13} />
-        </ToolButton>
-      </div>
-
-      <div className="relative flex-1 min-h-0">
-        {isLoading && <div className="load-bar" />}
-
-        <webview
-          ref={view}
-          src={initialUrl.current}
-          // The space's own cookie jar, so the same site can be signed in as a
-          // different account in each space (D-074).
-          partition={`persist:space-${spaceId}`}
-          {...ALLOW_POPUPS}
-          className="web-page absolute inset-0 h-full w-full"
-        />
-
-        {failure && (
-          <div className="glass-panel absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
-            <span className="t-ink text-body">{data.name} didn’t load</span>
-            <span className="t-faint text-ui max-w-[40ch]">{failure}</span>
-            <button
-              onClick={() => {
-                setFailure(null);
-                view.current?.reload();
-              }}
-              className="chrome-button press mt-1 px-3 h-8 rounded-control text-body"
-            >
-              Try again
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const ToolButton: React.FC<{
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}> = ({ label, disabled, onClick, children }) => (
-  <button
-    type="button"
-    title={label}
-    disabled={disabled}
-    onClick={onClick}
-    className="chrome-button press shrink-0 w-6 h-6 flex items-center justify-center rounded-control disabled:opacity-30 disabled:hover:bg-transparent"
-  >
-    {children}
-  </button>
-);
 
 /**
  * Choosing what stands here: the user's saved web apps first, then a short list
@@ -450,7 +241,7 @@ const WebAppPicker: React.FC<{
   return (
     <div className="t-ink h-full w-full flex flex-col p-4">
       <div className="flex items-center gap-2 mb-3">
-        <span className="t-soft text-ui font-semibold uppercase tracking-widest">Web app</span>
+        <span className="t-soft text-ui font-semibold uppercase tracking-widest">Favorites</span>
         {onClose && (
           <button onClick={onClose} className="t-faint press hover:t-ink ml-auto">
             <X size={12} />
@@ -463,7 +254,7 @@ const WebAppPicker: React.FC<{
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search your web apps"
+          placeholder="Search your favorites"
           autoFocus
           className="field flex-1 min-w-0 !bg-transparent outline-none text-body"
         />
@@ -525,7 +316,7 @@ const WebAppPicker: React.FC<{
         className="row press shrink-0 mt-2 flex items-center justify-center gap-2 py-2 rounded-control text-ui"
       >
         <Plus size={13} />
-        Add a web app
+        Add a favorite
       </button>
     </div>
   );

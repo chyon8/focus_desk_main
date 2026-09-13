@@ -7,7 +7,7 @@ describe('widget palette', () => {
       'Memo',
       'Todo',
       'Browser',
-      'Web app',
+      'Favorite',
       'Column',
       'Timer',
     ]);

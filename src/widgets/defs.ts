@@ -71,7 +71,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     createData: () => ({ title: '', children: [] }),
   },
   webapp: {
-    label: 'Web app',
+    label: 'Favorite',
     // A page, so it needs page room — narrower than the browser widget, but the
     // same height: at 440 the picker showed three or four suggestions at a time,
     // and a web app page had barely a screenful. Not taller than the browser

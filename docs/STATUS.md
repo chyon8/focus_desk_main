@@ -21,18 +21,36 @@
 
 | # | 할 일 | 왜 |
 |---|---|---|
-| 7 | **첫 화면(방 고르기) 레이아웃 — A ← 다음** | 사진이 320px 카드라 화면을 못 쓰고, 제일 밝은 Paper 칸으로 눈이 먼저 간다 |
-| 8 | 온보딩 디자인 검토 | 레이아웃을 바꾼 뒤 한 번 |
+| 9 | **새 위젯·고르기 창이 엉뚱한 곳에 뜬다 ← 다음** | 더블클릭으로 연 브라우저·웹앱이 화면 위로 잘려서 뜨고, 고르기 창도 마우스에서 떨어져 뜬다. 모든 공간에서 매번 겪는다 |
+| 10 | 로봇 인증 화면이 계속 뜬다 — 근본 해결 | 로그인·웹앱이 이 앱의 핵심인데 인증에서 막힌다 |
+| 8 | 온보딩 디자인 검토 | 첫 화면을 A(전체 화면 + 썸네일 줄)로 바꿨다(2026-09-13). 9·10 뒤에 한 번 |
 
-**지금 온보딩 방**: Rainy Attic · Midnight Observatory · Summer Lake · Snowy Railway · Paper (2026-09-13). 사진 넷은 랜딩 페이지의 방 넷과 같다. 순서는 7번에서 바꾼다.
+**지금 온보딩 방**: Summer Lake · Rainy Attic · Midnight Observatory · Snowy Railway · Paper (2026-09-13). 사진 넷은 랜딩 페이지의 방 넷과 같다.
 Paper가 보이는 동안(호버·고른 뒤)은 어두운 층을 걷고 글자를 어둡게 쓴다 — [Onboarding.tsx](../src/onboarding/Onboarding.tsx)의 `--ob-*` 변수.
 
-### 10-7. 첫 화면 레이아웃 — A (2026-09-13 사용자 결정)
+**눈으로 본 것 (2026-09-13)**
+- 방 고르기 → 다음 질문: Summer Lake·Paper. 전환 중 느린 프레임 0. 방을 공간에 거는 건 0.65초 뒤라 소리도 그때 켜진다(이유는 `takeRoom` 주석)
+- 웹앱 고르기 길 끝까지: 6개를 고르면 앞 5개는 페이지가 열리고 6번째는 타일(`OPEN_WEBAPPS`). 사용자가 "전부 타일이면 투박하다"고 해서 바꿨다
 
-- 시안: https://claude.ai/code/artifact/ae5d5e0d-7482-4f84-950c-60b6b64bbfe2 — 작업 파일은 [design-ref/onboarding-rooms-canvas/](../design-ref/onboarding-rooms-canvas/) (지금 · A~F)
-- **A · 전체 화면 + 썸네일 줄**: 가리킨 방이 화면 전체가 되고, 아래에 썸네일 5개(208×130)가 한 줄. 어두운 층은 아래쪽 그라데이션만. 방 레이어는 이미 전부 전체 화면으로 올라와 있으니(`rooms.map`) `SCRIM_BROWSING` 층을 아래 그라데이션으로, 카드 격자를 썸네일 줄로 바꾸면 된다. 호버 = 방 바꾸기, 클릭 = 고르기 그대로
-- **순서(사용자 지시)**: Summer Lake → Rainy Attic → Midnight Observatory → Snowy Railway → Paper. [rooms.ts](../src/onboarding/rooms.ts)의 `SPECS`와 `rooms.test.ts`의 순서 테스트를 같이 바꾼다
-- **확인 안 된 것**: 사진 방을 고른 뒤 다음 질문 화면. 색 값만 옮겼고, 눈으로는 Paper만 끝까지 봤다
+### 10-9 ~ 10-10. QA (2026-09-13 사용자가 짚은 것 — 하나도 빼지 말 것)
+
+전부 코드만 읽고 추정한 것이다. **고치기 전에 테스트 창(test 프로필 + CDP)으로 재현부터 한다** — 방법은 메모리 `electron-cdp-verify`.
+
+**10-9. 새 위젯·고르기 창 위치**
+- 증상 ①: 빈 캔버스 더블클릭 → 고르기 창 → 브라우저·웹앱을 고르면 위젯이 예상 못 한 위치, 화면 훨씬 위에 떠서 잘린다
+- 증상 ②: 더블클릭으로 뜨는 고르기 창 자체도 마우스에서 조금 떨어진 곳에 뜬다
+- 볼 곳: [Canvas.tsx](../src/canvas/Canvas.tsx) `onDoubleClick` → `openQuickAdd(screen, world)` / [QuickAdd.tsx](../src/app/QuickAdd.tsx) 창 위치(`left = x - PANEL_WIDTH/2`, `top = y - 12`) / [spaceStore.ts](../src/stores/spaceStore.ts) `addWidget`은 `at`(더블클릭 지점)을 **위젯 가운데**로 둔다
+- 추정: 브라우저는 900×620이라 가운데를 클릭 지점에 맞추면 위·아래로 310px씩 뻗는다. 화면 위쪽을 더블클릭하면 위로 잘린다. 고르기 창도 가로 가운데 정렬이라 마우스 옆이 아니라 마우스 아래 가운데에 뜬다. 캔버스 요소가 사이드바 옆에서 시작하는 것(QuickAdd.tsx 21행 주석)과 좌표계가 어긋나는지도 볼 것
+- 끝난 기준: 더블클릭한 곳 근처에 창이 뜨고, 새 위젯이 화면 안에 다 보인다
+
+**10-10. 로봇 인증**
+- 증상: 웹앱·브라우저 위젯에서 "로봇이 아닙니다" 인증 화면이 아직도 뜬다. 사용자는 **근본 해결**을 원한다
+- 지금까지 한 것: [main.ts](../electron/main.ts) 40~54행 — user agent에서 `Electron/`·앱 이름을 빼고 Chrome 버전을 줄였다. 같은 주석에 "구글 unusual traffic 페이지는 이걸로 안 막힌다, IP로 정해진다(2026-09-01 측정)"고 적혀 있다
+- 먼저 할 것: 어느 사이트에서 어떤 인증(reCAPTCHA / Cloudflare Turnstile / 구글 `/sorry`)이 뜨는지 사용자에게 받는다. 같은 사이트를 실제 Chrome에서 열어 비교한다
+- 확인 후보: `Sec-CH-UA` 클라이언트 힌트에 Electron 브랜드가 남는지, `navigator.userAgentData`·`navigator.webdriver`·플러그인 목록이 Chrome과 다른지, webview 파티션 쿠키가 저장·유지되는지, 로그인 창을 앱 안이 아니라 시스템 브라우저로 여는 방식이 필요한지
+- 끝난 기준: 사용자가 말한 사이트들에서 인증 없이 로그인까지 간다. 안 되는 사이트가 남으면 이유를 측정값으로 보고한다
+
+**아직 안 본 것**: 크롬 임포트 길을 A 첫 화면에서 넘어온 상태로.
 
 ### 10-8. 온보딩 디자인 검토 — 평가는 이 다섯으로만
 
