@@ -58,25 +58,21 @@ const INK = '#201e1b';
      --ob-fill         제목, 채운 버튼의 면
      --ob-on-fill      채운 면 위 글자
      --ob-on-fill-ink  채운 면 위의 옅은 것. rgb 세 값
-     --ob-lift         채운 버튼 그림자
-     --ob-card-shadow  방 카드 그림자 */
+     --ob-lift         채운 버튼 그림자 */
 const ON_PHOTO = {
   '--ob-ink': '247,246,243',
   '--ob-fill': PAPER,
   '--ob-on-fill': INK,
   '--ob-on-fill-ink': '32,30,27',
   '--ob-lift': '0 10px 26px -10px rgba(20,17,13,0.8)',
-  '--ob-card-shadow': '0 18px 40px -18px rgba(20,17,13,0.9), inset 0 1px 0 rgba(247,246,243,0.07)',
 } as React.CSSProperties;
 
-/** 랜딩 페이지 사진 카드와 같은 그림자: 테두리 바깥 2.5px 흰 선, 넓고 따뜻한 그림자. */
 const ON_PAPER = {
   '--ob-ink': '32,30,27',
   '--ob-fill': INK,
   '--ob-on-fill': PAPER,
   '--ob-on-fill-ink': '247,246,243',
   '--ob-lift': '0 10px 26px -12px rgba(46,38,28,0.35)',
-  '--ob-card-shadow': '0 0 0 2.5px rgba(255,255,255,0.7), 0 18px 40px -14px rgba(46,38,28,0.35)',
 } as React.CSSProperties;
 
 /** What this space is for: orders the tools, and picks the last question's example. */
@@ -105,42 +101,47 @@ const WORK_KEY = 'work-v1';
 const LAND_MS = 110;
 
 /**
+ * 고른 웹앱 중 처음부터 페이지를 띄워 두는 개수. 전부 닫힌 타일이면 첫 공간이 아이콘
+ * 모음으로 투박해 보였다(2026-09-13 사용자). 열린 웹앱 하나가 렌더러 프로세스 하나라
+ * 고른 만큼 다 열지는 않는다 — 크롬 임포트의 `OPEN_TABS`와 같은 이유.
+ */
+const OPEN_WEBAPPS = 5;
+
+/**
  * Walking into the room.
  *
- *   0ms    the picked card's rectangle brightens to the room's settled look and
- *          starts opening outwards
- *   140ms  the rooms not picked and the question are gone
- *   290ms  the next question starts fading in
- *   520ms  the opening has reached the edges
- *   760ms  the opened copy has faded into the room under it, which by then is
- *          the same picture at the same brightness
+ *   0ms    the question and the thumbnails start fading; the dark band along the
+ *          bottom starts turning into the even layer the next question is read on
+ *   140ms  the question and the thumbnails are gone
+ *   150ms  the step changes; the next question fades in, in the middle of the
+ *          screen, once the last one has finished leaving
+ *   520ms  the layers have settled
  *
- * The room is already on screen when the click happens — hovering a card puts it
- * there full-bleed — so nothing is loaded, moved or resized here. What opens is
- * a window in the dark layer over it, from the card's rectangle outwards. The
- * picture behind that window never changes size or crop, which is what lets this
- * run at 460ms instead of a second.
- *
- * It was 980ms with an ease that spent its first 150ms almost still: measured,
- * the card was 321px wide at the click and 343px 128ms later. That reads as the
- * app not having heard the click. The ease here does most of the distance in the
- * first third.
+ * 방은 누르기 전부터 화면 전체에 깔려 있으므로 새로 여는 것이 없다. 전에는 누른 카드
+ * 칸에서 화면 끝까지 창을 여는 효과가 있었는데, 썸네일 줄 배치(시안 A)에서는 밝은 사진
+ * 위로 어두운 사각형이 커지는 것으로만 보여서 뺐다(2026-09-13).
  */
 const REVEAL_MS = 520;
 const CARDS_LEAVE_MS = 140;
 
-/** The next question. Early, over a room that is still opening. */
+/** The next question. Early, over layers that are still settling. */
 const NEXT_STEP_MS = 150;
 
-/** The opened copy fading into the settled room beneath it. */
-const REVEAL_FADE_MS = 240;
+/**
+ * 고른 방을 실제 공간에 거는 시점. 층이 다 바뀌고(520ms) 다음 질문이 다 나타난 뒤
+ * (150 + 나가기 140 + 들어오기 280 = 570ms)다. 이유는 `takeRoom`에.
+ */
+const SPACE_ROOM_MS = 650;
 
 /**
- * How heavy the dark layer is while the rooms are being browsed, and once one is
- * picked. Browsing keeps the thumbnails the brightest thing on screen; picking
- * lifts it, because the room is what the choice was for.
+ * 방을 고르는 동안 까는 층. 가리킨 방이 화면 전체에 보여야 하므로 제목과 썸네일 줄이
+ * 있는 아래쪽만 어둡게 한다(시안 A, 2026-09-13). 전에는 화면 전체를 0.84로 덮어서
+ * 사진이 320px 카드 안에서만 보였다.
  */
-const SCRIM_BROWSING = 0.84;
+const SHADE_BROWSING =
+  'linear-gradient(to top, rgba(20,17,13,0.82) 0%, rgba(20,17,13,0.4) 30%, rgba(20,17,13,0) 55%)';
+
+/** How heavy the dark layer is once a room is picked. */
 const SCRIM_SETTLED = 0.4;
 
 /** Every room is one gradient at different strengths, so it can be tweened. */
@@ -158,21 +159,6 @@ const SCRIM =
 const POOL =
   'radial-gradient(ellipse 78% 58% at 46% 50%, rgba(20,17,13,0.7) 0%, rgba(20,17,13,0.42) 46%, transparent 78%)';
 
-/**
- * What a room looks like once it has been walked into: the dark layer most of
- * the way up, and the shade under the words.
- *
- * The window that opens on a pick carries this, so it opens straight onto the
- * finished screen. Opening onto a bare photograph instead — which it did —
- * means the shade has to arrive afterwards, and the room dims by a third the
- * moment it is finished arriving.
- */
-const Settled: React.FC = () => (
-  <>
-    <div className="absolute inset-0" style={{ backgroundImage: SCRIM, opacity: SCRIM_SETTLED }} />
-    <div className="absolute inset-0" style={{ background: POOL }} />
-  </>
-);
 
 /** The answer goes into a document, so it must not be able to be markup. */
 function escapeHtml(text: string) {
@@ -441,8 +427,7 @@ const Quiet: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
  * app's own `SceneLayer` is still: a drifting copy is at some other scale than
  * the real backdrop, and handing over between them jumps.
  *
- * `weather` is off for the copy that opens on a pick, which sits directly over
- * another copy of the same room that already has it.
+ * `weather` is off for the rooms that are mounted but not on screen.
  */
 const RoomScene: React.FC<{ room: Room; drift?: boolean; weather?: boolean }> = ({
   room,
@@ -501,72 +486,56 @@ const RoomScene: React.FC<{ room: Room; drift?: boolean; weather?: boolean }> = 
   );
 };
 
-/** One room in the grid. Hovering it shows the room behind the whole screen. */
+/** One room in the thumbnail row. Hovering it shows the room behind the whole screen. */
 const RoomCard: React.FC<{
   room: Room;
   delay: number;
-  /** The room that suits the hour takes two cells, which also fills the grid. */
-  wide?: boolean;
+  /** 지금 화면 전체에 깔린 방. 테두리가 굵어진다. */
+  active?: boolean;
   /**
-   * Another room has been picked, so this one leaves. Without it the rest of the
-   * grid sits on top of the room the user has just walked into — four thumbnails
-   * of rooms not chosen floating over it.
+   * A room has been picked, so the row leaves — the picked one too, since that
+   * room is already behind it full-screen.
    */
   leaving?: boolean;
-  /** This is the one that was picked: the full-screen copy is already over it. */
-  picked?: boolean;
-  onPick: (from: DOMRect) => void;
+  onPick: () => void;
   onHover: (room: Room) => void;
-}> = ({ room, delay, wide, leaving, picked, onPick, onHover }) => {
+}> = ({ room, delay, active, leaving, onPick, onHover }) => {
   // One room is a light one, where a white label on a white scrim disappears.
   const light = room.theme.mood === 'light';
   return (
     <motion.button
-      onClick={(e) => onPick(e.currentTarget.getBoundingClientRect())}
+      onClick={() => onPick()}
       // No matching leave. Moving from one card to the next fires the leave before
       // the enter, so clearing the backdrop there flashed the empty screen
       // between every pair of rooms. The last room looked into stays.
       onHoverStart={() => onHover(room)}
       initial={{ opacity: 0, y: 16 }}
-      animate={
-        picked
-          ? { opacity: 0 }
-          : leaving
-            ? { opacity: 0, scale: 0.96 }
-            : { opacity: 1, y: 0, scale: 1 }
-      }
+      animate={leaving ? { opacity: 0, scale: 0.96 } : { opacity: 1, y: 0, scale: 1 }}
       transition={
-        picked
-          ? // No fade: the window that opens starts on exactly this rectangle, so
-            // anything left underneath is a second image of the same card.
-            { duration: 0 }
-          : leaving
-            ? // All at once, and quickly. Staggering them held the grid on screen
-              // for most of a second over a room the user had already chosen.
-              { duration: CARDS_LEAVE_MS / 1000, ease: 'easeIn' }
-            : { delay, duration: 0.45, ease: 'easeOut' }
+        leaving
+          ? // All at once, and quickly. Staggering them held the grid on screen
+            // for most of a second over a room the user had already chosen.
+            { duration: CARDS_LEAVE_MS / 1000, ease: 'easeIn' }
+          : { delay, duration: 0.45, ease: 'easeOut' }
       }
-      whileHover={leaving || picked ? undefined : { y: -6 }}
+      whileHover={leaving ? undefined : { y: -4 }}
       whileTap={{ scale: 0.985 }}
-      className={`group relative overflow-hidden rounded-surface text-left ${
-        wide ? 'col-span-2 aspect-[8/3]' : 'aspect-[4/3]'
-      }`}
+      className="group relative overflow-hidden rounded-[12px] text-left aspect-[8/5]"
       style={{
-        border: '1px solid rgba(var(--ob-ink),0.1)',
-        boxShadow: 'var(--ob-card-shadow)',
+        boxShadow: `0 0 0 ${active ? 2 : 1}px rgba(var(--ob-ink),${active ? 1 : 0.16}), 0 12px 28px -12px rgba(20,17,13,0.6)`,
+        transition: 'box-shadow 170ms ease-out',
       }}
     >
       <RoomScene room={room} drift />
-      <div
-        className="absolute inset-x-0 bottom-0 h-2/5"
-        style={{
-          background: light
-            ? 'linear-gradient(to top, rgba(247,246,243,0.75), transparent)'
-            : 'linear-gradient(to top, rgba(20,17,13,0.7), transparent)',
-        }}
-      />
+      {/* 밝은 방(Paper)은 바탕이 밝아서 어두운 글자만 쓰고 그라데이션을 안 깐다. */}
+      {!light && (
+        <div
+          className="absolute inset-x-0 bottom-0 h-[55%]"
+          style={{ background: 'linear-gradient(to top, rgba(20,17,13,0.72), transparent)' }}
+        />
+      )}
       <span
-        className="absolute bottom-3 left-3.5 text-body font-medium"
+        className="absolute bottom-2 left-2.5 text-ui font-medium"
         style={{ color: light ? INK : PAPER }}
       >
         {room.name}
@@ -671,11 +640,11 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
    * of rooms.
    */
   const [peek, setPeek] = useState<Room | null>(null);
-  /** The room being walked into, and the card's rectangle the window opens from. */
-  const [entering, setEntering] = useState<{ room: Room; from: DOMRect } | null>(null);
-  /** Flipped a frame after `entering`, so the closed rectangle is painted first. */
-  const [opened, setOpened] = useState(false);
-  const [cursor, setCursor] = useState({ x: 0.5, y: 0.4 });
+  /**
+   * 화면 배치가 따르는 단계. `step`보다 늦게, 앞 단계가 다 사라진 뒤에 바뀐다. 같이
+   * 바꾸면 사라지는 중인 제목과 썸네일 줄(왼쪽 아래)이 다음 질문의 가운데 정렬로 튄다.
+   */
+  const [placed, setPlaced] = useState<Step>('room');
 
   /**
    * The room behind everything: the one picked, the one under the pointer, or —
@@ -696,30 +665,31 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
    * Picking a room sets the real theme, so the scene behind the next question is
    * already the one being chosen.
    *
-   * The sound starts here and not on hover. A browser will not play anything
-   * until the page has been clicked, and on this screen the first click is this
-   * one — so a hover preview would be silent every time it mattered.
+   * The sound starts from this click and not on hover. A browser will not play
+   * anything until the page has been clicked, and on this screen the first click
+   * is this one — so a hover preview would be silent every time it mattered.
    */
-  const takeRoom = (chosen: Room, from: DOMRect) => {
-    // The peek is left alone: it is already this room, full-bleed, and it is what
-    // the opening window opens onto.
-    setEntering({ room: chosen, from });
-    requestAnimationFrame(() => requestAnimationFrame(() => setOpened(true)));
-    useSpaceStore
-      .getState()
-      .setRoom(
-        chosen.theme.id,
-        chosen.background ? { type: 'IMAGE', value: chosen.background } : null,
-        chosen.ambience
-      );
-    // setRoom은 날씨를 테마에 돌려준다. 방이 자기 것을 들고 있으면 다시 건다.
-    if (chosen.particles) useSpaceStore.getState().setParticles(chosen.particles);
+  const takeRoom = (chosen: Room) => {
     setRoom(chosen);
-    // While the window is still opening. The question is what the user came for;
+    // While the layers are still settling. The question is what the user came for;
     // waiting for the animation to finish before asking it is the animation
     // charging rent.
     setTimeout(() => setStep('work'), NEXT_STEP_MS);
-    setTimeout(() => setEntering(null), REVEAL_MS + REVEAL_FADE_MS);
+    // 공간에 방을 거는 건 화면이 다 바뀐 뒤에 한다. 방의 소리가 걸리면 소리 엔진이 처음
+    // 켜지면서 AudioContext를 만드는데, 그게 메인 스레드를 134ms 막는다(2026-09-13
+    // 프로파일). 누르는 순간 걸면 넘어가는 화면이 7프레임 멈췄다. 페이지를 이미 눌렀으므로
+    // 늦게 켜도 소리는 난다. 이 화면 뒤의 앱은 온보딩이 덮고 있어서 늦어도 안 보인다.
+    setTimeout(() => {
+      useSpaceStore
+        .getState()
+        .setRoom(
+          chosen.theme.id,
+          chosen.background ? { type: 'IMAGE', value: chosen.background } : null,
+          chosen.ambience
+        );
+      // setRoom은 날씨를 테마에 돌려준다. 방이 자기 것을 들고 있으면 다시 건다.
+      if (chosen.particles) useSpaceStore.getState().setParticles(chosen.particles);
+    }, SPACE_ROOM_MS);
   };
 
   const takeWork = (chosen: Work) => {
@@ -788,9 +758,8 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           icon: app.icon,
           homeUrl: app.url,
           url: app.url,
-          // Closed, like an imported tab: six tiles are a workspace, six loading
-          // pages are a stall.
-          open: false,
+          // 앞의 몇 개만 페이지를 띄운다. 이유는 `OPEN_WEBAPPS`에.
+          open: planned.length < OPEN_WEBAPPS,
         },
       });
     }
@@ -877,9 +846,6 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       transition={{ duration: 0.6 }}
       className="fixed inset-0 z-[200] overflow-y-auto"
       style={{ fontFamily: 'var(--font-ui)', ...(flatRoom ? ON_PAPER : ON_PHOTO) }}
-      onPointerMove={(e) =>
-        setCursor({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight })
-      }
     >
       {/* The ground under the rooms, for the moment before a wallpaper has
           decoded and for a room that is a gradient rather than a photograph. */}
@@ -911,15 +877,22 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         </div>
       ))}
 
-      {/* The dark layer the words are read against. It lifts most of the way once
-          a room is picked: the room is the reward for picking it, and at the
-          weight this carried while browsing the picked room came out darker than
-          the grid of thumbnails it replaced. */}
+      {/* The dark layer the words are read against once a room is picked. */}
       <div
         className="absolute inset-0"
         style={{
           backgroundImage: SCRIM,
-          opacity: flatRoom ? 0 : room ? SCRIM_SETTLED : shown ? SCRIM_BROWSING : 0,
+          opacity: flatRoom || !room ? 0 : SCRIM_SETTLED,
+          transition: `opacity ${room ? REVEAL_MS : 170}ms ease-out`,
+        }}
+      />
+
+      {/* 고르는 동안은 아래쪽만 어둡게: 제목과 썸네일 줄이 거기 있다. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: SHADE_BROWSING,
+          opacity: flatRoom || room ? 0 : 1,
           transition: `opacity ${room ? REVEAL_MS : 170}ms ease-out`,
         }}
       />
@@ -929,73 +902,18 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         style={{
           background: POOL,
           opacity: room && !flatRoom ? 1 : 0,
-          // The same length as the window opening, so the two agree at the end
-          // of it and handing over between them changes nothing.
+          // The same length as the bottom band lifting, so the two settle together.
           transition: `opacity ${REVEAL_MS}ms ease-out`,
         }}
       />
 
-      {/* A light that follows the pointer. A flat dark rectangle reads as a
-          blank; the same rectangle with something answering the hand reads as a
-          surface. */}
+      {/* 방 고르기는 왼쪽 아래에 붙인다. 화면 가운데는 사진이 보이는 자리다. */}
       <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(circle 38vmax at ${cursor.x * 100}% ${
-            cursor.y * 100
-          }%, rgba(247,246,243,0.055), transparent 70%)`,
-          opacity: flatRoom ? 0 : 1,
-        }}
-      />
-
-      {/* Picking a room opens a window in the dark layer, from the rectangle of
-          the card that was clicked out to the edges of the screen.
-
-          A window rather than a card that grows. The room behind it is already
-          full-bleed and already the right one, so this copy is the same picture
-          at the same size and crop from the first frame to the last — only the
-          shape it is seen through changes. Nothing is resized, so the picture
-          never re-crops or slides, and nothing is laid out again per frame.
-
-          The previous version animated top, left, width and height on a
-          screen-sized element with a `cover` background: every frame was a fresh
-          layout and a fresh crop of a 730KB photograph, and the picture slid
-          about inside the growing rectangle.
-
-          Over the cards, so the rooms not chosen cannot show through the part of
-          the window that has already opened. */}
-      <AnimatePresence>
-        {entering && (
-          <motion.div
-            key={entering.room.id}
-            className="fixed inset-0 z-[203] overflow-hidden pointer-events-none"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: REVEAL_FADE_MS / 1000 } }}
-            style={{
-              clipPath: opened
-                ? 'inset(0px 0px 0px 0px round 0px)'
-                : `inset(${entering.from.top}px ${window.innerWidth - entering.from.right}px ${
-                    window.innerHeight - entering.from.bottom
-                  }px ${entering.from.left}px round 18px)`,
-              // Moves on the first frame and keeps moving. An ease that spends its
-              // last two thirds almost still is the same complaint as one that
-              // spends its first two thirds almost still, arriving from the other
-              // side: the motion is over in 150ms and the rest is a wait.
-              transition: `clip-path ${REVEAL_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`,
-              willChange: 'clip-path',
-            }}
-          >
-            <RoomScene room={entering.room} weather={false} />
-            {entering.room.theme.scene.kind !== 'color' && <Settled />}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Above the opening window, so the next question is readable while the
-          room is still opening behind it. */}
-      <div className="relative z-[204] min-h-full flex items-center justify-center px-10 py-16">
-        <AnimatePresence mode="wait">
+        className={`relative z-[204] min-h-full flex ${
+          placed === 'room' ? 'items-end px-14 pb-13' : 'items-center justify-center px-10 py-16'
+        }`}
+      >
+        <AnimatePresence mode="wait" onExitComplete={() => setPlaced(step)}>
           <motion.div
             key={step}
             initial={{ opacity: 0, y: 14 }}
@@ -1004,14 +922,14 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
             // the next question waits on. Short for that reason.
             exit={{ opacity: 0, y: -10, transition: { duration: 0.14 } }}
             transition={{ duration: 0.28 }}
-            className="w-full max-w-[62rem]"
+            className={`w-full ${step === 'room' ? 'max-w-[68rem]' : 'max-w-[62rem]'}`}
           >
             {step === 'room' && (
               <>
                 {/* The question goes with the grid: it is answered the moment a
                     card is clicked, and reading it over the room is odd. */}
                 <motion.div
-                  animate={{ opacity: entering ? 0 : 1, y: entering ? -8 : 0 }}
+                  animate={{ opacity: room ? 0 : 1, y: room ? -8 : 0 }}
                   transition={{ duration: CARDS_LEAVE_MS / 1000, ease: 'easeIn' }}
                 >
                   <Title
@@ -1020,16 +938,15 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                     {greetingForHour(hour)} Where do you want to work?
                   </Title>
                 </motion.div>
-                <div className="grid grid-cols-3 gap-3.5">
+                <div className="mt-2 grid grid-cols-5 gap-3">
                   {rooms.map((r, i) => (
                     <RoomCard
                       key={r.id}
                       room={r}
-                      wide={i === 0}
+                      active={shown?.id === r.id}
                       delay={0.05 * i}
-                      leaving={!!entering && entering.room.id !== r.id}
-                      picked={entering?.room.id === r.id}
-                      onPick={(from) => takeRoom(r, from)}
+                      leaving={!!room}
+                      onPick={() => takeRoom(r)}
                       onHover={setPeek}
                     />
                   ))}

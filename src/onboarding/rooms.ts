@@ -57,6 +57,15 @@ interface RoomSpec {
  * 옆에서 아직 안 채운 칸으로 보인다.
  */
 const SPECS: RoomSpec[] = [
+  // 순서는 사용자 지시(2026-09-13): Summer Lake가 먼저 화면 전체에 깔린다.
+  {
+    id: 'summer-lake',
+    name: 'Summer Lake',
+    themeId: 'golden-hour',
+    background: '/wallpapers/summer-lake-landing.webp',
+    ambience: { ...silent, cafe: 26 },
+    hours: [6, 15],
+  },
   {
     id: 'rainy-attic',
     name: 'Rainy Attic',
@@ -74,14 +83,6 @@ const SPECS: RoomSpec[] = [
     background: '/wallpapers/midnight-observatory.webp',
     ambience: { ...silent },
     hours: [19, 24],
-  },
-  {
-    id: 'summer-lake',
-    name: 'Summer Lake',
-    themeId: 'golden-hour',
-    background: '/wallpapers/summer-lake-landing.webp',
-    ambience: { ...silent, cafe: 26 },
-    hours: [6, 15],
   },
   {
     id: 'snowy-railway',

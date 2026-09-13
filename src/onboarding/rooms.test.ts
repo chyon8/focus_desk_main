@@ -13,9 +13,9 @@ describe('rooms', () => {
 
   it('offers every theme as a room', () => {
     expect(ROOMS.map((room) => room.id)).toEqual([
+      'summer-lake',
       'rainy-attic',
       'midnight-observatory',
-      'summer-lake',
       'snowy-railway',
       'paper',
     ]);
@@ -25,11 +25,11 @@ describe('rooms', () => {
     }
   });
 
-  it('keeps Rainy Attic first and Midnight Observatory second', () => {
+  it('keeps Summer Lake first and Rainy Attic second', () => {
     for (const hour of [0, 8, 12, 18, 23]) {
       expect(roomsForHour(hour).slice(0, 2).map((room) => room.id)).toEqual([
+        'summer-lake',
         'rainy-attic',
-        'midnight-observatory',
       ]);
     }
   });
