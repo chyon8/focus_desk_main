@@ -71,6 +71,12 @@ const ALLOWED_WITHOUT_ASKING = new Set<string>([
   'pointerLock',
   // DRM playback — Spotify, YouTube Music, Netflix.
   'mediaKeySystem',
+  // Google's sign-in frame (on Unsplash, GitHub and many others) asks for
+  // storage access on every page load. Chrome grants it without a prompt while
+  // third-party cookies are allowed, so asking put a dialog up on every visit
+  // (2026-09-14).
+  'storage-access',
+  'top-level-storage-access',
 ]);
 
 /** What the question says each permission is for. A permission not listed here is refused. */
