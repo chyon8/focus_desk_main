@@ -132,6 +132,8 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
       onDragLeave={() => setIsDropTarget(false)}
       onDrop={(e) => {
         e.preventDefault();
+        // 캔버스 onDrop까지 올라가면 같은 파일로 사진 위젯이 하나 더 생겼다.
+        e.stopPropagation();
         setIsDropTarget(false);
         const file = e.dataTransfer.files[0];
         if (file) void store(file);
