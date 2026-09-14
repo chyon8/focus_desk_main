@@ -11,8 +11,62 @@
 | [hero-b.html](hero-b.html) · [hero-c.html](hero-c.html) | 첫 화면 대안. B가 v2 히어로가 됐다. 지우지 않고 둔다 |
 | [landing.css](landing.css) | 위 파일들이 같이 쓴다 |
 | `/tmp/port.mjs` | 캔버스 아트보드 변환기. 세션 끝나면 사라진다. `/tmp/mkv2.mjs`(v2 생성기)는 이제 v1과 안 맞아서 안 쓴다 — v2는 직접 고친다 |
+| `../landing-shots/` | **앱 스크린샷 시안 원본 23장 (2026-09-14, 2880×1800).** `tools/`에 공간 JSON 생성·캡처 스크립트. 스크립트 안 경로는 그 세션 scratchpad 기준이라 다시 쓸 때 고쳐야 한다 |
 
 캔버스(첫 화면 비교용, 움직임 없음, v2 확정 전 스냅샷): https://claude.ai/code/artifact/b0d1bd76-c9b6-4ee1-a7b3-35da78020d1c
+
+## 앱 스크린샷 시안 (2026-09-13~14) — 스크린샷 얘기는 여기부터
+
+캔버스(5페이지): https://claude.ai/code/artifact/069ee526-b693-4616-a412-59f5295c6356
+원본: `../landing-shots/` (2880×1800 jpg). 피드백 전 첫 묶음은 `../landing-shots/before/`
+
+**요청 (2026-09-13 사용자)**
+- 스크린샷만 만들고 사용자가 보고 판단한다. **랜딩에 적용하지 않는다**
+- 기준은 비주얼. 처음 보고 "와 예쁘네", 다른 앱과 비교해도 "개쩐다"가 나와야 한다. 시니어 디자이너 수준
+- 처음 기획(A–D)과 다른 조합도 만든다. 기획을 먼저 보여주고 컨펌 후 만든다
+- 시안 번호는 1부터 매긴다(E부터 시작하는 번호를 싫어했다). 방 넷 밖 2장(12·13)도 넣는다
+
+**피드백 (2026-09-14 사용자) — 다음 논의의 기준**
+- "사진들이 구리다, 위젯들이 구리다. 원래 디자인 문제인가"
+- 색 마크(강조색)는 일단 뺀다
+- 배경 방 사진이 제대로 보이게, 위젯도 제대로 나오게
+- masonry·무드보드 느낌. 레퍼런스는 Milanote 보드 캡처 3장(Research · Moodboard · Project Ideas): 흰 카드, 사진이 곧 카드, 색 스와치 카드, 굵은 타이포 포스터, 카드끼리 겹침
+
+**찾은 것**
+- 구려 보인 주원인은 사진 위젯이다. 윗단 여백(40px)과 캡션 줄 때문에 사진이 작고 액자처럼 보인다. 데모 창에 CSS만 넣어 사진을 꽉 채우자 가장 나았다(캔버스 1페이지 세 번째 열). 지금 앱에는 없는 모양이다
+- 어두운 방에서는 불투명한 어두운 카드가 무겁다. Atmosphere Light(밝은 카드)가 Milanote에 더 가깝다
+- 일반 스톡 사진보다 방 색에 맞춘 디자인 소재(패키지, 스와치, 워드마크, 질감)가 낫다. 스와치·워드마크 이미지는 `tools/make_assets.py`가 만든다
+- 투두는 폭이 넓으면 글자가 커져 한 줄만 보인다 → 월드 폭 320 안쪽으로 둔다
+- 컬럼 안 메모·투두 카드는 작게 찌그러져 보인다(STATUS 알려진 문제) → 컬럼에는 페이지 카드만
+- 페이지 카드에 `title`이 없으면 제목 자리에 "en.wikipedia.org"가 나온다
+- 웹 페이지: Unsplash·Flickr 검색은 iStock 광고, Pexels는 Cloudflare 확인, Unsplash 프로필은 봇 확인 → 안 쓴다. Are.na 채널(사진 격자까지 스크롤), GitHub, Wikipedia, Google Earth(첫 방문 안내창을 닫고)는 된다
+- Rainy Attic은 파티클 비를 끈다(벽지에 비가 그려져 있어서, rooms.ts). 기획의 "Rainy Attic + 비"는 적용하지 않았다
+- 이 맥은 한국어라 달력·웹 페이지가 한국어로 나온다 → 데모 앱은 `-AppleLanguages (en-US)`로 띄운다
+- 가상 이야기: 프리랜스 디자이너의 클라이언트 공간 — Ondo(카페 리브랜드) · Birch Inn(캐빈 호텔) · Nightbird(앨범) · Field Mag(여행 매거진). 레일의 공간 이름은 9자를 넘으면 잘린다
+- 사진은 Unsplash(무료 라이선스). 랜딩에 실제로 쓸 때는 페이지 속 다른 브랜드 이미지(Are.na 패키지 등)를 따로 확인한다
+
+**캔버스 구성**
+
+| 페이지 | 번호 | 무엇 |
+|---|---|---|
+| 1 무드보드 | 2 · 14 · 15 | Birch Inn(Snowy Railway) · Ondo(Rainy Attic) · Nightbird(Midnight Observatory) 보드를 세 모양으로 — 어두운 카드 / 밝은 카드 / 사진 꽉 채운 미리보기 |
+| 2 새 시안 | 1, 3–7 | 1 여백(Attic, 위젯 3개) · 3 전체 보기(Observatory, 배율 46%) · 4 페이지 하나(Summer Lake 밝은 UI, Google Earth) · 5 컬럼(Snowy Railway, Wikipedia 카드) · 6 사진 없음(Editorial) · 7 확대 3컷 |
+| 3 처음 기획 | 8–11 | A 카페(Attic) · B 개발자 출시(Observatory) · C 글쓰기(Summer Lake) · D A를 Paper에 |
+| 4 방 넷 밖 | 12–13 | late-summer-aquarium · winter-lake-greenhouse(눈). 1번 내용 |
+| 5 피드백 전 | 1–6 | 색 마크가 있던 첫 묶음 + 버린 1번 L자 배치 |
+
+**결정 대기 (사용자)**
+1. 어떤 구도·방으로 갈지
+2. 카드 밝기 — 어두운 카드 / 밝은 카드
+3. 사진 위젯을 꽉 채운 모양으로 앱을 바꿀지. 바꾸면 앱 코드 작업이고, 캡션·줌 같은 기존 기능을 어떻게 둘지 먼저 묻는다
+
+**다시 찍는 법** (`../landing-shots/tools`, 명령은 저장소 루트에서)
+- 데모 프로필 `~/Library/Application Support/focus-desk-demo`에 공간과 사진이 그대로 있다
+- 띄우기: `unset ELECTRON_RUN_AS_NODE; FOCUS_DESK_PROFILE=demo FOCUS_DESK_DEBUG_PORT=9337 npx vite --config design-ref/landing-shots/tools/vite/vite.config.mjs` (포트 3007, 영어). 창이 뜬다고 먼저 말한다
+- 공간 넣기 `node push.mjs specs/s14-15-boards.mjs`, 찍기 `node shot.mjs <공간 id> out/x.png --rail id,id,id,id [--skin fullbleed] [--scroll 주소일부:px] [--clicktext 주소일부:글자]` (tools 폴더에서, 2배로 찍힌다)
+- 스와치·워드마크 이미지는 저장소에 없다. 보드 공간(2·14·15)을 다시 넣기 전에 `python3 make_assets.py`로 먼저 만든다
+- 사진 검색 `node unsplash.mjs <폴더> "<검색어>"`, 캔버스 파일 `python3 make_canvas.py` → /design 스킬의 seed-canvas로 묶는다
+- 끝나면 3007·9337의 내 PID만 끈다
 
 ## 다음에 할 일
 
@@ -22,9 +76,10 @@
 3. 영상 녹화 — 줌 섹션(줌아웃→줌인), 컬럼 섹션(카드를 컬럼에 넣고 빼는 3~4초 루프)
 4. 로그인이 필요한 화면 — 세션 섹션(같은 사이트 두 계정, 이름·아바타가 달라야 한다)
 5. 판단 — 줌 순서를 뒤집을지(AI가 뒤집은 버전을 만들면 보고 고른다)
+6. 판단 — 스크린샷 시안 캔버스에서 고르기: 구도·방, 카드 밝기(어두운/밝은), 사진 위젯을 꽉 채운 모양으로 앱을 바꿀지
 
 ### AI가 할 수 있는 것
-1. 데모 공간을 만들고 스크린샷 — 히어로 스크린샷, 방 4개 띠(위젯 올라간 상태), Paper 테마 한 장면. 방법은 아래 "실제 자산" 표 밑에. 아래 "데모 공간 시안" A부터
+1. 🟡 데모 공간을 만들고 스크린샷 — 1차 완료(2026-09-14, 위 캔버스). 남은 것: 6번 판단대로 다시 찍기. 히어로 스크린샷, 방 4개 띠(위젯 올라간 상태), Paper 테마 한 장면. 방법은 `landing-shots/tools`
 2. 위젯 안 회색 막대를 실제 글자로 (개선점 3)
 3. ✅ 반응형 — 폰·태블릿·1081~1439 (2026-09-13, 개선점 1)
 4. 헤더 CTA가 스크롤을 따라오게 (개선점 5)
