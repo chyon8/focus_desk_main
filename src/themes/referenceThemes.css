@@ -7,10 +7,8 @@
   --radius-mark: 0px;
   --shadow-lift: 0 0 0 transparent;
   --shadow-float: 0 0 0 transparent;
-  --lip: inset 0 0 0 transparent;
-  --halo: transparent;
+  --shadow-card: none;
   --paper-fill: var(--surface);
-  --paper-edge: transparent;
   --text-body: 15px;
   --accent: #111111;
   --accent-hover: #111111;
@@ -34,6 +32,10 @@
   --reference-border-strong: #3a3a3a;
 }
 
+/* 앱 기본 카드는 테두리 없이 그림자로 뜬다. Editorial은 그림자가 없고 선으로 나눈다. */
+:root[data-theme='swiss'] :is(.glass-panel, .widget-glass) {
+  border: 1px solid var(--panel-border);
+}
 :root[data-theme='swiss'] :is(.memo-paper, .clock-face) {
   background: var(--surface);
   box-shadow: none;

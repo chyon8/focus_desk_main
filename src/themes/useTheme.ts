@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSpaceStore } from '../stores/spaceStore';
-import { getTheme, tokensForGround } from './themes';
+import { getTheme, sceneForPolarity, tokensForGround } from './themes';
 import { assetUrl, isLightBackground } from '../spaces/backgrounds';
 import { photoTone } from '../spaces/photoTone';
 import type { Theme } from './types';
@@ -41,7 +41,13 @@ function scenePhoto(
  */
 export function useGround(
   theme: Theme,
-): { ground: string; light: boolean; autoLight: boolean; overridden: boolean } {
+): {
+  ground: string;
+  light: boolean;
+  autoLight: boolean;
+  backdropLight: boolean;
+  overridden: boolean;
+} {
   const background = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const chosenPolarity = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.polarity);
 
@@ -67,17 +73,23 @@ export function useGround(
   const ground =
     background?.type === 'COLOR' ? background.value : (photoHex ?? theme.tokens.surface);
 
-  // 배경이 정하는 값. 사진이면 평균 색의 밝기, 단색이면 그 색의 밝기다.
-  const autoLight =
+  // 배경 그림 자체가 밝은지. 사진이면 평균 색의 밝기, 단색이면 그 색의 밝기다.
+  // 비네트처럼 그림 위에 얹는 장식이 이걸 따른다.
+  const backdropLight =
     photoHex || background?.type === 'COLOR'
       ? isLightBackground(ground)
       : theme.mood === 'light';
+
+  // 카드가 기본으로 밝은지. 사진 위에서는 밝은 카드가 기본이다(2026-09-14 디자인
+  // 리뉴얼) — 평균 색으로 판정하면 방 넷이 전부 어두운 카드가 됐다. 어두운 카드는
+  // Atmosphere에서 고른다. 사진을 아직 못 읽었을 때도 같은 값이라 깜빡이지 않는다.
+  const autoLight = photo ? true : backdropLight;
 
   // 실제로 쓰는 값. 사용자가 뒤집었으면 그게 이긴다.
   // 헤일로·그림자 세기·윗변 빛이 여기서 갈린다.
   const light = chosenPolarity != null ? chosenPolarity === 'light' : autoLight;
 
-  return { ground, light, autoLight, overridden: background != null };
+  return { ground, light, autoLight, backdropLight, overridden: background != null };
 }
 
 /** Publishes the theme's tokens as CSS variables so the whole UI can read them. */
@@ -92,10 +104,17 @@ export function useThemeVariables(theme: Theme) {
   // 그림자 색조는 UI가 실제로 놓인 색에서 뽑는다.
   const tint = shadowTint(ground);
 
+  // 카드 그림자가 사진 위 값과 단색 위 값으로 갈린다(index.css `--shadow-card`).
+  const background = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
+  const colorGround = background
+    ? background.type === 'COLOR'
+    : sceneForPolarity(theme, light).kind === 'color';
+
   useEffect(() => {
     document.documentElement.setAttribute('data-polarity', light ? 'light' : 'dark');
     document.documentElement.setAttribute('data-theme', theme.id);
-  }, [light, theme.id]);
+    document.documentElement.setAttribute('data-ground', colorGround ? 'color' : 'photo');
+  }, [light, theme.id, colorGround]);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--shadow-tint', tint);

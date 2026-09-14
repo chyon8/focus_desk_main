@@ -517,8 +517,10 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
           onPointerCancel={endGesture}
           onLostPointerCapture={onLostCapture}
         >
+          {/* 표시는 가리키거나 포커스가 있을 때만 보인다(.widget-chrome) — 늘 보이면
+              카드마다 모서리 표시가 남는다. 잡는 자리(16px)는 늘 그대로다. */}
           <div
-            className="absolute bottom-1 right-1 w-2 h-2 border-r-2 border-b-2"
+            className="widget-chrome absolute bottom-1 right-1 w-2 h-2 border-r-2 border-b-2"
             style={{ borderColor: 'var(--ink-soft)' }}
           />
         </div>

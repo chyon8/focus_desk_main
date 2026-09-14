@@ -17,8 +17,8 @@
   /* 숫자 전용 — 타이머·줌 배율·볼륨. tabular-nums와 같이 쓴다. */
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* 라디우스 3단. 면 / 컨트롤 / 인라인 표식. */
-  --radius-surface: 16px;
+  /* 라디우스 3단. 면 / 컨트롤 / 인라인 표식. 면 14px는 검토 캔버스 D안(2026-09-14). */
+  --radius-surface: 14px;
   --radius-control: 8px;
   --radius-mark: 4px;
 
@@ -31,8 +31,8 @@
   --text-display: 34px; /* 타이머·큰 숫자 */
 }
 
-/* 그림자는 순수 검정을 안 쓴다 — 밝은 배경에서 회색 얼룩이 된다. 색조는 테마가
-   자기 배경에서 뽑아 `--shadow-tint`(r, g, b)로 덮어쓴다. 광원은 하나, 위에서 아래. */
+/* 단색 위 그림자는 순수 검정을 안 쓴다 — 밝은 배경에서 회색 얼룩이 된다. 색조는
+   테마가 자기 배경에서 뽑아 `--shadow-tint`(r, g, b)로 덮어쓴다. 광원은 하나, 위에서 아래. */
 :root {
   --shadow-tint: 46, 38, 28;
 
@@ -43,11 +43,10 @@
     0 1px 2px rgba(var(--shadow-tint), 0.36),
     0 12px 26px -10px rgba(var(--shadow-tint), 0.55),
     0 34px 70px -30px rgba(var(--shadow-tint), 0.62);
-  /* 면의 윗변에 닿는 빛. 두께 1px. */
-  --lip: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  /* 면 바깥에 두르는 한 겹. 안쪽 테두리(--panel-border)는 잉크색이라 같은 극성
-     배경에서 면을 떼어내고, 이 헤일로는 반대색이라 사진의 얼룩에서 떼어낸다. */
-  --halo: rgba(0, 0, 0, 0.42);
+  /* 카드·레일·독·패널의 그림자 한 벌(2026-09-14 디자인 리뉴얼, 검토 캔버스 D안).
+     테두리·헤일로·윗변 빛은 없앴다 — 흰 카드는 그림자만으로 배경에서 떨어진다.
+     이건 사진 위 값이고, 단색·Paper 위는 아래 [data-ground='color']가 덮는다. */
+  --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.14), 0 22px 48px -16px rgba(0, 0, 0, 0.55);
   /* 면 한 단 안쪽. 면 위에 놓이는 타일이 쓴다. */
   --surface-2: color-mix(in srgb, var(--ink) 6%, var(--surface));
   /* 남의 웹페이지가 앉는 자리. 면보다 한 단 더 들어가 있어서 앱이 그린 면과
@@ -79,14 +78,20 @@
     0 1px 2px rgba(var(--shadow-tint), 0.1),
     0 10px 22px -8px rgba(var(--shadow-tint), 0.2),
     0 28px 56px -26px rgba(var(--shadow-tint), 0.3);
-  --lip: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  --halo: rgba(255, 255, 255, 0.55);
   --accent: #a9581b;
   --accent-hover: #944c15;
   --accent-ink: #fff7ef;
   --accent-soft: rgba(169, 88, 27, 0.12);
   --danger: #a3231a;
   --ink-faint: #726c62;
+}
+
+/* 단색·Paper 위의 카드 그림자. 고르게 칠한 바탕이라 사진 위 값보다 옅게 두고
+   색조는 배경에서 뽑는다. data-ground는 themes/useTheme가 단다. */
+:root[data-ground='color'] {
+  --shadow-card:
+    0 1px 2px rgba(var(--shadow-tint), 0.06),
+    0 16px 38px -14px rgba(var(--shadow-tint), 0.26);
 }
 
 body {
@@ -201,12 +206,10 @@ body {
   border: 1px solid var(--panel-border);
 }
 
-/* A popover, dialog or dock: it floats over the canvas, so it takes the halo
-   and the three-layer shadow. */
+/* 팝오버·대화상자·독·레일. 위젯 카드와 같은 면과 그림자 한 벌이다. */
 .glass-panel {
   background: var(--surface);
-  border: 1px solid var(--panel-border);
-  box-shadow: 0 0 0 1px var(--halo), var(--shadow-float), var(--lip);
+  box-shadow: var(--shadow-card);
 }
 
 .t-ink {
@@ -382,8 +385,6 @@ body {
   --paper-border: var(--panel-border);
   /* A shade off the sheet: table headers, and the boxes Mermaid fills. */
   --paper-fill: color-mix(in srgb, var(--ink) 9%, var(--surface));
-  /* The lit top edge of the sheet. */
-  --paper-edge: rgba(255, 255, 255, 0.07);
 }
 
 .photo-paper {
@@ -394,7 +395,7 @@ body {
 /* The clock is a physical face, lifted slightly off the glass behind it. */
 .clock-face {
   background: color-mix(in srgb, var(--ink) 6%, transparent);
-  box-shadow: var(--lip), 0 20px 40px -10px rgba(var(--shadow-tint), 0.4);
+  box-shadow: 0 20px 40px -10px rgba(var(--shadow-tint), 0.4);
 }
 
 /* A volume slider. All three layers used to have their own hue; they now share
@@ -408,8 +409,15 @@ body {
 
 .widget-glass {
   background: var(--surface);
-  border: 1px solid var(--panel-border);
-  box-shadow: 0 0 0 1px var(--halo), var(--shadow-float), var(--lip);
+  box-shadow: var(--shadow-card);
+}
+
+/* 어두운 카드(#1f1f21)는 어두운 사진·단색에 가장자리가 묻힌다. 안쪽 1px 옅은 선을
+   둔다. box-shadow inset은 메모처럼 면을 다 칠하는 내용에 가려서 outline으로 그린다.
+   :where로 명시도를 낮춰 선택·드롭 표시의 outline이 이긴다. Editorial은 제 선이 있다. */
+:where(:root[data-polarity='dark']:not([data-theme='swiss'])) :is(.widget-glass, .glass-panel) {
+  outline: 1px solid rgba(255, 255, 255, 0.07);
+  outline-offset: -1px;
 }
 
 /* 색 마크 — 이 위젯이 어느 묶음인지. 왼쪽 변에 3px 막대 하나다.
@@ -565,7 +573,6 @@ body {
   flex: none;
   border-radius: var(--radius-control);
   border: 1px solid var(--panel-border);
-  box-shadow: var(--lip);
   opacity: 0.55;
   transition: opacity 0.16s, transform 0.08s;
 }
@@ -731,20 +738,10 @@ textarea:focus-visible,
   --ink-faint: var(--paper-ink-faint);
   --panel-border: var(--paper-border);
   --surface: var(--paper-fill);
-  /* A breath of the room's accent along the top, so the sheet belongs to the
-     space instead of being a rectangle cut out of it. `--accent` is deliberately
-     not redefined above, so this is the theme's own colour. */
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent) 7%, var(--paper)) 0,
-    var(--paper) 160px
-  );
+  /* 카드와 같은 면 한 장이다. 윗부분 강조색 번짐과 안쪽 그림자는 뺐다(2026-09-14
+     디자인 리뉴얼) — 흰 카드 위에서 얼룩으로 보였다. */
+  background: var(--paper);
   color: var(--ink);
-  /* Lit top edge, then a soft shadow under the header: the paper sits inside the
-     widget rather than being pasted over it. */
-  box-shadow:
-    inset 0 1px 0 var(--paper-edge),
-    inset 0 12px 22px -16px rgba(var(--shadow-tint), 0.45);
 }
 
 /* A memo is a document now. Everything here reads its colour from the theme
