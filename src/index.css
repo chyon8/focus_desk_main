@@ -53,20 +53,21 @@
      페이지가 구별된다. 웹앱 타일이 쓴다. */
   --plate: color-mix(in srgb, var(--ink) 11%, var(--surface));
 
-  /* 액센트는 잉크(무채색) 하나다(2026-09-14 디자인 리뉴얼, 검토 캔버스 강조색 B).
-     흰 카드·사진 배경과 같이 쓰면 유채색 강조가 방 사진 색과 부딪혔다. 사진 대표색을
-     쓰는 안은 방마다 불안정해서 안 했다. 극성에 따라 두 값뿐이고, 테마가 무엇이든 같다 —
+  /* 액센트는 번트 앰버 하나다. 극성에 따라 두 값뿐이고, 테마가 무엇이든 같다 —
      기본 버튼 · 활성 공간 표시 · 타이머 진행 막대 · 체크된 체크박스 · 로딩 막대 ·
-     볼륨 캡 · 포커스 링. */
-  --accent: #f4f4f5;
-  --accent-hover: #ffffff;
+     볼륨 캡 · 포커스 링 · 선택 표시 · 드롭 표시.
+     리뉴얼 단계 3에서 잉크(무채색)로 바꿨다가 되돌렸다(2026-09-14, 사용자 결정). 잉크는
+     본문 글자·테두리와 같은 색이라 선택·드래그 상태가 눈에 안 띄었다. 사진 대표색을
+     쓰는 안은 방마다 불안정해서 안 했다. */
+  --accent: #e9a75f;
+  --accent-hover: #f2b673;
   /* 액센트를 배경으로 깔았을 때 그 위에 얹는 글자색. 선택 표시의 바깥 선도 이 색이다. */
-  --accent-ink: #0b0b0b;
-  --accent-soft: rgba(244, 244, 245, 0.12);
+  --accent-ink: #231f1a;
+  --accent-soft: rgba(233, 167, 95, 0.15);
 
   /* 위험. 액센트가 아니라 상태 색이다 — 지우기·실패에만 쓰고 그 밖에는 안 나온다.
-     값은 예전 앰버 액센트(#e9a75f)와 같은 따뜻한 계열에서 뽑았다. 액센트가 잉크가 된
-     지금은 UI에서 유일한 유채색이다.
+     액센트와 같은 따뜻한 계열에서 뽑아 한 화면에 두 색 온도가 안 섞이게 했다
+     (어두운 값은 액센트 #e9a75f와 빨강 채널이 같다).
      대비: 어두움 6.67:1 / 밝음 6.91:1 (면 위, AA 본문 4.5 기준). */
   --danger: #e98b78;
   /* 값 층이 배경마다 다시 푼다. 이건 첫 프레임용 바닥값이다. */
@@ -80,10 +81,10 @@
     0 1px 2px rgba(var(--shadow-tint), 0.1),
     0 10px 22px -8px rgba(var(--shadow-tint), 0.2),
     0 28px 56px -26px rgba(var(--shadow-tint), 0.3);
-  --accent: #141414;
-  --accent-hover: #2c2c2e;
-  --accent-ink: #ffffff;
-  --accent-soft: rgba(20, 20, 20, 0.08);
+  --accent: #a9581b;
+  --accent-hover: #944c15;
+  --accent-ink: #fff7ef;
+  --accent-soft: rgba(169, 88, 27, 0.12);
   --danger: #a3231a;
   --ink-faint: #726c62;
 }
@@ -477,12 +478,18 @@ body {
    filled shape: it is drawn over whatever it is about to cover, and a solid one
    would hide the thing the user is deciding whether to cover. Its border divides
    by --zoom so it stays the same weight on screen at any zoom.
-   면은 카드 면(--surface)을 반투명하게 깐다. 강조색으로 칠하면 잉크 강조색이 어두운
+   면은 카드 면(--surface)을 반투명하게 깐다. 강조색이 잉크였을 때 강조색으로 칠한 면이 어두운
    사진 위에서 안 보인다. */
 .drop-spot {
   border: calc(2px / var(--zoom, 1)) dashed var(--accent);
   border-radius: calc(var(--radius-surface) / var(--zoom, 1));
   background: color-mix(in srgb, var(--surface) 45%, transparent);
+}
+
+/* 끄는 동안에는 페이지가 포인터를 안 받는다. webview 위에서 놓은 pointerup은 앱에
+   안 와서 드롭이 안 됐다(Canvas.tsx `isDraggingWidget`). */
+.widget-dragging webview {
+  pointer-events: none;
 }
 
 /* The slot a card would go into: a line between two rows, the width of the list.

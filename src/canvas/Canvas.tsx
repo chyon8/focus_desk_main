@@ -42,6 +42,10 @@ export const Canvas: React.FC = () => {
   const maximizedId = useUiStore((s) => s.maximizedWidgetId);
   const peekId = useUiStore((s) => s.peekWidgetId);
   const dropSpot = useUiStore((s) => s.dropSpot);
+  // 위젯·카드를 끄는 동안 페이지(<webview>)가 포인터를 못 받게 한다. 포인터 캡처를
+  // 잡아 둬도 webview 위에서 놓으면 pointerup이 앱으로 안 와서, 컬럼에 넣기·빼기가
+  // 안 되고 드롭 자리 표시만 남았다(index.css `.widget-dragging`).
+  const isDraggingWidget = useUiStore((s) => s.draggingWidgetId !== null);
   // Rubber band in screen pixels, live only while dragging the background.
   // `additive` is a ⇧-drag: what it touches joins the selection instead of
   // replacing it.
@@ -285,7 +289,9 @@ export const Canvas: React.FC = () => {
       /* The first-run ring has to point at a spot where a double-click lands on
          bare canvas, which is this element and nothing inside it. */
       data-canvas-viewport=""
-      className="absolute top-0 bottom-0 right-0 overflow-hidden transition-[left] duration-300"
+      className={`absolute top-0 bottom-0 right-0 overflow-hidden transition-[left] duration-300 ${
+        isDraggingWidget ? 'widget-dragging' : ''
+      }`}
       style={{
         left: isSidebarOpen ? RAIL_WIDTH : 0,
         cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default',
