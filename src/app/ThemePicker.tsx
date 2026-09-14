@@ -174,15 +174,13 @@ export const ThemePicker: React.FC = () => {
                   style={ring(themeId === theme.id && !override)}
                 >
                   <div className="aspect-video w-full flex items-center justify-center" style={thumbStyle(theme.scene)}>
-                    {/* 썸네일 글자는 그 테마의 폰트로 쓴다. `--font-ui`는 지금 켜진
-                        테마를 따라가서 못 쓴다 — Swiss가 켜져 있으면 Paper 칸도 Plex가 된다. */}
+                    {/* 썸네일 글자는 그 테마의 폰트로 쓴다. 지금은 Paper·Swiss 모두
+                        IBM Plex Sans KR이다(2026-09-14 디자인 리뉴얼, 결정 7). */}
                     {theme.flat && <span style={{
-                      fontFamily: theme.id === 'swiss'
-                        ? '"IBM Plex Sans KR", "Noto Sans KR", sans-serif'
-                        : '"Instrument Sans Variable", system-ui, sans-serif',
+                      fontFamily: '"IBM Plex Sans KR", "Noto Sans KR", sans-serif',
                       fontSize: 16, fontWeight: 900,
                       color: theme.tokens.ink, letterSpacing: '-0.02em',
-                    }}>Aa 가</span>}
+                    }}>Aa</span>}
                   </div>
                   <div
                     className="t-ink truncate px-1 py-0.5 text-micro font-medium"

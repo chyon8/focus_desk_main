@@ -108,7 +108,7 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 - **독이 한 줄에 컨트롤 8개다.** 창을 좁히면 넘치는지 안 봤다
 - **focus 정렬을 위젯 종류가 섞인 공간에서** — 앞 2개가 커지는 게 말이 되는지. 테스트는 크기·순서만 본다
 - **UA 수정 후 Google 검색** — "비정상적인 트래픽"·reCAPTCHA가 실제로 줄어드는지는 며칠 써봐야 안다. 구글 차단 페이지가 계속 뜨던 건 저장된 주소 탓이라 고쳤다(2026-09-13, `addressToSave`). 다른 사이트에서 인증이 또 뜨면 Electron 버전부터 본다 — Electron 39는 크롬 142로 보이고, 크롬 152는 Electron 44.3.0
-- **사이트 권한 묻기 창** ([main.ts](../electron/main.ts) `setPermissionRequestHandler`) — Meet에서 카메라를 켜면 Allow/Block 창이 뜨는지, Block 후 다시 안 묻는지. 구글 로그인 창이 요청하는 저장소 권한(`storage-access`)은 묻지 않고 허용하게 바꿨다(2026-09-14) — 사이트를 열 때마다 "wants to use its sign-in here" 창이 떴다
+- **사이트 권한 묻기 창** ([main.ts](../electron/main.ts) `setPermissionRequestHandler`) — Meet에서 카메라를 켜면 Allow/Block 창이 뜨는지, Block 후 다시 안 묻는지. 답은 `permissions.json`에 저장해 앱을 다시 켜도 안 묻는다(2026-09-15) — 재시작 후에도 그런지, Block을 풀 방법이 파일 삭제뿐인 게 괜찮은지. 구글 로그인 창이 요청하는 저장소 권한(`storage-access`)은 묻지 않고 허용하게 바꿨다(2026-09-14) — 사이트를 열 때마다 "wants to use its sign-in here" 창이 떴다
 
 ---
 

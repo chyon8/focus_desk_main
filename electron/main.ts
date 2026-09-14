@@ -1,5 +1,6 @@
 import { app, BrowserWindow, clipboard, dialog, Menu } from 'electron';
 import path from 'node:path';
+import Store from 'electron-store';
 import { NEW_TAB_FRAME } from '../src/widgets/browserLinks';
 import { createHelper } from './apps/helperClient';
 import { registerActivityIpc } from './ipc/activity';
@@ -97,8 +98,21 @@ const PERMISSION_ASKS: Record<string, string> = {
   fileSystem: 'edit files on your Mac',
 };
 
-/** `<origin> <permission>` → the answer given this run. Camera and microphone are kept apart. */
-const permissionAnswers = new Map<string, boolean>();
+/**
+ * `<origin> <permission>` → the answer. Camera and microphone are kept apart.
+ * 답을 userData의 permissions.json에 남긴다. 메모리에만 두면 앱을 끌 때마다 잊어서
+ * google.com 위치 권한 같은 창이 켤 때마다 다시 떴다(2026-09-15).
+ */
+const permissionStore = new Store<{ answers: Record<string, boolean> }>({
+  name: 'permissions',
+  defaults: { answers: {} },
+});
+const permissionAnswers = new Map<string, boolean>(Object.entries(permissionStore.get('answers')));
+
+function rememberPermission(key: string, allowed: boolean) {
+  permissionAnswers.set(key, allowed);
+  permissionStore.set('answers', Object.fromEntries(permissionAnswers));
+}
 /** Questions on screen, so a page asking twice gets one dialog. */
 const permissionQuestions = new Map<string, Promise<boolean>>();
 
@@ -124,7 +138,7 @@ function askPermission(origin: string, what: string): Promise<boolean> {
     defaultId: 1,
     cancelId: 1,
     message: `${originOf(origin).replace(/^https?:\/\//, '')} wants to ${what}`,
-    detail: 'Focus Desk asks again after it quits.',
+    detail: 'Focus Desk remembers this answer.',
   };
   const question = (win && !win.isDestroyed()
     ? dialog.showMessageBox(win, options)
@@ -164,7 +178,7 @@ app.on('session-created', (ses) => {
             ? 'use your camera'
             : 'use your microphone';
       void askPermission(origin, what).then((allowed) => {
-        for (const key of keys) permissionAnswers.set(key, allowed);
+        for (const key of keys) rememberPermission(key, allowed);
         callback(allowed);
       });
       return;
@@ -176,7 +190,7 @@ app.on('session-created', (ses) => {
     const answered = permissionAnswers.get(key);
     if (answered !== undefined) return callback(answered);
     void askPermission(origin, what).then((allowed) => {
-      permissionAnswers.set(key, allowed);
+      rememberPermission(key, allowed);
       callback(allowed);
     });
   });
