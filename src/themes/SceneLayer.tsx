@@ -55,8 +55,8 @@ function glowStyle(glow: Glow): React.CSSProperties {
  */
 export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
   // 배경을 뒤집어 놓았어도 비네트는 그림 위 장식이라 그림이 실제로 어떤지를
-  // 따른다. 그래서 light가 아니라 autoLight다.
-  const { autoLight, light } = useGround(theme);
+  // 따른다. 그래서 light도 autoLight(사진이면 늘 밝음)도 아니고 backdropLight다.
+  const { backdropLight, light } = useGround(theme);
   const override = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.background);
   const particlesChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.particles);
   const patternChoice = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.pattern);
@@ -82,7 +82,8 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
   // 비네트도 실제로 뒤에 깔린 색을 따라간다. 사진일 때 theme.mood를 보면
   // 오버라이드 사진(Meadow·Cabin)에서 테마가 적어둔 값과 실제 사진이 갈린다 —
   // useGround가 그 사진의 평균 색을 읽어 이미 답을 갖고 있다.
-  const lightBackdrop = flat ? isLightBackground(scene.value) : autoLight;
+  // 격자 선도 이 값이다 — Tomato·Cobalt에 흰 카드를 걸어도 선은 바탕 밝기를 따른다.
+  const lightBackdrop = flat ? isLightBackground(scene.value) : backdropLight;
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">

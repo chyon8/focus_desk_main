@@ -53,18 +53,20 @@
      페이지가 구별된다. 웹앱 타일이 쓴다. */
   --plate: color-mix(in srgb, var(--ink) 11%, var(--surface));
 
-  /* 액센트는 번트 앰버 하나다. 극성에 따라 두 값뿐이고, 테마가 무엇이든 같다.
-     여기 말고는 화면 어디에도 유채색이 없다 — 기본 버튼 · 활성 공간 표시 ·
-     타이머 진행 막대 · 체크된 체크박스 · 로딩 막대 · 볼륨 캡 · 포커스 링. */
-  --accent: #e9a75f;
-  --accent-hover: #f2b673;
-  /* 액센트를 배경으로 깔았을 때 그 위에 얹는 글자색. */
-  --accent-ink: #231f1a;
-  --accent-soft: rgba(233, 167, 95, 0.15);
+  /* 액센트는 잉크(무채색) 하나다(2026-09-14 디자인 리뉴얼, 검토 캔버스 강조색 B).
+     흰 카드·사진 배경과 같이 쓰면 유채색 강조가 방 사진 색과 부딪혔다. 사진 대표색을
+     쓰는 안은 방마다 불안정해서 안 했다. 극성에 따라 두 값뿐이고, 테마가 무엇이든 같다 —
+     기본 버튼 · 활성 공간 표시 · 타이머 진행 막대 · 체크된 체크박스 · 로딩 막대 ·
+     볼륨 캡 · 포커스 링. */
+  --accent: #f4f4f5;
+  --accent-hover: #ffffff;
+  /* 액센트를 배경으로 깔았을 때 그 위에 얹는 글자색. 선택 표시의 바깥 선도 이 색이다. */
+  --accent-ink: #0b0b0b;
+  --accent-soft: rgba(244, 244, 245, 0.12);
 
   /* 위험. 액센트가 아니라 상태 색이다 — 지우기·실패에만 쓰고 그 밖에는 안 나온다.
-     액센트와 같은 따뜻한 계열에서 뽑아 한 화면에 두 색 온도가 안 섞이게 했다
-     (어두운 값은 액센트 #e9a75f와 빨강 채널이 같다).
+     값은 예전 앰버 액센트(#e9a75f)와 같은 따뜻한 계열에서 뽑았다. 액센트가 잉크가 된
+     지금은 UI에서 유일한 유채색이다.
      대비: 어두움 6.67:1 / 밝음 6.91:1 (면 위, AA 본문 4.5 기준). */
   --danger: #e98b78;
   /* 값 층이 배경마다 다시 푼다. 이건 첫 프레임용 바닥값이다. */
@@ -78,10 +80,10 @@
     0 1px 2px rgba(var(--shadow-tint), 0.1),
     0 10px 22px -8px rgba(var(--shadow-tint), 0.2),
     0 28px 56px -26px rgba(var(--shadow-tint), 0.3);
-  --accent: #a9581b;
-  --accent-hover: #944c15;
-  --accent-ink: #fff7ef;
-  --accent-soft: rgba(169, 88, 27, 0.12);
+  --accent: #141414;
+  --accent-hover: #2c2c2e;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(20, 20, 20, 0.08);
   --danger: #a3231a;
   --ink-faint: #726c62;
 }
@@ -449,49 +451,47 @@ body {
   outline-offset: 3px;
 }
 
-/* Picked out. Two rings, light over dark: the accent alone disappears against a
-   bright wallpaper, so a dark halo sits outside it. */
+/* 고른 위젯. 강조색 2px 링의 안팎에 반대색(--accent-ink) 1px 선을 둔다 — 강조색이
+   잉크라서 같은 극성의 배경(검정 링 + 어두운 사진)에서도 링이 남는다.
+   예전의 3px 링 + 흰 2px + 검정 8px 번짐은 무거웠다(2026-09-14 디자인 리뉴얼).
+
+   반대색 선은 4px 퍼진 box-shadow 위에 outline(1~3px)을 얹어서 만든다. 위젯이
+   overflow: hidden이라 ::after로 바깥에 그리면 잘린다. */
 .widget-selected {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--accent-ink), var(--shadow-card);
 }
 
-.widget-selected::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.38);
-  pointer-events: none;
-}
-
-/* The column a dragged widget would land in. Filled as well as ringed: a ring
-   alone reads as "picked out", and the answer being asked for here is "this one,
-   here" while something is in the air. */
+/* 끌고 있는 것이 들어갈 컬럼. 면을 옅게 칠하고 선택 표시와 같은 두 겹 링을 두른다.
+   면은 불투명하게 둔다 — 예전에는 `강조색 12% + transparent`로 면을 바꿔 칠해서,
+   강조색이 잉크가 된 뒤 컬럼이 어두운 반투명 판이 되고 제목·드롭 선이 사라졌다. */
 .widget-drop-target {
   outline: calc(2px / var(--zoom, 1)) solid var(--accent);
-  outline-offset: calc(3px / var(--zoom, 1));
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline-offset: calc(1px / var(--zoom, 1));
+  box-shadow: 0 0 0 calc(4px / var(--zoom, 1)) var(--accent-ink), var(--shadow-card);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
 }
 
 /* Where a card dragged into the open will stand. A dashed outline rather than a
    filled shape: it is drawn over whatever it is about to cover, and a solid one
    would hide the thing the user is deciding whether to cover. Its border divides
-   by --zoom so it stays the same weight on screen at any zoom. */
+   by --zoom so it stays the same weight on screen at any zoom.
+   면은 카드 면(--surface)을 반투명하게 깐다. 강조색으로 칠하면 잉크 강조색이 어두운
+   사진 위에서 안 보인다. */
 .drop-spot {
   border: calc(2px / var(--zoom, 1)) dashed var(--accent);
   border-radius: calc(var(--radius-surface) / var(--zoom, 1));
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
 }
 
 /* The slot a card would go into: a line between two rows, the width of the list.
-   Drawn where the card would start, so it says a position rather than a target. */
+   Drawn where the card would start, so it says a position rather than a target.
+   컬럼 면(불투명) 위에 그리므로 바깥 그림자 없이 강조색만 쓴다. */
 .drop-line {
   height: 3px;
   border-radius: var(--radius-mark);
   background: var(--accent);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
 /* Calm Tech: 헤더는 자리를 지키되 평소에는 비어 있다.

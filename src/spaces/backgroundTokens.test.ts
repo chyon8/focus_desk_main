@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { SOLID_COLORS, backgroundTokens, tintedSurface } from './backgrounds';
+import { SOLID_COLORS, backgroundTokens } from './backgrounds';
 
 /**
- * 면 색은 그 공간의 색을 띠어야 하고(사이드바가 공간을 바꿨다고 알려주는 신호),
- * 동시에 글자를 이고 있으므로 대비를 지켜야 한다. 둘은 서로를 밀어내는 조건이라
- * 눈으로만 보고 값을 바꾸면 한쪽이 조용히 깨진다.
+ * 면 색은 극성마다 무채색 한 값이고(2026-09-14 디자인 리뉴얼), 글자를 이고 있으므로
+ * 대비를 지켜야 한다. 배경색이 면에 새어 들어가면 방마다 카드 색이 달라진다 —
+ * 회색·흰색 바탕에서 분홍 카드가 나오던 게 그 경우다.
  */
 
 const LIGHT_INK = '#1e1c19';
@@ -24,14 +24,18 @@ const PHOTO_TONES = {
   afternoonRecords: '#946842',
 };
 
-/**
- * 무채색에 가까운 사진의 평균색. 채도 바닥값이 생긴 이유가 이 둘이라서, 그림 파일을
- * 지운 뒤에도(라이선스 미확인) 값은 남긴다 — 사용자가 자기 사진을 넣으면 같은 일이 난다.
- */
+/** 무채색에 가까운 사진의 평균색. 사용자가 자기 사진을 넣으면 이런 값이 나온다. */
 const NEAR_GREY = { loficafe: '#444a59', rainiywindow: '#646976' };
-const GROUNDS = [...SOLID_COLORS.map((c) => c.value), ...Object.values(PHOTO_TONES)];
+/** 무채색 바탕. 예전 계산에서 분홍·노랑 면이 나오던 값들이다. */
+const ACHROMATIC = ['#e9e9e9', '#ffffff', '#f7f7f5'];
+const GROUNDS = [
+  ...SOLID_COLORS.map((c) => c.value),
+  ...Object.values(PHOTO_TONES),
+  ...Object.values(NEAR_GREY),
+  ...ACHROMATIC,
+];
 
-/** `hsl(H S% L%)` 또는 `#rrggbb`를 채널 셋으로. 테스트가 읽을 수 있으면 브라우저도 읽는다. */
+/** `hsl(H S% L%)` 또는 `#rrggbb`를 채널 셋으로. 글자색은 hsl()로 나온다. */
 function parse(css: string): [number, number, number] {
   const hsl = css.match(/^hsl\(([\d.]+) ([\d.]+)% ([\d.]+)%\)$/);
   if (hsl) {
@@ -96,31 +100,19 @@ describe('면 색', () => {
     }
   });
 
-  // 밝은 면은 색폭이 밝기에 눌려서 다르게 깨진다 — 어두운 쪽만 보면 라이트 배경
-  // 여섯 개가 전부 같은 오프화이트가 되는 걸 못 잡는다. 양쪽 극성을 다 본다.
-  it.each(GROUNDS)('%s 위에서 면이 그 배경의 색조를 띤다', (ground) => {
-    expect(spread(tintedSurface('#201e1b', ground, 0.35))).toBeGreaterThan(8);
-    expect(spread(tintedSurface('#f7f6f3', ground, 0.14))).toBeGreaterThan(8);
+  it.each(GROUNDS)('%s 위에서 면이 극성의 무채색 한 값이다', (ground) => {
+    const { surface: light } = backgroundTokens(ground, {} as never, true);
+    const { surface: dark } = backgroundTokens(ground, {} as never, false);
+    expect(light).toBe('#ffffff');
+    expect(dark).toBe('#1f1f21');
   });
 
-  it('무채색에 가까운 사진도 색으로 보인다', () => {
-    // 이 둘이 회색으로 나오던 것이 채도 바닥값을 넣은 이유다. 그냥 섞기만 하면 폭이 3~4였다.
-    expect(spread(tintedSurface('#201e1b', NEAR_GREY.loficafe))).toBeGreaterThan(12);
-    expect(spread(tintedSurface('#201e1b', NEAR_GREY.rainiywindow))).toBeGreaterThan(12);
-  });
-
-  it('이미 진한 배경은 제 채도를 그대로 쓴다', () => {
-    // 노을은 바닥값(18%)보다 채도가 높아서 끌어올려지지 않는다.
-    expect(spread(tintedSurface('#201e1b', PHOTO_TONES.amberLake))).toBeGreaterThan(
-      spread(tintedSurface('#201e1b', NEAR_GREY.loficafe)),
-    );
-  });
-
-  it('hex가 아닌 색은 섞기로 돌아간다', () => {
-    // MVP에서 마이그레이션된 공간은 배경으로 아무 CSS 문자열이나 들고 있을 수 있다.
-    expect(tintedSurface('#201e1b', 'rebeccapurple')).toBe(
-      'color-mix(in srgb, #201e1b 65%, rebeccapurple)',
-    );
-    expect(tintedSurface('#201e1b', 'linear-gradient(red, blue)')).toContain('color-mix');
+  // 어두운 면 #1f1f21은 파랑 채널이 2 높다(결정 값 그대로). 예전 계산은 이 바탕들에서
+  // 폭이 10~30이었으므로 2 이하면 색조가 새지 않은 것이다.
+  it.each(ACHROMATIC)('무채색 바탕 %s 위에서 면에 색조가 없다', (ground) => {
+    for (const light of [true, false]) {
+      const { surface } = backgroundTokens(ground, {} as never, light);
+      expect(spread(surface)).toBeLessThanOrEqual(2);
+    }
   });
 });

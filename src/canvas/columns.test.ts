@@ -51,6 +51,9 @@ describe('dropIndex', () => {
   it('lands in the slot the pointer is over', () => {
     expect(dropIndex(column, 3, top + 10)).toBe(0);
     expect(dropIndex(column, 3, top + COLUMN_CARD_HEIGHT + 20)).toBe(1);
+    // 카드 아래쪽 절반에 놓으면 그 카드 아래로 들어간다.
+    expect(dropIndex(column, 3, top + COLUMN_CARD_HEIGHT - 10)).toBe(1);
+    expect(dropIndex(column, 3, top + COLUMN_CARD_HEIGHT / 2 - 5)).toBe(0);
   });
 
   it('goes to the end below the last card', () => {

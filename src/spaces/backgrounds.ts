@@ -62,51 +62,17 @@ export function isLightBackground(value: string) {
 }
 
 /**
- * 공간이 단색 배경을 쓰면 UI는 테마의 사진이 아니라 그 색 위에 놓인다. 테마 토큰을
- * 그대로 두면 밝은 색을 골라도 사이드바·위젯이 어두운 채로 남는다 — 팔레트에서 색을
- * 바꿔도 사이드바가 안 따라오던 원인이다.
+ * 카드·레일·독·패널의 면. 극성마다 무채색 한 값이다(2026-09-14 디자인 리뉴얼).
+ *
+ * 예전에는 배경색·사진 평균 색의 색조를 면에 얹었다. 그러면 방마다 카드가 민트·분홍·
+ * 보라로 나오고, 회색·흰색 바탕에서도 분홍 카드가 나왔다(무채색의 색상각 0 = 빨강에
+ * 최소 색폭을 강제한 탓). 공간을 바꿨다는 신호는 배경 사진과 레일 썸네일이 준다.
+ * 사진의 색은 그림자 색조(`useTheme`의 `shadowTint`)에만 남긴다.
  */
-/** 면·글자의 바탕. 극성이 정하고, 배경색은 색조로만 섞인다(DESIGN.md 2장). */
-const LIGHT_SURFACE = '#f7f6f3';
-const DARK_SURFACE = '#201e1b';
+const LIGHT_SURFACE = '#ffffff';
+const DARK_SURFACE = '#1f1f21';
 const LIGHT_INK = '#1e1c19';
 const DARK_INK = '#f0ede7';
-
-/**
- * 배경색의 색조를 얹은 면 색.
- *
- * 예전에는 `color-mix`로 바탕과 배경색을 65:35로 섞기만 했는데, sRGB에서 무채색에
- * 가까운 바탕과 섞으면 원래 옅던 색조가 더 죽는다. loficafe(평균 `#444a59`)와
- * rainiywindow(`#646976`)는 그렇게 섞고 나면 R·G·B 차이가 3~4까지 줄어서 눈에는
- * 그냥 회색이었다 — 값은 들어갔는데 색으로는 안 보였다.
- *
- * 그래서 **색조·채도는 배경에서 가져오고, 밝기는 섞은 색의 휘도에 맞춘다.**
- * HSL 밝기를 맞추는 것으로는 부족하다 — 대비는 휘도로 정해지는데 같은 HSL 밝기라도
- * 채도를 올리면 휘도가 떨어진다(Sand `#fdf6e3`에 Dark를 걸면 4.62에서 4.21로
- * 내려가 AA를 깼다). 휘도를 맞추면 대비가 섞기만 하던 때와 같은 자리에 남는다.
- */
-/**
- * 배경색을 얼마나 섞는지. 극성마다 다르다.
- *
- * 어두운 바탕에 어두운 배경색을 35% 섞으면 휘도가 거의 안 움직이지만(charcoal은
- * 0.014 → 0.013), 밝은 바탕에 같은 배경색을 35% 섞으면 휘도가 0.92에서 0.40까지
- * 떨어진다. 그래서 Light를 손으로 걸어도 면이 밝지 않고 중간톤 라벤더(`#a8a8c3`)가
- * 나왔다. 밝은 쪽은 14%만 섞어 면을 0.69~0.92에 둔다.
- */
-const GROUND_SHARE = 0.35;
-const LIGHT_GROUND_SHARE = 0.14;
-/** 옅은 사진에 주는 바닥값. 이미 진한 배경은 제 채도가 이보다 높아서 안 건드려진다. */
-const SATURATION_FLOOR = 0.18;
-/** 흰색·검정에 가까운 색은 HSL 채도가 뻥튀기된다(Sand는 86%로 나온다). 천장을 둔다. */
-const SATURATION_CAP = 0.32;
-/**
- * 밝은 면이 띠어야 할 최소 색폭(R·G·B 최대-최소, 0~1).
- *
- * HSL에서 실제로 보이는 색폭은 `(1 - |2L-1|) × S`다. 면이 아주 밝으면(L>0.94) 이
- * 값이 눌려서 채도를 넣어도 색이 안 남는다 — 밝은 배경 여섯 개가 전부 같은
- * 오프화이트로 나왔다(색폭 3~5). 어두운 면은 이미 12~40이라 안 건드린다.
- */
-const BRIGHT_SURFACE_CHROMA = 0.05;
 
 /**
  * `#rgb`·`#rrggbb`만 읽는다. 그 밖이면 null이다 — MVP에서 마이그레이션된 공간은
@@ -167,52 +133,12 @@ function lightnessFor(hue: number, saturation: number, target: number): number {
   return (low + high) / 2;
 }
 
-export function tintedSurface(base: string, ground: string, share = GROUND_SHARE): string {
-  const baseRgb = toRgb(base);
-  const groundRgb = toRgb(ground);
-  // 읽을 수 없는 색이면 색조를 못 뽑는다. 브라우저는 아는 색일 수 있으므로 섞기만
-  // 하던 예전 방식으로 돌아간다 — 색조는 죽지만 아무 색도 안 나오진 않는다.
-  if (!baseRgb || !groundRgb) {
-    return `color-mix(in srgb, ${base} ${Math.round((1 - share) * 100)}%, ${ground})`;
-  }
-
-  const mixed = baseRgb.map((c, i) =>
-    Math.round(c * (1 - share) + groundRgb[i] * share),
-  ) as [number, number, number];
-  const target = luminanceOf(mixed);
-
-  const hue = hueOf(groundRgb);
-  const max = Math.max(...groundRgb);
-  const min = Math.min(...groundRgb);
-  // HSV 채도(`d / max`)를 쓴다. HSL 채도는 밝기 극단에서 터진다.
-  const chroma = max === 0 ? 0 : (max - min) / max;
-  let saturation = Math.min(SATURATION_CAP, Math.max(SATURATION_FLOOR, chroma));
-  let lightness = lightnessFor(hue, saturation, target);
-
-  // 밝은 면은 색폭이 밝기에 눌린다. 남는 폭에 맞춰 채도를 올리고 밝기를 다시 푼다 —
-  // 휘도를 다시 맞추므로 대비는 그대로다.
-  if (lightness > 0.5) {
-    const reach = 1 - Math.abs(2 * lightness - 1);
-    const needed = Math.min(1, BRIGHT_SURFACE_CHROMA / Math.max(reach, 0.001));
-    if (needed > saturation) {
-      saturation = needed;
-      lightness = lightnessFor(hue, saturation, target);
-    }
-  }
-
-  return `hsl(${(hue * 360).toFixed(1)} ${(saturation * 100).toFixed(1)}% ${(lightness * 100).toFixed(1)}%)`;
-}
-
-
 /* --- 글자 3단 ---------------------------------------------------------------
    DESIGN.md 2장은 본문·보조·최하위 셋의 대비를 값으로 못박아 뒀다(밝음 15.73 /
-   6.63 / 4.81, 어두움 14.23 / 6.59 / 5.07). 구현은 그걸 잉크의 알파로 어림했는데,
-   알파는 면이 무슨 색이냐에 따라 결과가 달라진다 — 면이 배경 색조를 띠게 되면서
-   같은 60%·32%가 배경마다 다른 대비로 나왔다. 재보면 보조는 2.75~6.07, 최하위는
-   1.78~2.66이었다. 10px 설명글이 대비 2로 나오면 읽히지 않는다.
-
-   그래서 알파가 아니라 **대비로 푼다.** 잉크의 색조·채도는 그대로 두고 밝기만
-   면 쪽으로 옮겨서 목표 대비에 맞춘다 — 면을 만들 때 쓴 것과 같은 이분법이다. --- */
+   6.63 / 4.81, 어두움 14.23 / 6.59 / 5.07). 잉크의 알파로 어림하면 면 색에 따라
+   대비가 달라지므로 **대비로 푼다.** 잉크의 색조·채도는 그대로 두고 밝기만 면 쪽으로
+   옮겨서 목표 대비에 맞춘다. 면이 두 값으로 고정된 뒤에도 값을 손으로 적지 않고
+   계산으로 두는 건, 면 값을 바꿨을 때 대비가 같이 따라오게 하려고서다. --- */
 
 /** DESIGN.md 2장의 보조·최하위 대비. 양쪽 극성의 값이 거의 같아 하나로 쓴다. */
 const INK_SOFT_CONTRAST = 6.6;
@@ -227,9 +153,10 @@ const INK_FAINT_CONTRAST = 4.9;
  */
 function inkStep(ink: string, surface: string, target: number, light: boolean): string {
   const inkRgb = toRgb(ink);
-  const surfaceLum = luminanceFromCss(surface);
-  if (!inkRgb || surfaceLum === null) return ink;
+  const surfaceRgb = toRgb(surface);
+  if (!inkRgb || !surfaceRgb) return ink;
 
+  const surfaceLum = luminanceOf(surfaceRgb);
   const inkLum = luminanceOf(inkRgb);
   const wanted = light
     ? Math.max(inkLum, (surfaceLum + 0.05) / target - 0.05)
@@ -243,17 +170,6 @@ function inkStep(ink: string, surface: string, target: number, light: boolean): 
   return `hsl(${(hue * 360).toFixed(1)} ${(saturation * 100).toFixed(1)}% ${(lightness * 100).toFixed(1)}%)`;
 }
 
-/** `tintedSurface`가 내놓는 두 가지 꼴을 다 읽는다: hsl()과 hex. color-mix 폴백은 못 읽는다. */
-function luminanceFromCss(css: string): number | null {
-  const hsl = css.match(/hsl\(([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\)/);
-  if (hsl) {
-    return luminanceOf(
-      hslToRgb(Number(hsl[1]) / 360, Number(hsl[2]) / 100, Number(hsl[3]) / 100),
-    );
-  }
-  const rgb = toRgb(css);
-  return rgb ? luminanceOf(rgb) : null;
-}
 
 export function backgroundTokens<T extends ThemeTokens>(
   value: string,
@@ -263,28 +179,16 @@ export function backgroundTokens<T extends ThemeTokens>(
 ): T {
   const light = forceLight ?? isLightBackground(value);
   const ink = light ? LIGHT_INK : DARK_INK;
-  // 글자 셋이 다 이 면 위에 앉으므로 면을 먼저 만든다.
-  const surface = tintedSurface(
-    light ? LIGHT_SURFACE : DARK_SURFACE,
-    value,
-    light ? LIGHT_GROUND_SHARE : GROUND_SHARE,
-  );
+  // 글자 셋이 다 이 면 위에 앉으므로 면을 먼저 정한다.
+  const surface = light ? LIGHT_SURFACE : DARK_SURFACE;
   return {
     ...base,
     ink,
     inkSoft: inkStep(ink, surface, INK_SOFT_CONTRAST, light),
     inkFaint: inkStep(ink, surface, INK_FAINT_CONTRAST, light),
     /**
-     * 면은 글자를 이고 있으므로 불투명하고, **극성이 정한 바탕**에서 출발한다.
-     * 예전에는 배경색에 흰색을 섞어서 만들었는데(어두우면 7%, 밝으면 70%), 그러면
-     * 밝은 배경에 Dark를 걸어도 흰색을 조금 섞은 밝은 면이 나온다.
-     *
-     * **면은 그 공간의 색을 띤다.** 처음엔 배경색을 14%만 섞어서, 공간을 바꿔도
-     * 사이드바가 극성 두 값(밝음/어두움)으로만 보였다 — 사이드바가 그 공간의 색을
-     * 띠는 것이 공간을 바꿨다는 걸 가장 먼저 알려주는 신호다.
-     *
-     * 색조를 어떻게 얹는지는 `tintedSurface`에 있다. 그냥 섞기만 하면 옅은 사진에서
-     * 색이 죽어서, 색조는 배경에서 가져오고 밝기만 섞은 값에서 가져온다.
+     * 면은 글자를 이고 있으므로 불투명하고, 극성이 정한 무채색 두 값 중 하나다.
+     * 배경색은 섞지 않는다 — 이유는 `LIGHT_SURFACE` 주석.
      */
     surface,
     panelBorder: light ? 'rgba(30, 28, 25, 0.16)' : 'rgba(255, 255, 255, 0.14)',

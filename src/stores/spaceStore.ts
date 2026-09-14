@@ -279,10 +279,20 @@ function asCard(widget: WidgetDoc): WidgetDoc {
   return { ...widget, data: { ...widget.data, open: false } };
 }
 
-/** And what it becomes on the way out, when the way out was opening it. */
+/**
+ * And what it becomes on the way out, when the way out was opening it.
+ *
+ * 크기는 넣기 전 제 크기 그대로다. 컬럼에 있는 동안에도 위젯의 width·height는 안 바뀌므로
+ * (`asCard`·`applyColumn`은 크기를 안 건드린다) 그 값이 곧 넣기 전 크기다. 예전에는
+ * 기본 크기(브라우저 900×620)로 덮어써서 줄여 둔 브라우저가 꺼낼 때마다 커졌다.
+ * 기본 크기는 크기 값이 없을 때만 쓴다.
+ */
 function asPage(widget: WidgetDoc): WidgetDoc {
   if (widget.type !== 'browser' && widget.type !== 'webapp') return widget;
-  const size = WIDGET_DEFS[widget.type].defaultSize;
+  const size =
+    widget.width > 0 && widget.height > 0
+      ? { width: widget.width, height: widget.height }
+      : WIDGET_DEFS[widget.type].defaultSize;
   return { ...widget, ...size, data: { ...widget.data, open: true } };
 }
 
@@ -931,8 +941,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       const widget = open ? asPage(space.widgets[id]) : space.widgets[id];
 
       // Dragged out, it stands where it was let go, centred on the pointer. It is
-      // left there even if it covers something: the card came out at its full
-      // widget size, which is several times a card, so it nearly always overlaps
+      // left there even if it covers something: the card came out at the size it
+      // had before it went in, which is usually several times a card, so it nearly always overlaps
       // and a nudge to the nearest clear spot threw it somewhere the user had
       // not pointed at.
       //
@@ -988,8 +998,15 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     // The list the slot is counted against leaves out the card being dragged, so
     // dropping a card back where it started is the slot it already had rather
     // than one further down.
-    const children = columnData(space.widgets[columnId]).children.filter((c) => c !== id);
-    return { columnId, index: dropIndex(space.widgets[columnId], children.length, at.y) };
+    //
+    // 화면에서는 끄는 카드가 흐리게 제자리에 남아 있다(ColumnWidget). 그래서 칸은 화면에
+    // 보이는 목록으로 재고, 끄는 카드보다 아래 칸이면 하나를 뺀다. 빠진 목록으로 바로
+    // 재면 아래로 끌 때 포인터가 가리키는 줄보다 한 줄 아래로 들어갔다.
+    const all = columnData(space.widgets[columnId]).children;
+    const from = all.indexOf(id);
+    const shown = dropIndex(space.widgets[columnId], all.length, at.y);
+    const index = from !== -1 && shown > from ? shown - 1 : shown;
+    return { columnId, index };
   },
 
   dropIntoColumnAt: (id, columnId, index) =>

@@ -149,10 +149,14 @@ export function peekRect(
 /**
  * Which slot a drop at this height lands in, counted from the top of the list.
  * By the middle of each row, so a card let go over the upper half of another
- * goes above it.
+ * goes above it and over the lower half goes below it.
+ *
+ * 예전 식은 줄의 경계에서만 칸이 바뀌어서, 카드 아래쪽 절반에 놓아도 그 카드 위로 들어갔다.
+ * 슬롯은 가운데가 포인터보다 위에 있는 줄의 개수다.
  */
 export function dropIndex(column: { y: number }, count: number, pointY: number): number {
   const top = column.y + WIDGET_HEADER + COLUMN_PAD;
-  const slot = Math.floor((pointY - top + COLUMN_GAP / 2) / (COLUMN_CARD_HEIGHT + COLUMN_GAP));
+  const row = COLUMN_CARD_HEIGHT + COLUMN_GAP;
+  const slot = Math.floor((pointY - top - COLUMN_CARD_HEIGHT / 2) / row) + 1;
   return Math.max(0, Math.min(count, slot));
 }
