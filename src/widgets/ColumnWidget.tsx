@@ -192,10 +192,7 @@ const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => voi
       className={`group card-tile relative w-full shrink-0 overflow-hidden rounded-control ${
         mark ? 'card-tile-marked' : ''
       } ${isDragging ? 'opacity-40' : ''}`}
-      style={{
-        height: COLUMN_CARD_HEIGHT,
-        ...(mark && ({ '--mark': mark } as React.CSSProperties)),
-      }}
+      style={{ height: COLUMN_CARD_HEIGHT }}
     >
       <div className="h-full w-full flex flex-col">
         <div
@@ -203,12 +200,9 @@ const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => voi
           title="Drag to move it"
           style={{
             height: CARD_HANDLE,
-            // Mixed rather than the flat hue: a solid band of colour on a card
-            // that is already tinted reads as a sticker laid over it, and the
-            // widget's own marked header is a mix for the same reason.
-            background: mark
-              ? `color-mix(in srgb, ${mark} 55%, transparent)`
-              : 'color-mix(in srgb, var(--ink) 7%, transparent)',
+            // 마크 색 띠를 따로 깔지 않는다. 컬럼 면이 이미 마크 색으로 칠해져 있어서
+            // (index.css `.widget-marked`) 띠까지 칠하면 한 카드가 색을 두 번 말했다.
+            background: 'color-mix(in srgb, var(--ink) 7%, transparent)',
           }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -217,11 +211,7 @@ const Card: React.FC<{ widget: WidgetDoc; mark: string | null; onOpen: () => voi
         >
           <div
             className="h-[2px] w-6 rounded-mark"
-            style={{
-              background: mark
-                ? 'rgba(255, 255, 255, 0.55)'
-                : 'color-mix(in srgb, var(--ink) 22%, transparent)',
-            }}
+            style={{ background: 'color-mix(in srgb, var(--ink) 22%, transparent)' }}
           />
         </div>
 

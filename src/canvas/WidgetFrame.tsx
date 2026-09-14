@@ -252,7 +252,7 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
         isDropTarget ? 'widget-drop-target' : ''
       } ${isOverColumn ? 'opacity-40' : ''}`}
       style={{
-        // 프레임에 건다 — 왼쪽 변 막대를 그리는 .widget-marked::before가 읽는다.
+        // 프레임에 건다 — 면을 옅게 칠하는 .widget-marked가 읽는다.
         ...(isMarked && ({ '--mark': mark } as React.CSSProperties)),
         left: box.x,
         top: box.y,

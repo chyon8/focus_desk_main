@@ -10,8 +10,8 @@
  * Every one sits at about the same lightness and the same distance off grey, so
  * eight marks read as one family instead of a bag of loose colours — the earlier
  * set mixed a bright red with a flat slate and looked like a mistake. They are
- * kept off full saturation on purpose: the widgets are glass with a photograph
- * behind them, and a pure hue on top of that reads as a sticker.
+ * kept off full saturation on purpose: a mark tints the whole card face
+ * (index.css `.widget-marked`), and a pure hue there reads as a sticker.
  *
  * Stored as the key, not the value, so a theme can repaint them later.
  */

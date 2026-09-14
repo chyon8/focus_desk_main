@@ -277,16 +277,15 @@ body {
   border-color: color-mix(in srgb, var(--ink) 20%, transparent);
 }
 
-/* A marked card takes its colour through the whole tile. A card has no header to
-   put it in and is a fifth the size of a widget, so the tile is the unit.
-   `--mark` is set on the element. */
+/* 색 마크가 있는 컬럼의 카드. 컬럼이 `.widget-marked`라 면 변수가 이미 마크 색으로
+   칠해져 있다. 카드는 그 면에서 한 단 안쪽 값을 쓴다 — 예전처럼 마크 색을 13%로
+   한 번 더 얹으면 컬럼과 카드가 색을 두 번 말했다. */
 .card-tile-marked {
-  background: color-mix(in srgb, var(--mark) 13%, transparent);
-  border-color: color-mix(in srgb, var(--mark) 40%, transparent);
+  background: var(--surface-2);
+  border-color: transparent;
 }
 .card-tile-marked:hover {
-  background: color-mix(in srgb, var(--mark) 20%, transparent);
-  border-color: color-mix(in srgb, var(--mark) 60%, transparent);
+  background: var(--plate);
 }
 
 /* A row in a list: hoverable, and selectable. */
@@ -388,6 +387,20 @@ body {
   --paper-border: var(--panel-border);
   /* A shade off the sheet: table headers, and the boxes Mermaid fills. */
   --paper-fill: color-mix(in srgb, var(--ink) 9%, var(--surface));
+  /* 색 마크가 없는 면·글자. `.widget-marked`가 --surface·--ink-soft·--ink-faint를
+     다시 정의할 때 이 값에서 섞는다 — 변수가 자기 자신을 참조하면 무효가 된다. */
+  --surface-plain: var(--surface);
+  --ink-soft-plain: var(--ink-soft);
+  --ink-faint-plain: var(--ink-faint);
+  /* 색 마크 채움 비율, 그리고 칠한 면 위에서 보조·최하위 글자를 본문 쪽으로 당기는 비율.
+     당기지 않으면 최하위 글자가 AA 4.5 아래로 내려간다(어두움 3.36, 밝음 4.09). 이 값이면
+     배경 24개 × 8색에서 최하위가 어두움 4.82 / 밝음 4.94 이상이다. */
+  --mark-fill: 22%;
+  --mark-ink-pull: 30%;
+}
+:root[data-polarity='light'] {
+  --mark-fill: 16%;
+  --mark-ink-pull: 15%;
 }
 
 .photo-paper {
@@ -423,26 +436,24 @@ body {
   outline-offset: -1px;
 }
 
-/* 색 마크 — 이 위젯이 어느 묶음인지. 왼쪽 변에 3px 막대 하나다.
+/* 색 마크 — 이 위젯이 어느 묶음인지. 카드 면 전체를 마크 색으로 옅게 칠한다
+   (2026-09-14 디자인 리뉴얼, 결정 5). 왼쪽 3px 막대는 줌아웃하면 안 보였다.
    `--mark`는 위젯 프레임에 걸린다.
 
-   면은 칠하지 않는다. 위젯 면은 --surface 하나로만 칠한다(DESIGN.md 1장) —
-   예전에는 헤더에 색 띠를 깔고 본문에 틴트를 얹어서, 한 화면에 상단바 색이
-   위젯마다 다르게 섞여 보였다.
-
-   막대는 크롬이 아니라 상태라 hover 없이 늘 보인다. 줌아웃한 상태에서 묶음을
-   찾는 게 마크의 일이라 숨으면 하는 일이 없어진다. */
-.widget-marked::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--mark);
-  /* 본문이 DOM에서 뒤라 z-index 없이는 막대를 덮는다. 브라우저 위젯의 webview도 마찬가지. */
-  z-index: 2;
-  pointer-events: none;
+   프레임 배경만 바꾸지 않고 면 변수를 다시 정의한다. 메모·사진은 제 배경을
+   --paper로 칠하고, 웹앱 타일은 --plate를 깐다. 셋 다 :root에서 이미 풀린 값을
+   물려받으므로 여기서 같이 적어야 칠해진다. 보조·최하위 글자는 칠한 면 위에서
+   대비가 떨어져 본문 쪽으로 당긴다(`--mark-ink-pull`). */
+.widget-marked {
+  --surface: color-mix(in srgb, var(--mark) var(--mark-fill), var(--surface-plain));
+  --surface-2: color-mix(in srgb, var(--ink) 6%, var(--surface));
+  --plate: color-mix(in srgb, var(--ink) 11%, var(--surface));
+  --paper: var(--surface);
+  --paper-fill: color-mix(in srgb, var(--ink) 9%, var(--surface));
+  --ink-soft: color-mix(in srgb, var(--ink) var(--mark-ink-pull), var(--ink-soft-plain));
+  --ink-faint: color-mix(in srgb, var(--ink) var(--mark-ink-pull), var(--ink-faint-plain));
+  --paper-ink-soft: var(--ink-soft);
+  --paper-ink-faint: var(--ink-faint);
 }
 
 /* While ⌥ is down, hovering a widget shows the rim it would be picked with, so a
@@ -560,12 +571,10 @@ body {
   height: 40px;
 }
 
-/* 팔레트의 스와치 — 위젯 축소판이다. 칠했을 때 나오는 그대로 면 위에 왼쪽 막대.
-   순색 동그라미는 고른 색과 나온 색이 달랐다. `--mark`는 이 요소에 걸린다. */
+/* 팔레트의 스와치 — 위젯 축소판이다. 칠했을 때 나오는 옅은 면 그대로(`.widget-marked`와
+   같은 식). 순색 동그라미는 고른 색과 나온 색이 달랐다. `--mark`는 이 요소에 걸린다. */
 .mark-swatch {
-  background:
-    linear-gradient(var(--mark), var(--mark)) left / 4px 100% no-repeat,
-    var(--surface-2);
+  background: color-mix(in srgb, var(--mark) var(--mark-fill), var(--surface-plain));
   border: 1px solid var(--panel-border);
 }
 
