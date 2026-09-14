@@ -11,9 +11,9 @@
    `static` — Tailwind는 유틸리티로 안 쓰인 @theme 변수를 지운다. 이 값들은 손으로
    쓴 CSS에서도 var()로 읽으므로 항상 내보내야 한다. --- */
 @theme static {
-  /* 한글은 Instrument Sans에 없다. 시스템 한글 글꼴로 떨어뜨린다. */
-  --font-ui: 'Instrument Sans Variable', system-ui, -apple-system, 'Apple SD Gothic Neo',
-    'Noto Sans KR', sans-serif;
+  /* IBM Plex Sans KR 하나로 한글·영문을 같이 쓴다(2026-09-14 디자인 리뉴얼, 결정 7).
+     예전 Instrument Sans에는 한글이 없어서 한글만 시스템 글꼴로 떨어졌다. */
+  --font-ui: 'IBM Plex Sans KR', 'Noto Sans KR', system-ui, -apple-system, sans-serif;
   /* 숫자 전용 — 타이머·줌 배율·볼륨. tabular-nums와 같이 쓴다. */
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -408,6 +408,52 @@ body {
   color: var(--paper-ink);
 }
 
+/* 사진 위젯의 사진 틀. 사진이 카드를 꽉 채운다(2026-09-14 디자인 리뉴얼, 결정 6).
+   색 마크가 있으면 둘레 6px을 비워 칠한 면(--paper)이 보이게 한다 — 사진이 면을
+   다 덮어서 채움이 안 보이기 때문이다(결정 17). */
+.photo-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.widget-marked .photo-frame {
+  inset: 6px;
+  border-radius: max(0px, calc(var(--radius-surface) - 6px));
+}
+
+/* 사진 캡션. 위젯을 가리키거나 입력 중일 때만 사진 아래쪽에 뜬다. 늘 보이던
+   캡션 줄은 없앴다(결정 6). 줄 전체는 사진 조작(줌 이동·더블클릭)을 가리지 않게
+   포인터를 통과시키고, 입력칸만 받는다. */
+.photo-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 40px 16px 14px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.55) 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.photo-caption input {
+  width: 100%;
+  background: transparent;
+  color: #ffffff;
+  font-weight: 500;
+  outline: none;
+  pointer-events: auto;
+}
+.photo-caption input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+.widget-glass:hover .photo-caption,
+.widget-glass:focus-within .photo-caption {
+  opacity: 1;
+}
+
 /* The clock is a physical face, lifted slightly off the glass behind it. */
 .clock-face {
   background: color-mix(in srgb, var(--ink) 6%, transparent);
@@ -560,6 +606,15 @@ body {
 .widget-glass:focus-within > .widget-header-float {
   height: 30px;
   background: var(--surface);
+}
+/* 사진이 걸린 사진 위젯의 헤더. 면 색 띠가 사진 윗부분을 가리지 않게 어두운
+   그라데이션 위에 흰 글자·아이콘으로 둔다. 헤더 글자는 --ink·--ink-soft를 읽는다. */
+.widget-glass.widget-photo:hover > .widget-header-float,
+.widget-glass.widget-photo:focus-within > .widget-header-float {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 100%);
+  border-bottom-color: transparent;
+  --ink: #ffffff;
+  --ink-soft: rgba(255, 255, 255, 0.85);
 }
 
 /* 최대화한 위젯의 헤더는 앱의 상단 바다. 숨을 자리가 아니고, 창 버튼과 컨트롤을

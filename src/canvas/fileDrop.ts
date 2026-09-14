@@ -25,7 +25,7 @@ export async function addDroppedContent(transfer: DataTransfer, at: { x: number;
     // would otherwise leave an empty frame on the canvas.
     const saved = await window.images?.fromUrl(src, `persist:space-${activeSpaceId}`);
     if (saved) {
-      addWidget('photo', { url: saved, caption: '' }, at);
+      addWidget('photo', { url: saved, caption: '', fit: true }, at);
       return true;
     }
   }
@@ -72,7 +72,7 @@ async function widgetFor(file: File) {
   if (file.type.startsWith('image/')) {
     const url = await window.images?.save(await file.arrayBuffer(), file.name);
     if (!url) return null;
-    return { type: 'photo' as const, data: { url, caption: '' } };
+    return { type: 'photo' as const, data: { url, caption: '', fit: true } };
   }
 
   if (extOf(file.name) === '.pdf') {

@@ -65,7 +65,7 @@ export async function sendToCanvas(sourceId: string, kind: 'image' | 'text', val
       useUiStore.getState().showNotice('That image could not be saved.');
       return;
     }
-    placed = placeBeside(sourceId, 'photo', { url, caption: '' }, 'Image taken out of the page');
+    placed = placeBeside(sourceId, 'photo', { url, caption: '', fit: true }, 'Image taken out of the page');
   }
   if (!placed) return;
 

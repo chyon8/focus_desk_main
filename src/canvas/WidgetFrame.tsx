@@ -3,7 +3,7 @@ import { Copy, Image, LogOut, Maximize2, PanelLeft, Volume2, X } from 'lucide-re
 import { hostOf } from '../widgets/browserAddress';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { screenToWorld } from './camera';
-import type { BrowserData, ColumnData, WebAppData } from '../spaces/types';
+import type { BrowserData, ColumnData, PhotoData, WebAppData } from '../spaces/types';
 import { canvasArea, Rect, useUiStore } from '../stores/uiStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 import { colorOf } from '../widgets/widgetColors';
@@ -248,6 +248,9 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
          itself when its header is dragged, not the whole window (App.tsx). */
       className={`widget-glass no-drag absolute rounded-surface overflow-hidden ${
         isMarked ? 'widget-marked' : ''
+      } ${
+        // 사진이 걸린 사진 위젯 — hover 헤더를 사진 위 어두운 그라데이션으로 바꾼다(index.css).
+        widget.type === 'photo' && (widget.data as Partial<PhotoData>).url ? 'widget-photo' : ''
       } ${isAltHeld ? 'alt-pick' : ''} ${isSelected ? 'widget-selected' : ''} ${
         isDropTarget ? 'widget-drop-target' : ''
       } ${isOverColumn ? 'opacity-40' : ''}`}

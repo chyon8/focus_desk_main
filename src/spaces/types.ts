@@ -192,6 +192,8 @@ export interface PhotoData {
   /** Where the zoomed picture sits, as a fraction of the frame (-0.5…0.5). */
   panX?: number;
   panY?: number;
+  /** 새로 넣은 사진. 사진이 읽히면 위젯 높이를 사진 비율에 맞추고 지운다. */
+  fit?: boolean;
 }
 
 export interface SketchStroke {

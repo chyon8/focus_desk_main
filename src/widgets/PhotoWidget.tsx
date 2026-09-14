@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { PhotoData } from '../spaces/types';
+import { useSpaceStore } from '../stores/spaceStore';
 import { useWidgetData } from './useWidgetData';
 
 const MIN_ZOOM = 1;
@@ -14,18 +15,11 @@ const clamp = (value: number, low: number, high: number) =>
 /**
  * How far off centre the picture may sit, per axis, before its edge would show.
  *
- * The <img> always fills the frame, but `object-contain` paints inside it at the
- * picture's own shape — so the axis that fits with room to spare has nothing to
- * pan along, however far it is zoomed in.
+ * `object-cover`는 틀 밖으로 넘친 부분을 <img> 상자에서 잘라낸다. 그래서 옮길 수
+ * 있는 건 줌으로 커진 만큼뿐이고, 사진 비율과는 상관없이 두 축이 같다.
  */
-function panLimits(img: HTMLImageElement | null, frame: DOMRect | undefined, zoom: number) {
-  if (!img?.naturalWidth || !frame?.width) return { x: 0, y: 0 };
-  const fit = Math.min(frame.width / img.naturalWidth, frame.height / img.naturalHeight);
-  const painted = { x: img.naturalWidth * fit * zoom, y: img.naturalHeight * fit * zoom };
-  return {
-    x: Math.max(0, painted.x - frame.width) / 2 / (zoom * frame.width),
-    y: Math.max(0, painted.y - frame.height) / 2 / (zoom * frame.height),
-  };
+function panLimit(zoom: number) {
+  return (zoom - 1) / 2 / zoom;
 }
 
 export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
@@ -38,7 +32,6 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
   const [failure, setFailure] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const frame = useRef<HTMLDivElement>(null);
-  const picture = useRef<HTMLImageElement>(null);
 
   const zoom = data.zoom ?? 1;
   const panX = data.panX ?? 0;
@@ -55,13 +48,26 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
     setSaving(true);
     try {
       const url = await window.images?.save(await file.arrayBuffer(), file.name);
-      if (url) update({ url, zoom: 1, panX: 0, panY: 0 });
+      if (url) update({ url, zoom: 1, panX: 0, panY: 0, fit: true });
       else setFailure('That image could not be saved.');
     } catch {
       setFailure('That image could not be saved.');
     } finally {
       setSaving(false);
     }
+  };
+
+  // 새로 넣은 사진은 읽힌 뒤 위젯 높이를 사진 비율에 맞춘다. 넓이는 그대로 둔다.
+  // 사진이 카드를 꽉 채우므로(cover) 비율이 다르면 끝이 잘린다. 이미 있던 사진
+  // 위젯은 `fit`이 없어서 크기가 안 바뀐다.
+  const fitToPicture = (img: HTMLImageElement) => {
+    if (!data.fit) return;
+    const { resizeWidget, spaces, activeSpaceId } = useSpaceStore.getState();
+    const widget = spaces[activeSpaceId]?.widgets[id];
+    if (widget && img.naturalWidth) {
+      resizeWidget(id, widget.width, Math.round((widget.width * img.naturalHeight) / img.naturalWidth));
+    }
+    update({ fit: undefined });
   };
 
   // Pinch on the trackpad zooms the picture inside its frame; the widget keeps
@@ -78,11 +84,11 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
       e.preventDefault();
       e.stopPropagation();
       const next = clamp(zoom * Math.exp(-e.deltaY * ZOOM_SENSITIVITY), MIN_ZOOM, MAX_ZOOM);
-      const limit = panLimits(picture.current, el.getBoundingClientRect(), next);
+      const limit = panLimit(next);
       update({
         zoom: next,
-        panX: clamp(panX, -limit.x, limit.x),
-        panY: clamp(panY, -limit.y, limit.y),
+        panX: clamp(panX, -limit, limit),
+        panY: clamp(panY, -limit, limit),
       });
     };
 
@@ -100,12 +106,12 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
     e.currentTarget.setPointerCapture(e.pointerId);
 
     const start = { x: e.clientX, y: e.clientY, panX, panY };
-    const limit = panLimits(picture.current, box, zoom);
+    const limit = panLimit(zoom);
 
     const onMove = (move: PointerEvent) => {
       update({
-        panX: clamp(start.panX + (move.clientX - start.x) / box.width / zoom, -limit.x, limit.x),
-        panY: clamp(start.panY + (move.clientY - start.y) / box.height / zoom, -limit.y, limit.y),
+        panX: clamp(start.panX + (move.clientX - start.x) / box.width / zoom, -limit, limit),
+        panY: clamp(start.panY + (move.clientY - start.y) / box.height / zoom, -limit, limit),
       });
     };
     const onUp = () => {
@@ -118,7 +124,7 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
 
   return (
     <div
-      className="photo-paper h-full w-full flex flex-col px-3 pb-3 pt-10"
+      className="photo-paper relative h-full w-full"
       onDragOver={(e) => {
         e.preventDefault();
         setIsDropTarget(true);
@@ -135,27 +141,22 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
         ref={frame}
         onPointerDown={onPointerDown}
         onDoubleClick={() => update({ zoom: 1, panX: 0, panY: 0 })}
-        className="relative flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-mark transition-all"
-        style={{
-          background: 'color-mix(in srgb, var(--ink) 8%, transparent)',
-          boxShadow: isDropTarget ? '0 0 0 2px var(--accent)' : undefined,
-          cursor: data.url && zoom > 1 ? 'grab' : undefined,
-        }}
+        className="photo-frame"
+        style={{ cursor: data.url && zoom > 1 ? 'grab' : undefined }}
       >
         {saving ? (
           // 들어올 사진이 앉을 자리 그대로. 원형 스피너를 쓰지 않는다.
           <div className="skeleton w-full h-full" />
         ) : data.url ? (
           <img
-            ref={picture}
             src={data.url}
             alt={data.caption}
             draggable={false}
-            // `contain`, not `cover`: the frame is whatever size the widget was
-            // dragged to, and cropping the picture to fill it meant a wide photo
-            // in a tall widget showed a strip of its middle. The whole picture
-            // fits the shape it is given; zoom is how you crop, on purpose.
-            className="w-full h-full object-contain"
+            onLoad={(e) => fitToPicture(e.currentTarget)}
+            // `cover`: 사진이 카드를 꽉 채운다(2026-09-14 디자인 리뉴얼, 결정 6).
+            // 넣을 때 위젯을 사진 비율에 맞추므로 보통은 안 잘린다. 위젯을 다른
+            // 비율로 늘리면 끝이 잘린다.
+            className="w-full h-full object-cover"
             style={{
               transform: `scale(${zoom}) translate(${panX * 100}%, ${panY * 100}%)`,
               transformOrigin: 'center',
@@ -169,6 +170,21 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
             <ImagePlus size={28} />
             <span className="text-ui">Drop or choose a photo</span>
           </button>
+        )}
+
+        {/* 캡션은 위젯을 가리킬 때만 사진 아래쪽에 뜬다. 입력도 여기서 한다. */}
+        {data.url && !saving && !failure && (
+          <div className="photo-caption">
+            <input
+              value={data.caption}
+              onChange={(e) => update({ caption: e.target.value })}
+              // 줌 중인 사진을 끄는 핸들러와 더블클릭 초기화가 입력칸에서 안 돌게 한다.
+              onPointerDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+              placeholder={zoom > 1 ? 'Double-click the photo to reset the zoom' : 'Write a caption'}
+              className="text-body"
+            />
+          </div>
         )}
 
         {/* 실패는 사진을 치우지 않고 그 위에 얹는다 — 사진이 걸린 위젯에 PDF를
@@ -192,15 +208,15 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
             </button>
           </div>
         )}
-      </div>
 
-      {/* Polaroid-style caption strip below the image. */}
-      <input
-        value={data.caption}
-        onChange={(e) => update({ caption: e.target.value })}
-        placeholder={zoom > 1 ? 'Double-click the photo to reset the zoom' : 'Write a caption'}
-        className="field mt-3 mb-1 shrink-0 !bg-transparent text-center text-body outline-none"
-      />
+        {/* 드롭 표시. 사진 위에 그려야 해서 틀의 그림자가 아니라 따로 얹는다. */}
+        {isDropTarget && (
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ boxShadow: 'inset 0 0 0 2px var(--accent)', borderRadius: 'inherit' }}
+          />
+        )}
+      </div>
 
       <input
         ref={fileInput}
