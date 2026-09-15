@@ -132,7 +132,8 @@ export const ThemePicker: React.FC = () => {
 
   // 무늬는 단색 위에만 얹힌다 — SceneLayer가 거는 조건과 같다.
   const onSolid = override ? override.type === 'COLOR' : theme.scene.kind === 'color';
-  const pattern = patternChoice ?? 'grid';
+  // 고른 적 없으면 무늬 없음이다 — SceneLayer의 기본과 같다.
+  const pattern = patternChoice ?? 'none';
 
   // A selected card gets a ring in the theme's own accent colour.
   const ring = (selected: boolean) =>
@@ -270,7 +271,7 @@ export const ThemePicker: React.FC = () => {
             {/* 단색은 전부 여기다. Minimal 테마를 카드로 따로 두었더니 같은 일(배경을
                 이 색으로)을 하는 목록이 둘로 나뉘어 있었다.
 
-                네 열이다 — 윗줄 어두운 넷, 가운데 줄 밝은 넷, 아랫줄 강한 색 둘.
+                네 열이다 — 윗줄 어두운 넷, 가운데 줄 밝은 넷, 아랫줄 강한 색 넷.
                 `SOLID_COLORS`가 그 순서로 들고 있다. */}
             <div className="mt-3 mb-6">
               <div className="grid grid-cols-4 gap-2">

@@ -50,11 +50,11 @@ interface RoomSpec {
 
 /**
  * The five. Four bring a wallpaper over a borrowed palette; Paper is its theme's
- * own colour, with the grid a plain background starts with.
+ * own colour, plain — a solid background starts without the grid (2026-09-15).
  *
  * 사진 넷은 랜딩 페이지가 보여주는 방 넷과 같다(2026-09-13). 사이트에서 본 방을 앱 첫
- * 화면에서 그대로 고른다. 칸은 사진이거나 격자 바탕이다 — 무늬 없는 단색 칸은 사진
- * 옆에서 아직 안 채운 칸으로 보인다.
+ * 화면에서 그대로 고른다. Paper 칸도 무늬 없이 둔다 — 격자를 깔았더니 덜 예뻐 보였고
+ * (2026-09-15 사용자), 앱에 들어간 뒤의 바탕과 같아야 한다.
  */
 const SPECS: RoomSpec[] = [
   // 순서는 사용자 지시(2026-09-13): Summer Lake가 먼저 화면 전체에 깔린다.

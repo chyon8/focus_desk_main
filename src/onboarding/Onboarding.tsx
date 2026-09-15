@@ -4,7 +4,7 @@ import { ArrowRight, Check, Chrome, LayoutGrid, Plus } from 'lucide-react';
 import type { Camera } from '../canvas/camera';
 import { arrange, fitCamera, type ArrangeMode, type Box } from '../canvas/layout';
 import { WIDGET_DEFS } from '../widgets/defs';
-import { assetUrl, isLightBackground } from '../spaces/backgrounds';
+import { assetUrl } from '../spaces/backgrounds';
 import { OPEN_TABS, spacesFrom, windowChoices, type WindowChoice } from '../spaces/chromeImport';
 import { newSpace, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
@@ -38,18 +38,19 @@ type Step = 'room' | 'work' | 'fill' | 'chrome' | 'tools' | 'name';
 
 /* --- 이 화면의 색 -----------------------------------------------------------
    온보딩은 사진 위에 바로 얹히므로 공간 토큰(--surface·--ink)을 못 쓴다: 방마다
-   배경이 다르고 아직 고른 공간도 없다. 값을 직접 쓰되 DESIGN.md 2장의 따뜻한
-   계열에서만 가져온다 — 순수 흑백도 차가운 회색도 안 쓴다.
+   배경이 다르고 아직 고른 공간도 없다. 값을 직접 쓰되 앱 카드 면과 같은 두 값을
+   쓴다 — 온보딩이 끝나고 나오는 카드와 버튼 색이 달라 보이지 않게.
 
-     PAPER            #f7f6f3   `--surface` 밝음. 사진 위 글자, 채운 버튼의 면
-     INK              #201e1b   `--surface` 어두움. 채운 버튼 위 글자
-     rgba(247,246,243) 사진 위에 얹는 옅은 면·테두리·흐린 글자
-     rgba(32,30,27)    밝은 면 위에 얹는 옅은 것
-     rgba(20,17,13)    사진을 덮는 층과 그림자. `--shadow-tint`(46,38,28)와 같은 계열
+     PAPER            #ffffff   `--surface` 밝음. 사진 위 글자, 채운 버튼의 면
+     INK              #1f1f21   `--surface` 어두움. 채운 버튼 위 글자
+     rgba(255,255,255) 사진 위에 얹는 옅은 면·테두리·흐린 글자
+     rgba(31,31,33)    밝은 면 위에 얹는 옅은 것
+     rgba(20,17,13)    사진을 덮는 층과 그림자. 그림자는 앱도 배경 색조를 쓴다
 
-   전에는 남보라 검정(6,5,10 · #14121a · #070609)과 순수 흰색이었다. --- */
-const PAPER = '#f7f6f3';
-const INK = '#201e1b';
+   2026-09-15 디자인 리뉴얼에서 카드 면이 무채색(#ffffff / #1f1f21)이 되어 따라 바꿨다.
+   전에는 따뜻한 #f7f6f3 / #201e1b, 그 전에는 남보라 검정과 순수 흰색이었다. --- */
+const PAPER = '#ffffff';
+const INK = '#1f1f21';
 
 /* 사진 방은 어두운 층 위에 밝은 글자를, 단색 방(Paper)은 밝은 바탕 위에 어두운 글자를
    쓴다. 둘이 자리를 바꾸는 값만 변수로 두고 화면 맨 바깥에서 한 번 건다.
@@ -60,18 +61,18 @@ const INK = '#201e1b';
      --ob-on-fill-ink  채운 면 위의 옅은 것. rgb 세 값
      --ob-lift         채운 버튼 그림자 */
 const ON_PHOTO = {
-  '--ob-ink': '247,246,243',
+  '--ob-ink': '255,255,255',
   '--ob-fill': PAPER,
   '--ob-on-fill': INK,
-  '--ob-on-fill-ink': '32,30,27',
+  '--ob-on-fill-ink': '31,31,33',
   '--ob-lift': '0 10px 26px -10px rgba(20,17,13,0.8)',
 } as React.CSSProperties;
 
 const ON_PAPER = {
-  '--ob-ink': '32,30,27',
+  '--ob-ink': '31,31,33',
   '--ob-fill': INK,
   '--ob-on-fill': PAPER,
-  '--ob-on-fill-ink': '247,246,243',
+  '--ob-on-fill-ink': '255,255,255',
   '--ob-lift': '0 10px 26px -12px rgba(46,38,28,0.35)',
 } as React.CSSProperties;
 
@@ -475,13 +476,8 @@ const RoomScene: React.FC<{ room: Room; drift?: boolean; weather?: boolean }> = 
           <ParticleLayer kind={particles.kind} density={particles.density} />
         </div>
       )}
-      {/* 단색 방은 앱과 같은 격자를 깐다 — 고르기 전에 본 바탕과 들어간 뒤의 바탕이 같아야 한다. */}
-      {!wallpaper && scene.kind === 'color' && (
-        <div
-          className={`absolute inset-0 scene-grid ${room.theme.id === 'paper' ? 'scene-grid-paper' : ''}`}
-          data-backdrop={isLightBackground(scene.value) ? 'light' : 'dark'}
-        />
-      )}
+      {/* 단색 방에는 격자를 안 깐다. 앱의 단색 기본이 무늬 없음이라(2026-09-15), 고르기 전에
+          본 바탕과 들어간 뒤의 바탕이 같아야 한다. */}
     </>
   );
 };
@@ -520,7 +516,7 @@ const RoomCard: React.FC<{
       }
       whileHover={leaving ? undefined : { y: -4 }}
       whileTap={{ scale: 0.985 }}
-      className="group relative overflow-hidden rounded-[12px] text-left aspect-[8/5]"
+      className="group relative overflow-hidden rounded-surface text-left aspect-[8/5]"
       style={{
         boxShadow: `0 0 0 ${active ? 2 : 1}px rgba(var(--ob-ink),${active ? 1 : 0.16}), 0 12px 28px -12px rgba(20,17,13,0.6)`,
         transition: 'box-shadow 170ms ease-out',

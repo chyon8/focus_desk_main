@@ -114,10 +114,11 @@ export const SceneLayer: React.FC<{ theme: Theme }> = ({ theme }) => {
         <ParticleLayer kind={particles.kind} density={particles.density} />
       )}
 
-      {/* 무늬는 단색 위에만 깐다. 사진 위 격자는 얼룩으로 보인다. 기본은 격자다
-          (2026-09-13) — 끄는 건 사용자가 Atmosphere에서 Plain으로 고른다.
+      {/* 무늬는 단색 위에만 깐다. 사진 위 격자는 얼룩으로 보인다. 기본은 무늬 없음이다
+          (2026-09-15 사용자 결정 — 격자가 깔린 게 덜 예뻐 보였다. 그 전에는 기본이 격자).
+          켜는 건 사용자가 Atmosphere에서 Grid로 고른다.
           Paper가 제 색 그대로일 때는 랜딩 페이지와 같은 격자를 쓴다. */}
-      {flat && patternChoice !== 'none' && (
+      {flat && patternChoice === 'grid' && (
         <div
           className={`absolute inset-0 scene-grid ${
             theme.id === 'paper' && !override ? 'scene-grid-paper' : ''
