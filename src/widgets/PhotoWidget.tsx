@@ -8,6 +8,8 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 6;
 /** Same feel as the canvas pinch. */
 const ZOOM_SENSITIVITY = 0.01;
+/** 새로 넣은 사진 위젯의 긴 변 길이(캔버스 단위). */
+const FIT_LONG_SIDE = 420;
 
 const clamp = (value: number, low: number, high: number) =>
   Math.min(high, Math.max(low, value));
@@ -57,15 +59,17 @@ export const PhotoWidget: React.FC<{ id: string }> = ({ id }) => {
     }
   };
 
-  // 새로 넣은 사진은 읽힌 뒤 위젯 높이를 사진 비율에 맞춘다. 넓이는 그대로 둔다.
+  // 새로 넣은 사진은 읽힌 뒤 위젯을 사진 비율에 맞춘다. 긴 변을 FIT_LONG_SIDE로 둔다.
+  // 넓이 280을 두고 높이만 맞추면 가로 사진이 280×158로 작게 들어왔다.
   // 사진이 카드를 꽉 채우므로(cover) 비율이 다르면 끝이 잘린다. 이미 있던 사진
   // 위젯은 `fit`이 없어서 크기가 안 바뀐다.
   const fitToPicture = (img: HTMLImageElement) => {
     if (!data.fit) return;
-    const { resizeWidget, spaces, activeSpaceId } = useSpaceStore.getState();
-    const widget = spaces[activeSpaceId]?.widgets[id];
-    if (widget && img.naturalWidth) {
-      resizeWidget(id, widget.width, Math.round((widget.width * img.naturalHeight) / img.naturalWidth));
+    const { resizeWidget } = useSpaceStore.getState();
+    const { naturalWidth: w, naturalHeight: h } = img;
+    if (w && h) {
+      const scale = FIT_LONG_SIDE / Math.max(w, h);
+      resizeWidget(id, Math.round(w * scale), Math.round(h * scale));
     }
     update({ fit: undefined });
   };
