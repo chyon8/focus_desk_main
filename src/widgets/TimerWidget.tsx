@@ -85,27 +85,31 @@ export const TimerWidget: React.FC<{ id: string }> = ({ id }) => {
         )}
       </div>
 
-      <div className="flex gap-6 items-center">
+      {/* 재생은 강조색으로 채운 알약 + 글자, 리셋은 옅은 원(2026-09-15 디자인 리뉴얼).
+          전에는 64px 네모에 테두리와 그림자를 달아 카드 위에 입체 버튼이 하나 더 떠 있었다. */}
+      <div className="flex gap-3 items-center">
         <button
           onClick={() => update({ isRunning: !data.isRunning })}
-          className={`press w-16 h-16 flex items-center justify-center rounded-surface border transition-all ${
-            data.isRunning ? 'chrome-button-on' : 'glass chrome-button'
-          }`}
-          style={{ boxShadow: 'var(--shadow-lift)' }}
+          className="btn-primary press h-11 pl-4 pr-5 flex items-center gap-2 rounded-full text-ui"
         >
           {data.isRunning ? (
-            <Pause size={28} fill="currentColor" />
+            <>
+              <Pause size={16} fill="currentColor" /> Pause
+            </>
           ) : (
-            <Play size={28} fill="currentColor" className="ml-1" />
+            <>
+              <Play size={16} fill="currentColor" /> Start
+            </>
           )}
         </button>
 
         <button
           onClick={() => update({ isRunning: false, timeLeft: data.duration })}
-          className="glass chrome-button press w-12 h-12 flex items-center justify-center rounded-control"
+          className="chrome-button press w-11 h-11 flex items-center justify-center rounded-full"
+          style={{ background: 'var(--surface-2)' }}
           title="Reset"
         >
-          <RotateCcw size={20} />
+          <RotateCcw size={18} />
         </button>
       </div>
     </div>

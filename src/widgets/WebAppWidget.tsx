@@ -90,9 +90,12 @@ export const WebAppWidget: React.FC<{ id: string }> = ({ id }) => {
  * along the bottom.
  *
  * 사이트 색으로 타일 전체를 칠하던 것을 뺐다. 위젯 면은 --surface 한 값으로만
- * 칠하고 페이지 자리는 --plate 한 값이다(DESIGN.md 1장) — 사이트마다 다른 색을
+ * 칠하고 타일은 --surface-2 한 값이다(DESIGN.md 1장) — 사이트마다 다른 색을
  * 칠하면 캔버스에 위젯 대여섯 개가 서로 다른 색 면으로 서고, 배경 사진 위에서
  * 한 벌로 안 읽힌다. 무엇인지는 진짜 로고와 이름이 말한다.
+ *
+ * --plate(잉크 11%)에서 --surface-2(6%)로 옅게 했다(2026-09-15 디자인 리뉴얼).
+ * 흰 카드 사이에서 11%는 회색 판으로 읽혔다.
  */
 const WebAppTile: React.FC<{
   data: WebAppData;
@@ -134,7 +137,7 @@ const WebAppTile: React.FC<{
       onClick={onOpen}
       title={`Open ${data.name} here`}
       className="t-ink group/tile relative h-full w-full flex flex-col overflow-hidden text-left"
-      style={{ background: 'var(--plate)' }}
+      style={{ background: 'var(--surface-2)' }}
     >
       <div className="flex flex-1 min-h-0 items-center justify-center p-3">
         {data.favicon ? (
