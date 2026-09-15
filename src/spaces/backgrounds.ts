@@ -10,38 +10,32 @@ export function assetUrl(src: string) {
 }
 
 /**
- * 배경 단색. 색과 이름뿐이다 — 글자·면·테두리는 값 층(DESIGN.md 2장)이 정한다.
+ * 배경 단색. 색·이름과 그 위 카드의 기본 밝기(`cards`)다 — 글자·면·테두리 값은
+ * 값 층(DESIGN.md 2장)이 정한다.
  *
- * **네 계열 × 두 밝기.** 팔레트가 4열 2행으로 세운다 — 한 열이 한 계열이고,
- * 윗줄이 어두운 쪽, 아랫줄이 같은 계열의 밝은 짝이다.
+ * 팔레트는 4열이고 이 순서로 줄이 찬다: 어두운 넷 → 밝은 넷 → 강한 색 둘(2026-09-15
+ * 디자인 리뉴얼). 예전 밝은 줄(Rose·Mist·Sage·Lilac)은 전부 파스텔이라 회색·오프화이트·
+ * 갈색 기 없는 검정이 없었다. Ink·Graphite는 무채색 어두움, Cloud·Canvas는 무채색
+ * 밝음이고, Mist·Sage는 옛 값에서 채도를 낮췄다.
  *
- * 예전에는 열넷이었는데 서로 구분이 안 됐다. CIE Lab ΔE로 재보면 Greige/Linen과
- * Greige/Blush가 4.0, Charcoal/Ink가 5.5, Black/Stone이 7.3이었다 — 나란히 놓아야
- * 겨우 다른 색이고 전체 화면으로는 같은 색이다. 채도도 대부분 4 미만이라 색조가
- * 안 보였다(Mist `#f1f5f9`는 2.5로 그냥 흰색이었다). Charcoal·Ink·Stone·Moss·
- * Sand·Linen·Blush를 버리고 남은 여덟의 채도를 올렸다. 지금 최소 ΔE는 어두운 줄
- * 11.0, 밝은 줄 7.4다. 밝은 쪽이 더 못 벌어지는 건 흰색 근처라서다.
+ * **Tomato·Cobalt는 휘도로는 어두운 쪽이지만 흰 카드를 건다.** 강한 색 위에서는
+ * 흰 카드가 떠 보이고, 어두운 카드는 색에 묻힌다. 그래서 카드 밝기는 휘도 판정이 아니라
+ * 이 목록 값을 따른다. 격자 선은 바탕 휘도를 따른다(SceneLayer).
  *
- * **Black은 시안(A2.html)의 `solidDark` 계열이다.** 앱의 어두운 색이 전부
- * 남색·자주·초록이 섞여 있어서 따뜻한 무채색 검정이 없었다.
- *
- * **Rose는 Greige `#ece7df` 자리다(2026-09-13).** 따뜻한 베이지는 Paper 테마
- * (`#efe7d9`)가 맡으므로 같은 색을 두 번 두지 않았다. 밝은 줄이 파랑·초록·보라뿐이라
- * 빈 따뜻한 색조(Lab 색상각 27°)로 채우고, 밝기·채도는 나머지 셋에 맞췄다
- * (L 88 / C 9). Paper·Swiss 바탕과도 ΔE 9 이상 떨어진다.
- *
- * 버린 색을 쓰던 공간은 그대로 둔다 — 값은 문자열로 저장되어 있어서 계속 칠해지고,
- * 팔레트에서 선택 표시만 안 된다.
+ * 버린 색(Black·Plum·Rose·Lilac, 옛 Mist·Sage)을 쓰던 공간은 그대로 둔다 — 값은
+ * 문자열로 저장되어 있어서 계속 칠해지고, 팔레트에서 선택 표시만 안 된다.
  */
-export const SOLID_COLORS: { value: string; name: string }[] = [
-  { value: '#191715', name: 'Black' },
-  { value: '#111a2c', name: 'Midnight' },
-  { value: '#0f2419', name: 'Forest' },
-  { value: '#2b1b30', name: 'Plum' },
-  { value: '#f0d8d6', name: 'Rose' },
-  { value: '#dde7f2', name: 'Mist' },
-  { value: '#d7e2d4', name: 'Sage' },
-  { value: '#e5ddee', name: 'Lilac' },
+export const SOLID_COLORS: { value: string; name: string; cards: 'light' | 'dark' }[] = [
+  { value: '#151515', name: 'Ink', cards: 'dark' },
+  { value: '#2c2c2e', name: 'Graphite', cards: 'dark' },
+  { value: '#111a2c', name: 'Midnight', cards: 'dark' },
+  { value: '#0f2419', name: 'Forest', cards: 'dark' },
+  { value: '#f4f5f7', name: 'Cloud', cards: 'light' },
+  { value: '#e6e6e3', name: 'Canvas', cards: 'light' },
+  { value: '#dce3ea', name: 'Mist', cards: 'light' },
+  { value: '#d9dfd5', name: 'Sage', cards: 'light' },
+  { value: '#e8553a', name: 'Tomato', cards: 'light' },
+  { value: '#3552c8', name: 'Cobalt', cards: 'light' },
 ];
 
 /** sRGB relative luminance, 0(검정)~1(흰색). */
@@ -59,6 +53,12 @@ function luminance(hex: string) {
  *  커스텀 색도 골라지므로 목록 비교가 아니라 밝기로 판정한다. */
 export function isLightBackground(value: string) {
   return luminance(value) > 0.35;
+}
+
+/** 단색 위 카드가 기본으로 밝은지. 팔레트 색은 `cards` 값, 목록에 없는 색은 휘도로 판정한다. */
+export function cardsLightOn(value: string) {
+  const solid = SOLID_COLORS.find((c) => c.value === value.toLowerCase());
+  return solid ? solid.cards === 'light' : isLightBackground(value);
 }
 
 /**

@@ -270,8 +270,8 @@ export const ThemePicker: React.FC = () => {
             {/* 단색은 전부 여기다. Minimal 테마를 카드로 따로 두었더니 같은 일(배경을
                 이 색으로)을 하는 목록이 둘로 나뉘어 있었다.
 
-                네 열 두 줄이다 — 한 열이 한 색 계열, 윗줄이 어두운 쪽, 아랫줄이 같은
-                계열의 밝은 짝이다. `SOLID_COLORS`가 그 순서로 들고 있다. */}
+                네 열이다 — 윗줄 어두운 넷, 가운데 줄 밝은 넷, 아랫줄 강한 색 둘.
+                `SOLID_COLORS`가 그 순서로 들고 있다. */}
             <div className="mt-3 mb-6">
               <div className="grid grid-cols-4 gap-2">
                 {SOLID_COLORS.map(({ value, name }) => (

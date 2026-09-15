@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SOLID_COLORS, backgroundTokens } from './backgrounds';
+import { SOLID_COLORS, backgroundTokens, cardsLightOn } from './backgrounds';
 
 /**
  * 면 색은 극성마다 무채색 한 값이고(2026-09-14 디자인 리뉴얼), 글자를 이고 있으므로
@@ -114,5 +114,24 @@ describe('면 색', () => {
       const { surface } = backgroundTokens(ground, {} as never, light);
       expect(spread(surface)).toBeLessThanOrEqual(2);
     }
+  });
+});
+
+describe('단색 위 카드 밝기', () => {
+  // Tomato·Cobalt는 휘도로는 어두운 쪽인데 흰 카드를 건다.
+  it.each([
+    ['#151515', false],
+    ['#2c2c2e', false],
+    ['#f4f5f7', true],
+    ['#e8553a', true],
+    ['#3552c8', true],
+    ['#3552C8', true],
+  ])('%s 위 카드가 밝음=%s', (value, light) => {
+    expect(cardsLightOn(value)).toBe(light);
+  });
+
+  it('목록에 없는 색은 휘도로 판정한다', () => {
+    expect(cardsLightOn('#fafafa')).toBe(true);
+    expect(cardsLightOn('#202020')).toBe(false);
   });
 });
