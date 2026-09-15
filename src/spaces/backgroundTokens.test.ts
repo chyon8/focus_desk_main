@@ -126,6 +126,8 @@ describe('단색 위 카드 밝기', () => {
     ['#e8553a', true],
     ['#3552c8', true],
     ['#3552C8', true],
+    ['#f0b429', true],
+    ['#6e56cf', true],
   ])('%s 위 카드가 밝음=%s', (value, light) => {
     expect(cardsLightOn(value)).toBe(light);
   });

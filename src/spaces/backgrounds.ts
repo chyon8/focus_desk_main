@@ -13,12 +13,13 @@ export function assetUrl(src: string) {
  * 배경 단색. 색·이름과 그 위 카드의 기본 밝기(`cards`)다 — 글자·면·테두리 값은
  * 값 층(DESIGN.md 2장)이 정한다.
  *
- * 팔레트는 4열이고 이 순서로 줄이 찬다: 어두운 넷 → 밝은 넷 → 강한 색 둘(2026-09-15
- * 디자인 리뉴얼). 예전 밝은 줄(Rose·Mist·Sage·Lilac)은 전부 파스텔이라 회색·오프화이트·
+ * 팔레트는 4열이고 이 순서로 줄이 찬다: 어두운 넷 → 밝은 넷 → 강한 색 넷(2026-09-15
+ * 디자인 리뉴얼). 강한 색은 빨강·파랑·노랑·보라로 색 방향이 안 겹치게 골랐다 — 초록은
+ * Forest가 있다. 둘만 두었을 때는 셋째 줄이 반만 차서 칸이 비어 보였다. 예전 밝은 줄(Rose·Mist·Sage·Lilac)은 전부 파스텔이라 회색·오프화이트·
  * 갈색 기 없는 검정이 없었다. Ink·Graphite는 무채색 어두움, Cloud·Canvas는 무채색
  * 밝음이고, Mist·Sage는 옛 값에서 채도를 낮췄다.
  *
- * **Tomato·Cobalt는 휘도로는 어두운 쪽이지만 흰 카드를 건다.** 강한 색 위에서는
+ * **강한 색은 휘도와 상관없이 흰 카드를 건다**(Tomato·Cobalt·Violet은 휘도로는 어두운 쪽). 강한 색 위에서는
  * 흰 카드가 떠 보이고, 어두운 카드는 색에 묻힌다. 그래서 카드 밝기는 휘도 판정이 아니라
  * 이 목록 값을 따른다. 격자 선은 바탕 휘도를 따른다(SceneLayer).
  *
@@ -36,6 +37,8 @@ export const SOLID_COLORS: { value: string; name: string; cards: 'light' | 'dark
   { value: '#d9dfd5', name: 'Sage', cards: 'light' },
   { value: '#e8553a', name: 'Tomato', cards: 'light' },
   { value: '#3552c8', name: 'Cobalt', cards: 'light' },
+  { value: '#f0b429', name: 'Saffron', cards: 'light' },
+  { value: '#6e56cf', name: 'Violet', cards: 'light' },
 ];
 
 /** sRGB relative luminance, 0(검정)~1(흰색). */
