@@ -37,3 +37,13 @@ design-ref/onboarding-rooms-canvas/onboarding-room-picker.html
 
 # 월페이퍼 원본 PNG(장당 10MB). 앱에는 `npm run wallpapers`로 만든 webp만 들어간다
 wallpapers-originals
+
+# 촬영 원본 스크린샷(장당 0.2~2MB). 스펙(tools/specs)으로 다시 찍을 수 있다
+design-ref/landing-shots/cloud
+design-ref/landing-shots/user
+
+# 스와치·워드마크는 `python3 tools/make_assets.py`가 다시 만든다.
+# tide 넷은 그 스크립트에 없어서 따로 남긴다
+design-ref/landing-shots/tools/assets/*
+!design-ref/landing-shots/tools/assets/swatch-tide-*.png
+!design-ref/landing-shots/tools/assets/wordmark-tide.png
