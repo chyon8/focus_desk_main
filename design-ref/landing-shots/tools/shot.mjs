@@ -1,5 +1,5 @@
 // Opens a space in the demo window and screenshots it.
-// usage: node shot.mjs <spaceId> <out.png> [--wait ms] [--scale n] [--clip x,y,w,h] [--rail id,id,...]
+// usage: node shot.mjs <spaceId> <out.png> [--wait ms] [--scale n] [--clip x,y,w,h] [--rail id,id,...] [--camera x,y,zoom]
 //   --rail  which spaces the rail lists, in order (the others stay saved, just not shown)
 import { capture, connect, wait } from './lib.mjs';
 
@@ -34,6 +34,13 @@ if (rail) {
 }
 
 await cdp.evaluate(`window.__fd.useSpaceStore.getState().setActiveSpace(${JSON.stringify(spaceId)}), 'ok'`);
+// --camera x,y,zoom: look at the space from here (the store keeps it, like a pan by hand).
+const cameraArg = opt('camera', null);
+if (cameraArg) {
+  const [x, y, zoom] = cameraArg.split(',').map(Number);
+  await wait(300);
+  await cdp.evaluate(`(window.__fd.useSpaceStore.getState().setCamera(${JSON.stringify({ x, y, zoom })}), 'ok')`);
+}
 await wait(waitMs);
 
 // Photos are drawn `contain`; zoom each one until it covers its frame.
@@ -74,8 +81,12 @@ if (scrollArg) {
 // --clicktext "earth.google:Dismiss": click the first element showing that text inside matching pages
 // (a first-visit tooltip a person would close before working).
 const clickArg = opt('clicktext', null);
-if (clickArg) {
+// Clicked until the text is gone (up to 8 rounds, never giving up before round 4 — Earth can draw
+// the tooltip several seconds after load): a page can draw the tooltip late or again, and
+// a search can also match hidden copies with no size, which are skipped.
+for (let round = 0; clickArg && round < 8; round += 1) {
   const { targetInfos } = await cdp.raw('Target.getTargets');
+  let clicked = 0;
   for (const pair of clickArg.split(',')) {
     const [key, text] = pair.split(':');
     for (const t of targetInfos.filter((t) => t.type === 'webview' && t.url.includes(key))) {
@@ -86,6 +97,36 @@ if (clickArg) {
         { query: text, includeUserAgentShadowDOM: true },
         sessionId
       );
+      // Also press it from inside the page: Earth's button sits in shadow DOM, where the pointer
+      // event above does not always reach it.
+      const { result: jsClicked } = await cdp.raw(
+        'Runtime.evaluate',
+        {
+          expression: `(() => {
+            const want = ${JSON.stringify(text)};
+            let n = 0;
+            const walk = (root) => {
+              for (const el of root.querySelectorAll('*')) {
+                if (el.shadowRoot) walk(el.shadowRoot);
+                const own = [...el.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim() === want);
+                if (own && el.getBoundingClientRect().width > 0) {
+                  (el.closest('button,[role=button],a') ?? el).click();
+                  // If the tip is still drawn, hide its small box (the widest ancestor under 480px).
+                  let box = el;
+                  while (box.parentElement && box.parentElement.getBoundingClientRect().width < 480) box = box.parentElement;
+                  box.style.setProperty('display', 'none', 'important');
+                  n += 1;
+                }
+              }
+            };
+            walk(document);
+            return n;
+          })()`,
+          returnByValue: true,
+        },
+        sessionId
+      );
+      clicked += jsClicked?.value ?? 0;
       if (!resultCount) continue;
       const { nodeIds } = await cdp.raw('DOM.getSearchResults', { searchId, fromIndex: 0, toIndex: resultCount }, sessionId);
       for (const nodeId of nodeIds) {
@@ -95,13 +136,14 @@ if (clickArg) {
           const { node } = await cdp.raw('DOM.describeNode', { nodeId }, sessionId);
           const target = node.nodeType === 3 ? node.parentId : nodeId;
           const { model } = await cdp.raw('DOM.getBoxModel', { nodeId: target }, sessionId);
+          if (!model.width || !model.height) continue;
           const [x1, y1, , , x3, y3] = model.border;
           const x = (x1 + x3) / 2;
           const y = (y1 + y3) / 2;
           for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
             await cdp.raw('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 }, sessionId);
           }
-          break;
+          clicked += 1;
         } catch {
           // no box for this match; try the next one
         }
@@ -109,6 +151,7 @@ if (clickArg) {
     }
   }
   await wait(1500);
+  if (!clicked && round > 3) break;
 }
 
 // --skin fullbleed: preview only, not the app. Photo widgets lose the top band and the caption

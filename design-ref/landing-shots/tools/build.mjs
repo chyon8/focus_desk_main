@@ -76,7 +76,8 @@ export async function buildSpace(spec) {
       width: width ?? 300,
       height: height ?? 210,
       z: z++,
-      // No colour marks in any shot (2026-09-14, user): specs may still carry `color`; it is dropped here.
+      // Colour marks are allowed again (2026-09-15): the renewal paints them as a light fill.
+      ...(w.color ? { color: w.color } : {}),
       data,
     };
   }
