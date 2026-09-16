@@ -5,6 +5,7 @@ import {
   centreCamera,
   clampCamera,
   fitCamera,
+  inLaneOrder,
   minZoomFor,
   inReadingOrder,
   isFullyVisible,
@@ -146,6 +147,45 @@ describe('arrange stack', () => {
         expect(apart).toBe(true);
       }
     }
+  });
+
+  it('makes every card as wide as its lane, and every lane the same width', () => {
+    const withPage: Box[] = [
+      ...mixed,
+      { id: 'page', x: 0, y: 0, width: 900, height: 620 },
+    ];
+    const out = placed(withPage, area, 'stack', 3);
+    expect(new Set(out.map((p) => p.width))).toEqual(new Set([300]));
+    const page = out.find((p) => p.id === 'page')!;
+    expect(page.height).toBe(Math.round((620 * 300) / 900));
+  });
+
+  it('deals cards out row by row, in the order given', () => {
+    const [photo, memo, todo, clock] = placed(mixed, area, 'stack', 3);
+    // First three make the top row, left to right.
+    expect([photo.y, memo.y, todo.y]).toEqual([0, 0, 0]);
+    expect(photo.x).toBeLessThan(memo.x);
+    expect(memo.x).toBeLessThan(todo.x);
+    // The fourth goes under the first, whatever the lane heights.
+    expect(clock.x).toBe(photo.x);
+    expect(clock.y).toBe(photo.y + photo.height + 32);
+  });
+
+  it('reads a stack back in the order it was made from', () => {
+    const cards: Box[] = Array.from({ length: 7 }, (_, i) => ({
+      id: String(i), x: 0, y: 0, width: 300, height: 200 + ((i * 37) % 150),
+    }));
+    const out = arrange(cards, area, 'stack', 3);
+    const laid = cards.map((box) => ({ ...box, ...out[box.id] }));
+    const shuffled = [laid[4], laid[0], laid[6], laid[2], laid[1], laid[5], laid[3]];
+    expect(inLaneOrder(shuffled).map((b) => b.id)).toEqual(cards.map((b) => b.id));
+  });
+
+  it('keeps a card in the lane it was dragged to', () => {
+    const lane = (x: number, y: number, id: string): Box => ({ id, x, y, width: 300, height: 200 });
+    // a and b on the left, c on the right; b dragged to the top of the right lane.
+    const order = inLaneOrder([lane(0, 0, 'a'), lane(340, -40, 'b'), lane(332, 0, 'c')]);
+    expect(order.map((b) => b.id)).toEqual(['a', 'b', 'c']);
   });
 
   it('leaves a column at the size it owns', () => {

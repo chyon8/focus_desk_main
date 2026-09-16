@@ -1,4 +1,5 @@
 import { Camera, MAX_ZOOM, MIN_ZOOM } from './camera';
+import { COLUMN_WIDTH } from './columns';
 
 export interface Box {
   id: string;
@@ -19,13 +20,6 @@ export interface Box {
    * scales every box to fill its cell.
    */
   natural?: { width: number; height: number };
-  /**
-   * How many times its designed size this box may be drawn at, when the caller
-   * wants a say. A photo reads better the bigger it is drawn and a clock face does
-   * not, so a stack is only worth looking at when the two are told apart — and
-   * layout has no idea what a widget holds. Defaults to `MAX_GROWTH`.
-   */
-  grow?: number;
 }
 
 /** Where a box ends up after an arrange — grid mode resizes as well as moves. */
@@ -238,75 +232,45 @@ function fillGrid(boxes: Box[], area: Area, columns?: number): Record<string, Pl
 }
 
 /**
- * The size a box takes on a lane this wide. Only the width is capped — a lane has
- * no height to fill, so `Infinity` leaves the aspect to say how tall the box comes
- * out, which is what keeps a portrait photo portrait.
- *
- * The ceiling is the box's own `grow` where it has one, so a photo fills its lane
- * while a clock stays the size it was designed at and is centred on the lane.
+ * Every lane in a stack is this wide, and every card fills it: the width of a
+ * column widget, so a column sits in the stack as one more lane.
  */
-function sizeOnLane(box: Box, laneWidth: number) {
-  return sizeIn(box, { width: laneWidth, height: Infinity }, box.grow ?? MAX_GROWTH);
-}
+const LANE_WIDTH = COLUMN_WIDTH;
 
 /**
- * Which lane each box lands on: the shortest lane so far takes the next box.
- * `heightOf` says how tall a box counts as while that is being measured.
- */
-function assignLanes(boxes: Box[], cols: number, heightOf: (box: Box, lane: number) => number) {
-  const heights = Array<number>(cols).fill(0);
-  const widths = Array<number>(cols).fill(0);
-  const laneOf = boxes.map((box) => {
-    const lane = heights.indexOf(Math.min(...heights));
-    heights[lane] += heightOf(box, lane) + ARRANGE_GAP;
-    widths[lane] = Math.max(widths[lane], box.width);
-    return lane;
-  });
-  return { laneOf, widths };
-}
-
-/**
- * Lanes: each box goes on the shortest lane so far and sits directly under the one
- * before it. Nothing lines up across lanes, which is the point — a grid makes every
- * row as tall as its tallest widget, so a tall photo leaves a band of empty space
- * beside every short widget in its row.
+ * Lanes that read like a kanban board: every lane the same width, every card as
+ * wide as its lane (height from its own shape), cards dealt out in order — the
+ * first `cols` make the top row, the next `cols` go under them, and so on.
+ * Nothing lines up across lanes below the top row, and the bottom is left ragged.
  *
- * A lane is as wide as the widest box that landed on it, so lanes differ in width.
- * One width for all of them would either squeeze a browser (900 wide by default) or
- * blow a photo (280) up to match it.
- *
- * Lanes are assigned twice. The first pass has to measure boxes at their own
- * heights, because lane widths are not known until the boxes are on them — and a
- * box grown to its lane's width is taller than that, so the first pass leaves the
- * lanes ending at very different heights. The second pass measures the grown
- * heights the first pass worked out, which levels the bottom of the block.
+ * This is the layout the user picked on 2026-09-16. It used to come out that way
+ * only by accident: lanes were as wide as their widest card and cards went on the
+ * shortest lane, which matched this only while every widget happened to be 300
+ * wide. Once sizes differed, lanes differed, a clock that could not grow floated
+ * in a wider lane, and a tall column got a lane to itself. Also tried that day
+ * and turned down: widening lanes until they all end level (a photo or page lane
+ * grew to several times the rest), and a shared width taken from the widgets'
+ * designed sizes with a small stretch.
  */
 function stackInto(boxes: Box[], cols: number): Record<string, Placement> {
-  const first = assignLanes(boxes, cols, (box) => box.height);
-  const { laneOf, widths: laneWidths } = assignLanes(boxes, cols, (box, lane) =>
-    // The widths from the first pass are the best guess available here; a box that
-    // changes lane in this pass is measured against the lane it is leaving.
-    sizeOnLane(box, first.widths[lane] || box.width).height
+  // A box that owns its size (a column) keeps it; a lane holding one wider than
+  // the rest is as wide as it.
+  const laneWidths = Array<number>(cols).fill(LANE_WIDTH);
+  boxes.forEach((box, i) => {
+    if (box.fixed) laneWidths[i % cols] = Math.max(laneWidths[i % cols], box.width);
+  });
+  const laneXs = laneWidths.map((_, lane) =>
+    laneWidths.slice(0, lane).reduce((x, width) => x + width + ARRANGE_GAP, 0)
   );
-
-  const laneXs: number[] = [];
-  laneWidths.reduce((x, width, i) => {
-    laneXs[i] = x;
-    return x + width + (width > 0 ? ARRANGE_GAP : 0);
-  }, 0);
 
   const tops = Array<number>(cols).fill(0);
   const placements: Record<string, Placement> = {};
   boxes.forEach((box, i) => {
-    const lane = laneOf[i];
-    const size = sizeOnLane(box, laneWidths[lane]);
-    placements[box.id] = {
-      x: Math.round(laneXs[lane] + (laneWidths[lane] - size.width) / 2),
-      y: Math.round(tops[lane]),
-      width: size.width,
-      height: size.height,
-    };
-    tops[lane] += size.height + ARRANGE_GAP;
+    const lane = i % cols;
+    const width = box.fixed ? box.width : laneWidths[lane];
+    const height = box.fixed ? box.height : Math.round((box.height * width) / box.width);
+    placements[box.id] = { x: laneXs[lane], y: tops[lane], width, height };
+    tops[lane] += height + ARRANGE_GAP;
   });
   return placements;
 }
@@ -326,6 +290,37 @@ function stackGrid(boxes: Box[], area: Area, columns?: number): Record<string, P
     }
   }
   return best;
+}
+
+/**
+ * The order a stack reads its cards in, taken from where they sit now, so
+ * arranging again leaves them where they are and a card dragged to another lane
+ * stays there.
+ *
+ * Cards whose left-right spans overlap are one lane; lanes go left to right and
+ * cards in a lane top to bottom. The order is then row by row — every lane's
+ * first card, then every lane's second — which is how `stackInto` deals them out,
+ * so a stack read back gives the order it was made from.
+ */
+export function inLaneOrder<T extends Box>(boxes: T[]): T[] {
+  const lanes: { right: number; cards: T[] }[] = [];
+  for (const box of [...boxes].sort((a, b) => a.x - b.x || a.y - b.y)) {
+    const lane = lanes[lanes.length - 1];
+    if (lane && box.x < lane.right) {
+      lane.cards.push(box);
+      lane.right = Math.max(lane.right, box.x + box.width);
+    } else {
+      lanes.push({ right: box.x + box.width, cards: [box] });
+    }
+  }
+  for (const lane of lanes) lane.cards.sort((a, b) => a.y - b.y);
+
+  const ordered: T[] = [];
+  const rows = Math.max(0, ...lanes.map((lane) => lane.cards.length));
+  for (let row = 0; row < rows; row++) {
+    for (const lane of lanes) if (lane.cards[row]) ordered.push(lane.cards[row]);
+  }
+  return ordered;
 }
 
 /** How many boxes get the bigger tile, and how many cells across one of those is. */
