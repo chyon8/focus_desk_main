@@ -183,4 +183,21 @@ describe('migrateSpace', () => {
 
     expect(migrateSpace(current).widgets['a'].z).toBe(7);
   });
+
+  it('drops an arrange mode that was cut from the menu, even at the current version', () => {
+    const saved = (mode: string) =>
+      ({
+        id: 's',
+        schemaVersion: SCHEMA_VERSION,
+        name: 'New',
+        background: null,
+        camera: { x: 0, y: 0, zoom: 1 },
+        widgets: {},
+        arrange: { mode },
+      }) as unknown as SpaceDoc;
+
+    expect(migrateSpace(saved('cascade')).arrange).toBeNull();
+    expect(migrateSpace(saved('focus')).arrange).toBeNull();
+    expect(migrateSpace(saved('stack')).arrange).toEqual({ mode: 'stack' });
+  });
 });

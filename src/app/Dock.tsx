@@ -2,18 +2,18 @@ import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRightLeft,
+  Check,
   Circle,
   Columns3,
   Copy,
-  Layers,
+  GalleryVerticalEnd,
   LayoutGrid,
   Minus,
-  PanelTop,
   Plus,
   Trash2,
   X,
 } from 'lucide-react';
-import { autoColumns } from '../canvas/layout';
+import type { ArrangeMode } from '../canvas/layout';
 import { MAX_ZOOM, zoomCameraAt } from '../canvas/camera';
 import { getMinZoom, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, RAIL_WIDTH, useUiStore } from '../stores/uiStore';
@@ -59,16 +59,48 @@ function zoomBy(factor: number) {
   store.setCamera(zoomCameraAt(camera, centre, next));
 }
 
-/** How the picked widgets get laid out. */
-const ArrangeMenu: React.FC<{ onDone: () => void }> = ({ onDone }) => {
-  const columnsForAuto = useSpaceStore((s) => {
-    const widgets = Object.values(s.spaces[s.activeSpaceId]?.widgets ?? {});
-    return widgets.length ? autoColumns(widgets, canvasArea()) : 1;
-  });
-  const run = (mode: 'grid' | 'focus' | 'cascade', columns?: number) => {
+/** What each arrange is called, and the icon that stands for it on the buttons. */
+const MODES: Record<ArrangeMode, { name: string; note: string; Icon: typeof LayoutGrid }> = {
+  grid: { name: 'Grid', note: 'Rows line up', Icon: LayoutGrid },
+  stack: { name: 'Stack', note: 'Tall stays tall', Icon: GalleryVerticalEnd },
+};
+
+/**
+ * The arrange this space was given last: what G repeats, and what the buttons
+ * show. Nothing yet means the Auto grid, as it did before.
+ */
+function useCurrentArrange() {
+  return useSpaceStore((s) => s.spaces[s.activeSpaceId]?.arrange) ?? { mode: 'grid' as const };
+}
+
+function arrangeLabel(mode: ArrangeMode) {
+  return `Arrange: ${MODES[mode].name} (G, or ⌥G inside a page)`;
+}
+
+/**
+ * How the widgets get laid out. `className` places it: above the dock button, or
+ * beside the rail button.
+ */
+const ArrangeMenu: React.FC<{ className: string; onDone: () => void }> = ({
+  className,
+  onDone,
+}) => {
+  const current = useCurrentArrange();
+  const run = (mode: ArrangeMode, columns?: number) => {
     useSpaceStore.getState().arrangeWidgets(mode, columns);
     onDone();
   };
+
+  // Auto saves no count, so G works the count out again for whatever is on the
+  // desk then. A number is kept until another is picked.
+  const counts: { columns?: number; label: string; title: string }[] = [
+    { label: 'Auto', title: 'Pick the count each time' },
+    ...COLUMN_CHOICES.map((columns) => ({
+      columns,
+      label: String(columns),
+      title: `${columns} column${columns > 1 ? 's' : ''}`,
+    })),
+  ];
 
   return (
     <>
@@ -77,61 +109,79 @@ const ArrangeMenu: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 8 }}
-        className="glass-panel absolute bottom-full right-0 mb-3 z-[90] w-52 p-2 rounded-surface"
+        className={`glass-panel absolute z-[90] w-56 p-2 rounded-surface ${className}`}
       >
+        {(Object.keys(MODES) as ArrangeMode[]).map((mode) => {
+          const { name, note, Icon } = MODES[mode];
+          return (
+            <button
+              key={mode}
+              onClick={() => run(mode)}
+              aria-pressed={current.mode === mode}
+              className="row w-full flex items-center gap-3 px-2 py-2 rounded-control"
+            >
+              <Icon size={15} />
+              <span className="flex-1 flex items-center gap-1.5 text-left text-ui font-medium">
+                {name}
+                {current.mode === mode && <Check size={12} className="t-soft" />}
+              </span>
+              <span className="t-soft text-micro">{note}</span>
+            </button>
+          );
+        })}
+
+        <div className="bg-hair my-1 h-px" />
         <div className="t-soft px-2 pt-1 pb-2 text-micro font-semibold uppercase tracking-[0.14em]">
           Columns
         </div>
-
-        <button
-          onClick={() => run('grid')}
-          className="row w-full flex items-center gap-3 px-2 py-2 rounded-control"
-        >
-          <span
-            className="grid gap-[2px] w-6"
-            style={{ gridTemplateColumns: `repeat(${columnsForAuto}, 1fr)` }}
-          >
-            {Array.from({ length: columnsForAuto * 2 }, (_, i) => (
-              <span key={i} className="h-[4px] rounded-[1px] bg-current opacity-60" />
-            ))}
-          </span>
-          <span className="flex-1 text-left text-ui font-medium">Auto</span>
-          <span className="t-soft text-micro">{columnsForAuto} wide</span>
-        </button>
-
-        <div className="grid grid-cols-5 gap-1 px-1 pt-1">
-          {COLUMN_CHOICES.map((columns) => (
+        <div className="grid grid-cols-[auto_repeat(5,1fr)] gap-1 px-1 pb-1">
+          {counts.map(({ columns, label, title }) => (
             <button
-              key={columns}
-              onClick={() => run('grid', columns)}
-              title={`${columns} column${columns > 1 ? 's' : ''}`}
-              className="chrome-button h-8 flex items-center justify-center rounded-control text-ui font-medium font-mono tabular-nums"
+              key={label}
+              onClick={() => run(current.mode, columns)}
+              title={title}
+              aria-pressed={current.columns === columns}
+              className={`chrome-button h-8 px-2 flex items-center justify-center rounded-control text-ui font-medium tabular-nums ${
+                columns ? 'font-mono' : ''
+              } ${current.columns === columns ? 'row-on' : ''}`}
             >
-              {columns}
+              {label}
             </button>
           ))}
         </div>
-
-        <div className="bg-hair my-1 h-px" />
-
-        <button
-          onClick={() => run('focus')}
-          className="row w-full flex items-center gap-3 px-2 py-2 rounded-control"
-        >
-          <PanelTop size={15} />
-          <span className="flex-1 text-left text-ui font-medium">Focus</span>
-          <span className="t-soft text-micro">Last two big</span>
-        </button>
-        <button
-          onClick={() => run('cascade')}
-          className="row w-full flex items-center gap-3 px-2 py-2 rounded-control"
-        >
-          <Layers size={15} />
-          <span className="flex-1 text-left text-ui font-medium">Cascade</span>
-          <span className="t-soft text-micro">Overlapping</span>
-        </button>
       </motion.div>
     </>
+  );
+};
+
+/**
+ * The arrange button in the rail, above the zoom. The dock's one only shows while
+ * something is selected, so without this the whole desk could be arranged with G
+ * and nothing else. It sits with the zoom because both act on the whole canvas,
+ * but not inside the zoom's menu: that one is the view, and this moves widgets.
+ */
+export const ArrangeTools: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const { mode } = useCurrentArrange();
+  const { Icon } = MODES[mode];
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen((open) => !open)}
+        title={arrangeLabel(mode)}
+        aria-label={arrangeLabel(mode)}
+        aria-pressed={isOpen}
+        className={`rail-tool ${isOpen ? 'rail-tool-on' : ''}`}
+      >
+        <Icon size={18} />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <ArrangeMenu className="bottom-0 left-full ml-3" onDone={() => setIsOpen(false)} />
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 
@@ -193,6 +243,8 @@ export const Dock: React.FC = () => {
   const [isColourOpen, setIsColourOpen] = useState(false);
   const isMoveMenuOpen = useUiStore((s) => s.isMoveMenuOpen);
   const count = selectedIds.length;
+  const arrangeMode = useCurrentArrange().mode;
+  const ArrangeIcon = MODES[arrangeMode].Icon;
 
   return (
     <AnimatePresence>
@@ -216,15 +268,20 @@ export const Dock: React.FC = () => {
           <div className="relative shrink-0">
             <button
               onClick={() => setIsArrangeOpen((o) => !o)}
-              title="Arrange (G, or ⌥G inside a page)"
+              title={arrangeLabel(arrangeMode)}
               data-first-step="tidy"
               className="btn-primary flex items-center gap-1.5 px-2.5 h-8 rounded-control text-meta"
             >
-              <LayoutGrid size={15} />
+              <ArrangeIcon size={15} />
               Arrange
             </button>
             <AnimatePresence>
-              {isArrangeOpen && <ArrangeMenu onDone={() => setIsArrangeOpen(false)} />}
+              {isArrangeOpen && (
+                <ArrangeMenu
+                  className="bottom-full right-0 mb-3"
+                  onDone={() => setIsArrangeOpen(false)}
+                />
+              )}
             </AnimatePresence>
           </div>
 

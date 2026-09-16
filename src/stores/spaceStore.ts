@@ -147,6 +147,19 @@ interface SpaceState {
   undoRemove: () => void;
   dismissRemoved: () => void;
   /**
+   * Where the widgets sat before the last arrange, with the camera that framed
+   * them. An arrange overwrites the position and size of everything in play, and
+   * a hand-placed desk cannot be rebuilt by hand, so one step back is kept.
+   */
+  lastArranged: {
+    spaceId: string;
+    boxes: Record<string, { x: number; y: number; width: number; height: number }>;
+    camera: Camera;
+    arrange: SpaceDoc['arrange'];
+  } | null;
+  undoArrange: () => void;
+  dismissArranged: () => void;
+  /**
    * The last space deleted. Nothing on disk is touched while this is set — the
    * file, the logged time and the cookie jar are gone for good once it clears,
    * so they wait for the undo window to close.
@@ -592,9 +605,31 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   setPattern: (pattern) => updateActive(set, (space) => ({ ...space, pattern })),
 
   // Fill the canvas with the widgets in play, then frame the result.
-  arrangeWidgets: (mode = 'grid', columns) => {
+  arrangeWidgets: (mode, columns) => {
     useUiStore.getState().passFirstStep('tidy');
     get().checkHint('tidy');
+
+    const before = get().spaces[get().activeSpaceId];
+    const moving = before ? inPlay(before) : [];
+    if (!before || moving.length === 0) return;
+
+    // No mode given means the keyboard shortcut, which repeats whatever this space
+    // was arranged with last. Picking one from the menu makes it the new default.
+    const chosen: NonNullable<SpaceDoc['arrange']> = mode
+      ? { mode, columns }
+      : (before.arrange ?? { mode: 'grid' });
+
+    set({
+      lastArranged: {
+        spaceId: before.id,
+        boxes: Object.fromEntries(
+          moving.map((w) => [w.id, { x: w.x, y: w.y, width: w.width, height: w.height }])
+        ),
+        camera: before.camera,
+        arrange: before.arrange ?? null,
+      },
+    });
+
     updateActive(set, (space) => {
       const boxes = inPlay(space);
       if (boxes.length === 0) return space;
@@ -616,9 +651,13 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         .map((w) =>
           w.type === 'column'
             ? { ...w, fixed: true }
-            : { ...w, natural: WIDGET_DEFS[w.type].defaultSize }
+            : {
+                ...w,
+                natural: WIDGET_DEFS[w.type].defaultSize,
+                grow: WIDGET_DEFS[w.type].arrangeGrow,
+              }
         );
-      const placements = arrange(ordered, area, mode, columns);
+      const placements = arrange(ordered, area, chosen.mode, chosen.columns);
       const widgets = { ...space.widgets };
       for (const [id, place] of Object.entries(placements)) {
         const isColumn = widgets[id].type === 'column';
@@ -633,9 +672,31 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       }
       const laid = applyColumns(widgets);
       const camera = fitCamera(inPlay({ ...space, widgets: laid }), area);
-      return { ...space, widgets: laid, camera: camera ?? space.camera };
+      return { ...space, widgets: laid, camera: camera ?? space.camera, arrange: chosen };
     });
   },
+
+  undoArrange: () =>
+    set((s) => {
+      const last = s.lastArranged;
+      const space = last && s.spaces[last.spaceId];
+      if (!last || !space) return { lastArranged: null };
+      const widgets = { ...space.widgets };
+      for (const [id, box] of Object.entries(last.boxes)) {
+        if (widgets[id]) widgets[id] = { ...widgets[id], ...box };
+      }
+      // Columns lay their own cards out, so the sizes above are only the start.
+      const next = {
+        ...space,
+        widgets: applyColumns(widgets),
+        camera: last.camera,
+        arrange: last.arrange,
+      };
+      scheduleSave(next);
+      return { lastArranged: null, spaces: { ...s.spaces, [next.id]: next } };
+    }),
+
+  dismissArranged: () => set({ lastArranged: null }),
 
   fitToWidgets: () =>
     updateActive(set, (space) => {
@@ -1122,6 +1183,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }),
 
   dismissMoved: () => set({ lastMoved: null }),
+
+  lastArranged: null,
 
   lastRemoved: null,
   lastRemovedSpace: null,

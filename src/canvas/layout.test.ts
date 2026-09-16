@@ -23,7 +23,7 @@ const boxes: Box[] = [
 const area = { width: 1400, height: 900 };
 
 /** Boxes with their arranged position and size applied, ready to measure. */
-function placed(input: Box[], ...args: [] | [typeof area, 'grid' | 'cascade', number?]) {
+function placed(input: Box[], ...args: [] | [typeof area, 'grid' | 'stack', number?]) {
   const placements = arrange(input, args[0] ?? area, args[1], args[2]);
   return input.map((box) => ({ id: box.id, ...placements[box.id] }));
 }
@@ -103,17 +103,59 @@ describe('arrange', () => {
     expect(new Set(out.map((p) => p.y + p.height / 2)).size).toBe(1);
   });
 
-  it('cascade staggers boxes diagonally and leaves their sizes alone', () => {
-    const out = placed(boxes, area, 'cascade');
-    const a = out.find((p) => p.id === 'a')!;
-    const b = out.find((p) => p.id === 'b')!;
-    expect(b.x).toBe(0); // b is first in input order → the front of the deck
-    expect(a.x).toBe(a.y);
-    expect(b.width).toBe(200);
-  });
-
   it('returns an empty map for no boxes', () => {
     expect(arrange([], area)).toEqual({});
+  });
+});
+
+describe('arrange stack', () => {
+  // A tall photo among short widgets: the case a grid handles badly, because the
+  // whole row grows to the photo's height.
+  const mixed: Box[] = [
+    { id: 'photo', x: 0, y: 0, width: 280, height: 640, natural: { width: 280, height: 640 } },
+    { id: 'memo', x: 0, y: 0, width: 420, height: 300, natural: { width: 420, height: 300 } },
+    { id: 'todo', x: 0, y: 0, width: 320, height: 280, natural: { width: 320, height: 280 } },
+    { id: 'clock', x: 0, y: 0, width: 320, height: 300, natural: { width: 320, height: 300 } },
+  ];
+
+  it('puts boxes on a lane directly under one another', () => {
+    const out = placed(mixed, area, 'stack', 2);
+    const lanes = new Map<number, typeof out>();
+    for (const p of out) lanes.set(p.x, [...(lanes.get(p.x) ?? []), p]);
+    for (const lane of lanes.values()) {
+      const sorted = [...lane].sort((a, b) => a.y - b.y);
+      sorted.slice(1).forEach((p, i) => {
+        const above = sorted[i];
+        expect(p.y).toBe(above.y + above.height + 32); // ARRANGE_GAP, nothing more
+      });
+    }
+  });
+
+  it('leaves a tall box tall instead of fitting it to a row', () => {
+    const [photo] = placed(mixed, area, 'stack', 2);
+    expect(photo.height / photo.width).toBeCloseTo(640 / 280, 1);
+  });
+
+  it('never overlaps two boxes', () => {
+    const out = placed(mixed, area, 'stack', 2);
+    for (const a of out) {
+      for (const b of out) {
+        if (a.id === b.id) continue;
+        const apart =
+          a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+        expect(apart).toBe(true);
+      }
+    }
+  });
+
+  it('leaves a column at the size it owns', () => {
+    const withColumn: Box[] = [
+      ...mixed,
+      { id: 'col', x: 0, y: 0, width: 300, height: 900, fixed: true },
+    ];
+    const col = placed(withColumn, area, 'stack', 2).find((p) => p.id === 'col')!;
+    expect(col.width).toBe(300);
+    expect(col.height).toBe(900);
   });
 });
 

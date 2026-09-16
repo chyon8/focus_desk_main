@@ -19,6 +19,13 @@ export interface Box {
    * scales every box to fill its cell.
    */
   natural?: { width: number; height: number };
+  /**
+   * How many times its designed size this box may be drawn at, when the caller
+   * wants a say. A photo reads better the bigger it is drawn and a clock face does
+   * not, so a stack is only worth looking at when the two are told apart — and
+   * layout has no idea what a widget holds. Defaults to `MAX_GROWTH`.
+   */
+  grow?: number;
 }
 
 /** Where a box ends up after an arrange — grid mode resizes as well as moves. */
@@ -30,10 +37,15 @@ export interface Placement {
 }
 
 // A column count covers rows (1) and a single row (n), so those need no own mode.
-export type ArrangeMode = 'grid' | 'cascade' | 'focus';
+// These two are what a user picks and a space remembers. Focus and Cascade were
+// in the menu too and were cut: four names nobody could tell apart from the menu
+// alone, and Cascade piled widgets on each other, the opposite of tidying.
+export type ArrangeMode = 'grid' | 'stack';
+// Focus stays for the layouts the app makes on its own — a Chrome import and the
+// first run — where the two tabs read last should come back big.
+export type LayoutMode = ArrangeMode | 'focus';
 
 export const ARRANGE_GAP = 32;
-const CASCADE_STEP = 36;
 const FIT_PADDING = 20;
 
 export interface Area {
@@ -112,21 +124,24 @@ function sizeIn(box: Box, cell: Area, growth = MAX_GROWTH): { width: number; hei
 }
 
 /**
- * How well a `cols`-wide grid uses the screen: the area its boxes cover once the
+ * How well a finished layout uses the screen: the area its boxes cover once the
  * camera frames the block, which is what an arrange is followed by.
  *
- * Covered area on its own stopped telling the two apart once growth was capped —
- * every column count fits everything at full size, so they all scored the same
+ * Covered area on its own stopped telling two column counts apart once growth was
+ * capped — every count fits everything at full size, so they all scored the same
  * and the first one won, which is a single tall stack. Weighting by the zoom the
  * fit would land at is what puts a block shaped like the screen in front.
  */
-function gridScore(boxes: Box[], inner: Area, cols: number): number {
-  const placed = Object.values(fillInto(boxes, inner, cols, 0));
+function fitScore(placed: Placement[], inner: Area): number {
   if (placed.length === 0) return 0;
   const width = Math.max(1, Math.max(...placed.map((p) => p.x + p.width)));
   const height = Math.max(1, Math.max(...placed.map((p) => p.y + p.height)));
   const zoom = Math.min(inner.width / width, inner.height / height);
   return placed.reduce((sum, p) => sum + p.width * p.height, 0) * zoom * zoom;
+}
+
+function gridScore(boxes: Box[], inner: Area, cols: number): number {
+  return fitScore(Object.values(fillInto(boxes, inner, cols, 0)), inner);
 }
 
 /**
@@ -220,6 +235,97 @@ function fillGrid(boxes: Box[], area: Area, columns?: number): Record<string, Pl
   const inner = innerArea(area);
   const cols = Math.max(1, Math.min(boxes.length, columns ?? bestColumns(boxes, inner)));
   return fillInto(boxes, inner, cols, 0);
+}
+
+/**
+ * The size a box takes on a lane this wide. Only the width is capped — a lane has
+ * no height to fill, so `Infinity` leaves the aspect to say how tall the box comes
+ * out, which is what keeps a portrait photo portrait.
+ *
+ * The ceiling is the box's own `grow` where it has one, so a photo fills its lane
+ * while a clock stays the size it was designed at and is centred on the lane.
+ */
+function sizeOnLane(box: Box, laneWidth: number) {
+  return sizeIn(box, { width: laneWidth, height: Infinity }, box.grow ?? MAX_GROWTH);
+}
+
+/**
+ * Which lane each box lands on: the shortest lane so far takes the next box.
+ * `heightOf` says how tall a box counts as while that is being measured.
+ */
+function assignLanes(boxes: Box[], cols: number, heightOf: (box: Box, lane: number) => number) {
+  const heights = Array<number>(cols).fill(0);
+  const widths = Array<number>(cols).fill(0);
+  const laneOf = boxes.map((box) => {
+    const lane = heights.indexOf(Math.min(...heights));
+    heights[lane] += heightOf(box, lane) + ARRANGE_GAP;
+    widths[lane] = Math.max(widths[lane], box.width);
+    return lane;
+  });
+  return { laneOf, widths };
+}
+
+/**
+ * Lanes: each box goes on the shortest lane so far and sits directly under the one
+ * before it. Nothing lines up across lanes, which is the point — a grid makes every
+ * row as tall as its tallest widget, so a tall photo leaves a band of empty space
+ * beside every short widget in its row.
+ *
+ * A lane is as wide as the widest box that landed on it, so lanes differ in width.
+ * One width for all of them would either squeeze a browser (900 wide by default) or
+ * blow a photo (280) up to match it.
+ *
+ * Lanes are assigned twice. The first pass has to measure boxes at their own
+ * heights, because lane widths are not known until the boxes are on them — and a
+ * box grown to its lane's width is taller than that, so the first pass leaves the
+ * lanes ending at very different heights. The second pass measures the grown
+ * heights the first pass worked out, which levels the bottom of the block.
+ */
+function stackInto(boxes: Box[], cols: number): Record<string, Placement> {
+  const first = assignLanes(boxes, cols, (box) => box.height);
+  const { laneOf, widths: laneWidths } = assignLanes(boxes, cols, (box, lane) =>
+    // The widths from the first pass are the best guess available here; a box that
+    // changes lane in this pass is measured against the lane it is leaving.
+    sizeOnLane(box, first.widths[lane] || box.width).height
+  );
+
+  const laneXs: number[] = [];
+  laneWidths.reduce((x, width, i) => {
+    laneXs[i] = x;
+    return x + width + (width > 0 ? ARRANGE_GAP : 0);
+  }, 0);
+
+  const tops = Array<number>(cols).fill(0);
+  const placements: Record<string, Placement> = {};
+  boxes.forEach((box, i) => {
+    const lane = laneOf[i];
+    const size = sizeOnLane(box, laneWidths[lane]);
+    placements[box.id] = {
+      x: Math.round(laneXs[lane] + (laneWidths[lane] - size.width) / 2),
+      y: Math.round(tops[lane]),
+      width: size.width,
+      height: size.height,
+    };
+    tops[lane] += size.height + ARRANGE_GAP;
+  });
+  return placements;
+}
+
+function stackGrid(boxes: Box[], area: Area, columns?: number): Record<string, Placement> {
+  const inner = innerArea(area);
+  if (columns) return stackInto(boxes, Math.max(1, Math.min(boxes.length, columns)));
+
+  let best = stackInto(boxes, 1);
+  let bestScore = fitScore(Object.values(best), inner);
+  for (let cols = 2; cols <= boxes.length; cols++) {
+    const placed = stackInto(boxes, cols);
+    const score = fitScore(Object.values(placed), inner);
+    if (score > bestScore) {
+      bestScore = score;
+      best = placed;
+    }
+  }
+  return best;
 }
 
 /** How many boxes get the bigger tile, and how many cells across one of those is. */
@@ -337,30 +443,20 @@ function focusGrid(boxes: Box[], area: Area): Record<string, Placement> {
  * the first box takes the first cell. The caller decides what that order means.
  * - grid: fills `area` — `columns` per row, or the count that wastes the least
  *   space when omitted. Boxes are resized to their cells (aspect kept).
+ * - stack: lanes packed top to bottom, rows not lined up across lanes. Tall
+ *   widgets stay tall.
  * - focus: a mosaic — the first two get a tile twice the size, on the same grid.
- * - cascade: overlapping stagger, like a deck of windows. Sizes are left alone.
  */
 export function arrange(
   boxes: Box[],
   area: Area,
-  mode: ArrangeMode = 'grid',
+  mode: LayoutMode = 'grid',
   columns?: number
 ): Record<string, Placement> {
   if (boxes.length === 0) return {};
   const ordered = boxes;
 
-  if (mode === 'cascade') {
-    const placements: Record<string, Placement> = {};
-    ordered.forEach((box, i) => {
-      placements[box.id] = {
-        x: i * CASCADE_STEP,
-        y: i * CASCADE_STEP,
-        width: box.width,
-        height: box.height,
-      };
-    });
-    return placements;
-  }
+  if (mode === 'stack') return stackGrid(ordered, area, columns);
 
   if (mode === 'focus') return focusGrid(ordered, area);
 

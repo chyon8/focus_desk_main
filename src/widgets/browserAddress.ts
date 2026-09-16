@@ -98,6 +98,9 @@ const GOOGLE_HOST = /(^|\.)google\.[a-z.]+$/i;
  * (2026-09-13). What is kept instead:
  *
  * - a block or challenge page: the page it was guarding (`continue`), not itself
+ * - Anubis's proof-of-work page (`/.within.website/…`, on Unsplash): the page it
+ *   was guarding (`redir`). Saved as itself on 2026-09-16, so the widget opened
+ *   on the check every time
  * - a Google search: without the per-visit parameters above
  * - Cloudflare's challenge parameters (`__cf_chl_*`): dropped for the same reason
  */
@@ -113,6 +116,21 @@ export function addressToSave(url: string): string {
   if (google && address.pathname.startsWith('/sorry/')) {
     const next = address.searchParams.get('continue');
     return next && !next.includes('/sorry/') ? addressToSave(next) : `${address.origin}/`;
+  }
+
+  if (address.pathname.startsWith('/.within.website')) {
+    const next = address.searchParams.get('redir');
+    if (!next) return `${address.origin}/`;
+    try {
+      const guarded = new URL(next, address.origin);
+      // Only a page on the same site: `redir` is whatever the query says.
+      if (guarded.origin === address.origin && !guarded.pathname.startsWith('/.within.website')) {
+        return addressToSave(guarded.toString());
+      }
+    } catch {
+      // A redir that is not an address falls through to the home page.
+    }
+    return `${address.origin}/`;
   }
 
   let changed = false;

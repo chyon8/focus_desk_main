@@ -5,6 +5,14 @@ import { WidgetType } from '../spaces/types';
 export interface WidgetDef {
   label: string;
   defaultSize: { width: number; height: number };
+  /**
+   * How many times its default size a stack arrange may draw this widget. A photo
+   * or a page reads better the bigger it is drawn; a clock face, a timer and a
+   * calendar do not — past their designed size they are only bigger, and letting
+   * them fill a lane is what made a stack look like a wall of equal cards.
+   * Omitted means the arrange's own ceiling (half again).
+   */
+  arrangeGrow?: number;
   createData: () => Record<string, unknown>;
 }
 
@@ -12,6 +20,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   todo: {
     label: 'Todo',
     defaultSize: { width: 320, height: 420 },
+    arrangeGrow: 1.2,
     createData: () => ({ items: [], theme: 'LIGHT' }),
   },
   memo: {
@@ -23,11 +32,13 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   timer: {
     label: 'Timer',
     defaultSize: { width: 340, height: 340 },
+    arrangeGrow: 1,
     createData: () => ({ duration: 25 * 60, timeLeft: 25 * 60, isRunning: false, mode: 'FOCUS' }),
   },
   clock: {
     label: 'Clock',
     defaultSize: { width: 320, height: 400 },
+    arrangeGrow: 1,
     createData: () => ({ theme: 'LIGHT' }),
   },
   kanban: {
@@ -46,11 +57,14 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   calendar: {
     label: 'Calendar',
     defaultSize: { width: 340, height: 360 },
+    arrangeGrow: 1,
     createData: () => ({ theme: 'LIGHT' }),
   },
   photo: {
     label: 'Photo',
     defaultSize: { width: 280, height: 320 },
+    // The one widget worth blowing up: a photo is the picture, not a frame round it.
+    arrangeGrow: 2.5,
     createData: () => ({ url: '', caption: '' }),
   },
   sketch: {
@@ -61,6 +75,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   app: {
     label: 'App',
     defaultSize: { width: 280, height: 320 },
+    arrangeGrow: 1,
     createData: () => ({ appKey: '', name: '', icon: null }),
   },
   column: {

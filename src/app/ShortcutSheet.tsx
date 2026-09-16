@@ -10,7 +10,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     items: [
       ['K', 'Open anything: search'],
       ['N', 'Add a widget'],
-      ['G', 'Tidy up: move and resize the widgets'],
+      ['G', 'Tidy up, the way this space was arranged last'],
       ['F', 'Fit on screen: move the camera only'],
       ['M', 'Fullscreen'],
       ['[  ]', 'Filling the screen: the widget beside this one'],

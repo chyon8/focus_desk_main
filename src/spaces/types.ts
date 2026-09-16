@@ -1,9 +1,10 @@
 import type { Camera } from '../canvas/camera';
+import type { ArrangeMode } from '../canvas/layout';
 
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 export type WidgetType =
   | 'todo'
@@ -80,6 +81,13 @@ export interface SpaceDoc {
    * 단색 배경 위에 까는 무늬. 없으면 격자다. 사진 배경에는 아무것도 안 깔린다(SceneLayer).
    */
   pattern?: 'none' | 'grid' | null;
+  /**
+   * 이 공간에서 마지막으로 쓴 정렬. 없으면 Auto 격자다. G키는 이 값으로 정렬하므로
+   * 사진 공간은 Stack, 문서 공간은 격자를 각각 기억한다 — 정렬은 화면을 보는 방식이
+   * 아니라 위젯 위치를 실제로 덮어쓰는 동작이라, 공간마다 마지막에 쓴 것이 다음 기본이
+   * 되는 편이 모드를 매번 고르는 것보다 손이 덜 간다.
+   */
+  arrange?: { mode: ArrangeMode; columns?: number } | null;
   camera: Camera;
   ambience: AmbienceLevels;
   widgets: Record<string, WidgetDoc>;

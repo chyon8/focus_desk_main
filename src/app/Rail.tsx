@@ -22,7 +22,7 @@ import { getTheme } from '../themes/themes';
 import type { SceneSpec } from '../themes/types';
 import { isComposing } from './ime';
 import { ChromeImportPanel } from './ChromeImportPanel';
-import { CanvasTools } from './Dock';
+import { ArrangeTools, CanvasTools } from './Dock';
 import { SettingsPanel } from './SettingsPanel';
 import { SpaceSessionPanel } from './SpaceSessionPanel';
 
@@ -316,6 +316,7 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
             <div className="flex-1" />
             <div className="rail-sep" />
 
+            <ArrangeTools />
             <CanvasTools />
 
             <div className="rail-sep" />

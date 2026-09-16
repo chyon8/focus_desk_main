@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Check, Chrome, LayoutGrid, Plus } from 'lucide-react';
 import type { Camera } from '../canvas/camera';
-import { arrange, fitCamera, type ArrangeMode, type Box } from '../canvas/layout';
+import { arrange, fitCamera, type LayoutMode, type Box } from '../canvas/layout';
 import { WIDGET_DEFS } from '../widgets/defs';
 import { assetUrl } from '../spaces/backgrounds';
 import { OPEN_TABS, spacesFrom, windowChoices, type WindowChoice } from '../spaces/chromeImport';
@@ -269,7 +269,7 @@ interface Planned {
  * `mode` is `focus` for the Chrome path: an even grid would make the tabs the
  * user was reading the same size as the ones they were not.
  */
-function layOut(planned: Planned[], spaceName: string, mode: ArrangeMode = 'grid') {
+function layOut(planned: Planned[], spaceName: string, mode: LayoutMode = 'grid') {
   const store = useSpaceStore.getState();
   const area = canvasArea();
 

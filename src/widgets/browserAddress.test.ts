@@ -57,6 +57,18 @@ describe('addressToSave', () => {
     expect(addressToSave(blocked)).toBe('https://www.google.com/search?q=major+7');
   });
 
+  it('keeps the page an Anubis check was guarding, not the check', () => {
+    expect(addressToSave('https://unsplash.com/.within.website?redir=%2F')).toBe('https://unsplash.com/');
+    expect(
+      addressToSave(
+        'https://unsplash.com/.within.website/x/cmd/anubis/api/pass-challenge?redir=%2Fs%2Fphotos%2Fsea%3Fo%3D1&nonce=1'
+      )
+    ).toBe('https://unsplash.com/s/photos/sea?o=1');
+    expect(addressToSave('https://unsplash.com/.within.website?redir=https%3A%2F%2Fevil.test%2F')).toBe(
+      'https://unsplash.com/'
+    );
+  });
+
   it('falls back to the Google home page when the block page guards nothing', () => {
     expect(addressToSave('https://www.google.com/sorry/index?q=abc')).toBe('https://www.google.com/');
   });

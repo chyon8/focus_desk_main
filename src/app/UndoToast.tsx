@@ -14,11 +14,13 @@ const VISIBLE_MS = 8000;
  * (D-061). Deleting a space works the same way, and takes its logged time and
  * its logins with it, so nothing is actually deleted until this clears. Moving
  * widgets to another space is here too: they are off screen afterwards, so
- * without this there is no way to tell where they went.
+ * without this there is no way to tell where they went. An arrange is last: it
+ * only moves and resizes, but a desk placed by hand cannot be put back by hand.
  */
 export const UndoToast: React.FC = () => {
   const removedWidget = useSpaceStore((s) => s.lastRemoved);
   const moved = useSpaceStore((s) => s.lastMoved);
+  const arranged = useSpaceStore((s) => s.lastArranged);
   const removedSpace = useSpaceStore((s) => s.lastRemovedSpace);
   // The selection bar owns the bottom slot while it is up; the toast sits above it.
   const hasSelection = useUiStore((s) => s.selectedIds.length > 0);
@@ -53,7 +55,14 @@ export const UndoToast: React.FC = () => {
             undo: () => useSpaceStore.getState().undoMove(),
             dismiss: () => useSpaceStore.getState().dismissMoved(),
           }
-        : null;
+        : arranged
+          ? {
+              key: `arrange-${Object.keys(arranged.boxes).join()}`,
+              label: `Arranged ${Object.keys(arranged.boxes).length} widgets`,
+              undo: () => useSpaceStore.getState().undoArrange(),
+              dismiss: () => useSpaceStore.getState().dismissArranged(),
+            }
+          : null;
 
   const key = entry?.key;
   const dismiss = entry?.dismiss;
