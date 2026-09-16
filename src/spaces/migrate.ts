@@ -168,7 +168,7 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
   // grid, which is what every space did before, so there is nothing to convert.
   // Focus and Cascade were cut from the menu after some spaces had saved them, so
   // this runs whatever the version: an unknown mode goes back to the grid.
-  if (doc.arrange && doc.arrange.mode !== 'grid' && doc.arrange.mode !== 'stack') {
+  if (doc.arrange && !['grid', 'stack', 'masonry'].includes(doc.arrange.mode)) {
     doc.arrange = null;
   }
 

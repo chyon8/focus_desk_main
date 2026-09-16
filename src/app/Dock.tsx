@@ -6,7 +6,8 @@ import {
   Circle,
   Columns3,
   Copy,
-  GalleryVerticalEnd,
+  Kanban,
+  LayoutDashboard,
   LayoutGrid,
   Minus,
   Plus,
@@ -62,7 +63,8 @@ function zoomBy(factor: number) {
 /** What each arrange is called, and the icon that stands for it on the buttons. */
 const MODES: Record<ArrangeMode, { name: string; note: string; Icon: typeof LayoutGrid }> = {
   grid: { name: 'Grid', note: 'Rows line up', Icon: LayoutGrid },
-  stack: { name: 'Stack', note: 'Tall stays tall', Icon: GalleryVerticalEnd },
+  stack: { name: 'Stack', note: 'Even columns, in order', Icon: Kanban },
+  masonry: { name: 'Masonry', note: 'Packed by height', Icon: LayoutDashboard },
 };
 
 /**

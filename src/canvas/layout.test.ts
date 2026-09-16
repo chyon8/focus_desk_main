@@ -7,6 +7,7 @@ import {
   fitCamera,
   inLaneOrder,
   minZoomFor,
+  orderFor,
   inReadingOrder,
   isFullyVisible,
   placeInView,
@@ -197,6 +198,59 @@ describe('arrange stack', () => {
     expect(col.width).toBe(300);
     expect(col.height).toBe(900);
   });
+});
+
+describe('arrange masonry', () => {
+  const cards: Box[] = [300, 180, 420, 240, 260, 500, 200].map((height, i) => ({
+    id: String(i), x: 0, y: 0, width: 300, height,
+  }));
+
+  it('puts each card on the shortest lane so far', () => {
+    const out = arrange(cards, area, 'masonry', 3);
+    // 0,1,2 make the top row; lane 1 (180) is shortest, so 3 goes under 1.
+    expect(out['3'].x).toBe(out['1'].x);
+    expect(out['3'].y).toBe(180 + 32);
+    // Then lane 0 (300) is shortest.
+    expect(out['4'].x).toBe(out['0'].x);
+  });
+
+  it('gives every lane the same width', () => {
+    const out = Object.values(arrange(cards, area, 'masonry', 3));
+    expect(new Set(out.map((p) => p.width))).toEqual(new Set([300]));
+  });
+});
+
+describe('arranging twice', () => {
+  // Scattered, the way a desk looks before anything is arranged.
+  const desk: Box[] = [
+    { id: 'photo', x: 900, y: 40, width: 280, height: 420, natural: { width: 280, height: 320 } },
+    { id: 'memo', x: 100, y: 700, width: 420, height: 460, natural: { width: 420, height: 460 } },
+    { id: 'page', x: 50, y: 20, width: 900, height: 620, natural: { width: 900, height: 620 } },
+    { id: 'todo', x: 1400, y: 300, width: 320, height: 420, natural: { width: 320, height: 420 } },
+    { id: 'clock', x: 700, y: 900, width: 320, height: 400, natural: { width: 320, height: 400 } },
+    { id: 'col', x: 1200, y: 1000, width: 300, height: 900, fixed: true },
+    { id: 'timer', x: 300, y: 1500, width: 340, height: 340, natural: { width: 340, height: 340 } },
+  ];
+
+  for (const mode of ['grid', 'stack', 'masonry'] as const) {
+    for (const columns of [undefined, 3]) {
+      it(`gives the same desk in ${mode} (${columns ?? 'auto'} columns)`, () => {
+        const once = (boxes: Box[]) => {
+          const out = arrange(orderFor(mode, boxes), area, mode, columns);
+          return boxes.map((box) => ({ ...box, ...out[box.id] }));
+        };
+        const first = once(desk);
+        const second = once(first);
+        const third = once(second);
+        for (const [i, box] of second.entries()) {
+          for (const key of ['x', 'y', 'width', 'height'] as const) {
+            expect(Math.abs(box[key] - first[i][key])).toBeLessThanOrEqual(2);
+            expect(Math.abs(third[i][key] - first[i][key])).toBeLessThanOrEqual(2);
+          }
+        }
+      });
+    }
+  }
 });
 
 describe('arrange focus', () => {

@@ -31,10 +31,11 @@ export interface Placement {
 }
 
 // A column count covers rows (1) and a single row (n), so those need no own mode.
-// These two are what a user picks and a space remembers. Focus and Cascade were
+// These are what a user picks and a space remembers. `stack` is the board layout
+// (even lanes filled row by row); `masonry` packs the same lanes by height. Focus and Cascade were
 // in the menu too and were cut: four names nobody could tell apart from the menu
 // alone, and Cascade piled widgets on each other, the opposite of tidying.
-export type ArrangeMode = 'grid' | 'stack';
+export type ArrangeMode = 'grid' | 'stack' | 'masonry';
 // Focus stays for the layouts the app makes on its own — a Chrome import and the
 // first run — where the two tabs read last should come back big.
 export type LayoutMode = ArrangeMode | 'focus';
@@ -275,14 +276,49 @@ function stackInto(boxes: Box[], cols: number): Record<string, Placement> {
   return placements;
 }
 
-function stackGrid(boxes: Box[], area: Area, columns?: number): Record<string, Placement> {
-  const inner = innerArea(area);
-  if (columns) return stackInto(boxes, Math.max(1, Math.min(boxes.length, columns)));
+/**
+ * Masonry: the same even lanes, but each card goes on whichever lane is shortest
+ * so far (the leftmost on a tie), so the lanes end close together and the cards
+ * no longer sit in rows.
+ *
+ * Every lane is as wide as the widest box that owns its size, so a lane's width
+ * never depends on which cards land on it — with widths that followed the cards
+ * (the first stack, 2026-09-16), placing a card changed the lane it was measured
+ * against, and the same desk came out differently from one arrange to the next.
+ */
+function masonryInto(boxes: Box[], cols: number): Record<string, Placement> {
+  const width = Math.max(LANE_WIDTH, ...boxes.filter((box) => box.fixed).map((box) => box.width));
+  const tops = Array<number>(cols).fill(0);
+  const placements: Record<string, Placement> = {};
+  for (const box of boxes) {
+    const lane = tops.indexOf(Math.min(...tops));
+    const w = box.fixed ? box.width : width;
+    const height = box.fixed ? box.height : Math.round((box.height * w) / box.width);
+    placements[box.id] = {
+      x: lane * (width + ARRANGE_GAP) + Math.round((width - w) / 2),
+      y: tops[lane],
+      width: w,
+      height,
+    };
+    tops[lane] += height + ARRANGE_GAP;
+  }
+  return placements;
+}
 
-  let best = stackInto(boxes, 1);
+/** A lane layout at `columns` lanes, or at the count that fills the screen best. */
+function laneGrid(
+  laneInto: (boxes: Box[], cols: number) => Record<string, Placement>,
+  boxes: Box[],
+  area: Area,
+  columns?: number
+): Record<string, Placement> {
+  const inner = innerArea(area);
+  if (columns) return laneInto(boxes, Math.max(1, Math.min(boxes.length, columns)));
+
+  let best = laneInto(boxes, 1);
   let bestScore = fitScore(Object.values(best), inner);
   for (let cols = 2; cols <= boxes.length; cols++) {
-    const placed = stackInto(boxes, cols);
+    const placed = laneInto(boxes, cols);
     const score = fitScore(Object.values(placed), inner);
     if (score > bestScore) {
       bestScore = score;
@@ -321,6 +357,42 @@ export function inLaneOrder<T extends Box>(boxes: T[]): T[] {
     for (const lane of lanes) if (lane.cards[row]) ordered.push(lane.cards[row]);
   }
   return ordered;
+}
+
+/**
+ * Rows, read the way a grid lays them out: boxes whose top-bottom spans overlap
+ * are one row; rows go top to bottom and boxes in a row left to right. A grid
+ * centres each box in its row, so tops within a row differ and a plain sort by
+ * top would shuffle the row.
+ */
+export function inRowOrder<T extends Box>(boxes: T[]): T[] {
+  const rows: { bottom: number; boxes: T[] }[] = [];
+  for (const box of [...boxes].sort((a, b) => a.y - b.y || a.x - b.x)) {
+    const row = rows[rows.length - 1];
+    if (row && box.y < row.bottom) {
+      row.boxes.push(box);
+      row.bottom = Math.max(row.bottom, box.y + box.height);
+    } else {
+      rows.push({ bottom: box.y + box.height, boxes: [box] });
+    }
+  }
+  return rows.flatMap((row) => row.boxes.sort((a, b) => a.x - b.x));
+}
+
+/**
+ * The order an arrange takes its boxes in: read off where they sit now, by the
+ * same rule the mode lays them out with, so arranging a desk twice gives the same
+ * desk. Clicking a widget used to reorder the next arrange (grid went most
+ * recently used first), and the user wants the same result every time
+ * (2026-09-16). To reorder, move the cards.
+ *
+ * Masonry reads top first, then left: its cards are placed at the lowest free top,
+ * leftmost on a tie, so that is the order they were placed in.
+ */
+export function orderFor<T extends Box>(mode: ArrangeMode, boxes: T[]): T[] {
+  if (mode === 'stack') return inLaneOrder(boxes);
+  if (mode === 'masonry') return inReadingOrder(boxes);
+  return inRowOrder(boxes);
 }
 
 /** How many boxes get the bigger tile, and how many cells across one of those is. */
@@ -438,8 +510,8 @@ function focusGrid(boxes: Box[], area: Area): Record<string, Placement> {
  * the first box takes the first cell. The caller decides what that order means.
  * - grid: fills `area` — `columns` per row, or the count that wastes the least
  *   space when omitted. Boxes are resized to their cells (aspect kept).
- * - stack: lanes packed top to bottom, rows not lined up across lanes. Tall
- *   widgets stay tall.
+ * - stack: even lanes, every card as wide as its lane, dealt out row by row.
+ * - masonry: the same lanes, each card on the shortest lane so far.
  * - focus: a mosaic — the first two get a tile twice the size, on the same grid.
  */
 export function arrange(
@@ -451,7 +523,8 @@ export function arrange(
   if (boxes.length === 0) return {};
   const ordered = boxes;
 
-  if (mode === 'stack') return stackGrid(ordered, area, columns);
+  if (mode === 'stack') return laneGrid(stackInto, ordered, area, columns);
+  if (mode === 'masonry') return laneGrid(masonryInto, ordered, area, columns);
 
   if (mode === 'focus') return focusGrid(ordered, area);
 

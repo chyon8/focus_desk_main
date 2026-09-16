@@ -9,10 +9,10 @@ import {
   clampCamera,
   findFreeSpot,
   fitCamera,
-  inLaneOrder,
   inReadingOrder,
   isFullyVisible,
   minZoomFor,
+  orderFor,
   placeInView,
 } from '../canvas/layout';
 import {
@@ -642,16 +642,12 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         : { x: 0, y: 0 };
 
       const area = canvasArea();
-      // A grid goes most recently used first: `z` is bumped every time a widget is
-      // touched, so the top of the stack is also the thing worked on last. A stack
-      // keeps the order the cards already sit in, like a board — sorting it by use
-      // moved every card each time G was pressed.
+      // In the order the widgets already sit, so the same desk arranges the same
+      // way every time (`orderFor`).
       // `natural` is the size the widget was designed at, which is the ceiling an
       // arrange grows it against — without it a grid fills the cell it is given,
       // and one clock in a space got half the screen.
-      const ordered = (
-        chosen.mode === 'stack' ? inLaneOrder(boxes) : [...boxes].sort((a, b) => b.z - a.z)
-      ).map((w) =>
+      const ordered = orderFor(chosen.mode, boxes).map((w) =>
         w.type === 'column'
           ? { ...w, fixed: true }
           : { ...w, natural: WIDGET_DEFS[w.type].defaultSize }
