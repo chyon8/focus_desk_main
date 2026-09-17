@@ -1,3 +1,4 @@
+import { partitionOf } from '../spaces/signIns';
 import { useSpaceStore } from '../stores/spaceStore';
 import { textToHtml } from '../widgets/memoContent';
 
@@ -18,12 +19,12 @@ export async function addDroppedContent(transfer: DataTransfer, at: { x: number;
   const uri = firstUri(transfer.getData('text/uri-list'));
   const text = transfer.getData('text/plain');
   const src = transfer.getData('text/html').match(IMG_SRC)?.[1] ?? (isWeb(uri) ? uri : '');
-  const { addWidget, activeSpaceId } = useSpaceStore.getState();
+  const { addWidget, activeSpaceId, spaces } = useSpaceStore.getState();
 
   if (src) {
     // Copied in rather than linked: a page that changes, or one behind a login,
     // would otherwise leave an empty frame on the canvas.
-    const saved = await window.images?.fromUrl(src, `persist:space-${activeSpaceId}`);
+    const saved = await window.images?.fromUrl(src, partitionOf(spaces[activeSpaceId]));
     if (saved) {
       addWidget('photo', { url: saved, caption: '', fit: true }, at);
       return true;

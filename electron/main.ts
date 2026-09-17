@@ -26,6 +26,17 @@ if (process.env.FOCUS_DESK_PROFILE) {
   );
 }
 
+// One app per profile. Two copies on the same profile open the same cookie files
+// and overwrite each other's logins and bot-check passes — the likely cause of
+// Unsplash never getting past its check (2026-09-16, two dev runs on the real
+// profile). The lock lives in userData, so it is taken after the profile is set:
+// another FOCUS_DESK_PROFILE still runs alongside. A second launch brings the
+// first window forward and exits.
+if (!app.requestSingleInstanceLock()) {
+  console.log(`[focus-desk] already running on ${app.getPath('userData')} — quitting`);
+  app.exit(0);
+}
+
 // A debugging port, off unless asked for. Set it to drive a dev run over CDP —
 // the renderer cannot be inspected from outside without it, and adding the
 // switch by hand meant editing this file, which restarts whatever else is
@@ -426,4 +437,14 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+app.on('second-instance', () => {
+  if (!win || win.isDestroyed()) {
+    if (app.isReady()) createWindow();
+    return;
+  }
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
 });

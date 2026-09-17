@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Home, RotateCw, Star, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { partitionOf } from '../spaces/signIns';
 import { BrowserData } from '../spaces/types';
 import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 import { useWebAppStore } from '../stores/webappStore';
-import { addressToSave, hostOf, toAddress } from './browserAddress';
+import { addressToSave, hostOf, isCheckTitle, toAddress } from './browserAddress';
 import { BrowserStartPage } from './BrowserStartPage';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
 import { ALLOW_POPUPS, ERR_ABORTED, LINK_SHIM } from './browserLinks';
@@ -147,7 +148,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   const onFaviconRef = useRef(onFavicon);
   onFaviconRef.current = onFavicon;
   const favorites = useWebAppStore((s) => s.apps);
-  const spaceId = useSpaceStore((s) => s.activeSpaceId);
+  const partition = useSpaceStore((s) => partitionOf(s.spaces[s.activeSpaceId]));
   const [address, setAddress] = useState(savedUrl);
   const [history, setHistory] = useState({ back: false, forward: false });
   const [isLoading, setIsLoading] = useState(false);
@@ -160,6 +161,13 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   // a new src would yank it back. Empty means the start page is showing, and the
   // first address typed is what mounts the guest.
   const initialUrl = useRef(savedUrl);
+  // A guest cannot change jars once loaded, so a new jar is a new guest (the
+  // `key` below). It opens where the page was, not where the widget started.
+  const partitionRef = useRef(partition);
+  if (partitionRef.current !== partition) {
+    partitionRef.current = partition;
+    initialUrl.current = savedUrl;
+  }
   // Page zoom — the browser's own ⌘+/⌘−. It re-lays the page out at a new size,
   // which the canvas zoom cannot do: that only scales what is already drawn.
   const zoom = data.zoom ?? 1;
@@ -296,6 +304,16 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     // signed-out visitors to youtube.com) and links navigate away.
     const readHistory = () => setHistory({ back: el.canGoBack(), forward: el.canGoForward() });
 
+    // The address a load started from, before any redirect. A check page that
+    // redirected to an address of its own is saved as this instead — see onTitle.
+    // Not taken while a check is showing: the check reloading itself would
+    // replace the page it is guarding.
+    let requested = '';
+    let checkShowing = false;
+    const onStartNavigation = (e: Electron.DidStartNavigationEvent) => {
+      if (e.isMainFrame && !e.isInPlace && !checkShowing) requested = e.url;
+    };
+
     const onNavigate = (e: Electron.DidNavigateEvent) => {
       setAddress(e.url);
       // A new site gets a blank header until it says its own name: otherwise the
@@ -306,7 +324,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
       update(sameSite ? { url } : { url, title: '', favicon: '' });
       // What the start page offers next time. Only full loads: a single-page
       // site would otherwise count a dozen times for one visit.
-      useSiteVisitStore.getState().record(e.url);
+      useSiteVisitStore.getState().record(url);
       setFailure(null);
       readHistory();
     };
@@ -332,7 +350,14 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
 
     // What the widget header wears, so several browsers can be told apart. Saved
     // in the widget so it is there before the page has loaded.
-    const onTitle = (e: Electron.PageTitleUpdatedEvent) => update({ title: e.title });
+    const onTitle = (e: Electron.PageTitleUpdatedEvent) => {
+      checkShowing = isCheckTitle(e.title);
+      if (checkShowing && requested && hostOf(requested) === hostOf(el.getURL())) {
+        update({ title: e.title, url: addressToSave(requested) });
+        return;
+      }
+      update({ title: e.title });
+    };
     const onFavicon = (e: Electron.PageFaviconUpdatedEvent) => {
       const src = e.favicons?.[0];
       if (!src) return;
@@ -356,6 +381,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     };
 
     el.addEventListener('dom-ready', onDomReady);
+    el.addEventListener('did-start-navigation', onStartNavigation);
     el.addEventListener('did-navigate', onNavigate);
     el.addEventListener('did-navigate-in-page', onNavigateInPage);
     el.addEventListener('focus', onUsed);
@@ -366,6 +392,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     el.addEventListener('did-fail-load', onFail);
     return () => {
       el.removeEventListener('dom-ready', onDomReady);
+      el.removeEventListener('did-start-navigation', onStartNavigation);
       el.removeEventListener('did-navigate', onNavigate);
       el.removeEventListener('did-navigate-in-page', onNavigateInPage);
       el.removeEventListener('focus', onUsed);
@@ -375,7 +402,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
       el.removeEventListener('did-stop-loading', onStop);
       el.removeEventListener('did-fail-load', onFail);
     };
-  }, [update, hasPage, id]);
+  }, [update, hasPage, id, partition]);
 
   useEffect(() => {
     if (contentsId.current !== null) view.current?.setZoomFactor(zoom);
@@ -539,11 +566,11 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
 
         {hasPage ? (
           <webview
+            key={partition}
             ref={view}
             src={initialUrl.current}
-            // Cookies and logins are scoped to the space, so the same site can be
-            // signed in as different accounts in different spaces (D-074).
-            partition={`persist:space-${spaceId}`}
+            // Shared by every shared space, or this space's own (D-074).
+            partition={partition}
             {...ALLOW_POPUPS}
             className="web-page absolute top-0 left-0"
             style={pageStyle}

@@ -200,4 +200,22 @@ describe('migrateSpace', () => {
     expect(migrateSpace(saved('focus')).arrange).toBeNull();
     expect(migrateSpace(saved('stack')).arrange).toEqual({ mode: 'stack' });
   });
+
+  it('keeps a space saved before v15 on its own sign-ins, and leaves a newer one as it is', () => {
+    const saved = (schemaVersion: number, signIns?: string) =>
+      ({
+        id: 's',
+        schemaVersion,
+        name: 'Client',
+        themeId: 'swiss',
+        background: null,
+        camera: { x: 0, y: 0, zoom: 1 },
+        widgets: {},
+        signIns,
+      }) as unknown as SpaceDoc;
+
+    expect(migrateSpace(saved(14)).signIns).toBe('separate');
+    expect(migrateSpace(saved(SCHEMA_VERSION, 'shared')).signIns).toBe('shared');
+    expect(migrateLegacySpaces(legacy)[0].signIns).toBe('separate');
+  });
 });

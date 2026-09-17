@@ -1,17 +1,18 @@
 import { ipcMain, session } from 'electron';
+import { isSpacePartition } from '../../src/spaces/signIns';
 import { siteOf } from '../../src/widgets/browserAddress';
 
 /**
- * Per-space web sessions (D-074).
+ * The sign-in jars (D-074).
  *
- * Browser and web app widgets run on `persist:space-<id>`, so every space has a
- * cookie jar of its own: the same site can be signed in as a different account
- * in each one. That has been true since the browser widget was written, and had
- * no interface at all — which made one of the few things this app does that a
- * browser cannot into a feature nobody could see or undo.
+ * Browser and web app widgets run on the shared jar or on a space's own
+ * (`partitionOf`). The panel names the jar it is showing, and these handlers
+ * take that name — anything that is not one of those jars is refused, so the
+ * renderer cannot reach another session by naming it.
  */
-export function partitionFor(spaceId: string) {
-  return `persist:space-${spaceId}`;
+function jar(partition: unknown) {
+  if (!isSpacePartition(partition)) throw new Error(`Not a sign-in jar: ${String(partition)}`);
+  return session.fromPartition(partition);
 }
 
 /** More sites than this in one space is a list nobody reads to the end. */
@@ -49,14 +50,14 @@ export function isLoginCookie(
 
 export function registerSessionIpc() {
   /**
-   * Which sites this space is signed in on.
+   * Which sites this jar is signed in on.
    *
    * Cookies are the evidence: a site holding one knows who you are. Not the
    * account name — no API gives that, and the panel's job is to show that the
    * jars are separate and to empty one, not to read anybody's mail.
    */
-  ipcMain.handle('session:summary', async (_event, spaceId: string) => {
-    const cookies = await session.fromPartition(partitionFor(spaceId)).cookies.get({});
+  ipcMain.handle('session:summary', async (_event, partition: string) => {
+    const cookies = await jar(partition).cookies.get({});
     const counts = new Map<string, number>();
     for (const cookie of cookies) {
       if (!isLoginCookie(cookie)) continue;
@@ -71,10 +72,10 @@ export function registerSessionIpc() {
     return { sites, total: counts.size };
   });
 
-  /** Signs this space out of one site, leaving the rest of the jar alone. */
-  ipcMain.handle('session:clear-site', async (_event, spaceId: string, site: string) => {
-    const jar = session.fromPartition(partitionFor(spaceId)).cookies;
-    const cookies = await jar.get({});
+  /** Signs this jar out of one site, leaving the rest of it alone. */
+  ipcMain.handle('session:clear-site', async (_event, partition: string, site: string) => {
+    const cookieJar = jar(partition).cookies;
+    const cookies = await cookieJar.get({});
     for (const cookie of cookies) {
       const domain = (cookie.domain ?? '').replace(/^\./, '').toLowerCase();
       // Grouped by the same rule the panel lists them with, so clearing
@@ -83,12 +84,12 @@ export function registerSessionIpc() {
       // `remove` wants the URL the cookie would be sent to, which has to be
       // rebuilt: a secure cookie is not removed through http.
       const url = `${cookie.secure ? 'https' : 'http'}://${domain}${cookie.path ?? '/'}`;
-      await jar.remove(url, cookie.name);
+      await cookieJar.remove(url, cookie.name);
     }
   });
 
-  /** Signs this space out of everything. The other spaces are untouched. */
-  ipcMain.handle('session:clear', async (_event, spaceId: string) => {
-    await session.fromPartition(partitionFor(spaceId)).clearStorageData();
+  /** Signs this jar out of everything. Spaces on another jar are untouched. */
+  ipcMain.handle('session:clear', async (_event, partition: string) => {
+    await jar(partition).clearStorageData();
   });
 }

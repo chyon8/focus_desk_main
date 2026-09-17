@@ -56,7 +56,7 @@ docs/
 - 웹 탭 = 브라우저 위젯 안의 **`<webview>` 엘리먼트**. 웹 컨텐츠가 페이지 레이아웃 안에 있으므로 위치·스케일·클리핑·z-index를 브라우저가 처리 — main process 동기화 코드 없음
 - 캔버스 줌은 월드 컨테이너의 CSS 트랜스폼이라 **페이지 리플로우가 없다**(확대만 된다)
 - 그래서 **페이지 줌이 따로 있다**: 주소창 −/%/+ 와 ⌘+·⌘−·⌘0 → `setZoomFactor`, `data.zoom`에 영속. 위젯을 드래그해 키우는 건 확대가 아니라 **뷰포트를 넓히는 것**
-- 스페이스별 `partition="persist:space-<id>"` → 로그인 분리
+- 로그인 저장소는 `partitionOf`([signIns.ts](../src/spaces/signIns.ts))가 정한다. 기본은 모든 공간이 `persist:shared` 하나를 같이 쓰고, `signIns: 'separate'`인 공간만 `persist:space-<id>`를 쓴다. v15 이전에 저장된 공간은 `separate`로 옮겼다. 공간을 지우면 그 공간 자신의 저장소만 지운다
 - 스페이스 전환 = 언마운트 = 웹 컨텐츠 파괴. 돌아오면 `data.url`(마지막 방문 주소)로 재로드
 - ⚠️ 과거 WebContentsView 방식은 폐기했다. 그 흔적(스냅샷·hibernation·클리핑)은 코드에 남아 있지 않음
 

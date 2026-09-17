@@ -1,3 +1,4 @@
+import { partitionOf } from '../spaces/signIns';
 import type { WidgetType } from '../spaces/types';
 import { showWhereItLanded, useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
@@ -59,8 +60,8 @@ export async function sendToCanvas(sourceId: string, kind: 'image' | 'text', val
       'Text taken out of the page'
     );
   } else {
-    const spaceId = useSpaceStore.getState().activeSpaceId;
-    const url = await window.images?.fromUrl(value, `persist:space-${spaceId}`);
+    const { spaces, activeSpaceId } = useSpaceStore.getState();
+    const url = await window.images?.fromUrl(value, partitionOf(spaces[activeSpaceId]));
     if (!url) {
       useUiStore.getState().showNotice('That image could not be saved.');
       return;

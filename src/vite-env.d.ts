@@ -88,11 +88,11 @@ declare global {
       tabs: () => Promise<import('../electron/ipc/chrome').ChromeTabsResult>;
       showAutomationSettings: () => Promise<void>;
     };
-    /** Per-space cookie jars: the same site, a different account in each space. */
+    /** Sign-in jars, named by `partitionOf`: the shared one or a space's own. */
     session?: {
-      summary: (spaceId: string) => Promise<{ sites: string[]; total: number }>;
-      clearSite: (spaceId: string, site: string) => Promise<void>;
-      clear: (spaceId: string) => Promise<void>;
+      summary: (partition: string) => Promise<{ sites: string[]; total: number }>;
+      clearSite: (partition: string, site: string) => Promise<void>;
+      clear: (partition: string) => Promise<void>;
     };
     spaces?: {
       list: () => Promise<unknown[]>;

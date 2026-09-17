@@ -87,6 +87,35 @@ const GOOGLE_VISIT_PARAMS = new Set([
 
 const GOOGLE_HOST = /(^|\.)google\.[a-z.]+$/i;
 
+/** Dropped only next to `js_challenge`: `solution` alone is an ordinary word for a site to use. */
+const REDDIT_CHECK_PARAMS = new Set(['js_challenge', 'solution', 'jsc_token', 'jsc_orig_r']);
+
+/**
+ * Titles of bot-check and block pages. Lower case, matched as a substring.
+ * Cloudflare translates its title, so its Korean and Japanese wording is here too.
+ */
+const CHECK_TITLES = [
+  'just a moment',
+  '잠시만 기다리십시오',
+  'しばらくお待ちください',
+  'attention required! | cloudflare',
+  'one more step',
+  'checking your browser',
+  'verify you are human',
+  'are you a robot',
+  'are you human',
+  "making sure you're not a bot",
+  'prove your humanity',
+  'access denied',
+  'access to this page has been denied',
+];
+
+/** Whether the page on screen is a bot check or a block page, going by its title. */
+export function isCheckTitle(title: string): boolean {
+  const text = title.trim().toLowerCase();
+  return CHECK_TITLES.some((t) => text.includes(t));
+}
+
 /**
  * The address a browser widget keeps for next time.
  *
@@ -103,6 +132,12 @@ const GOOGLE_HOST = /(^|\.)google\.[a-z.]+$/i;
  *   on the check every time
  * - a Google search: without the per-visit parameters above
  * - Cloudflare's challenge parameters (`__cf_chl_*`): dropped for the same reason
+ * - Cloudflare's own challenge paths (`/cdn-cgi/…`): the site's home page
+ * - Reddit's JS check (`js_challenge` with `solution`, `jsc_token`, `jsc_orig_r`):
+ *   the page it lands on after passing carries them, measured 2026-09-17
+ *
+ * Checks that keep an address of their own nobody listed here are caught by
+ * their title instead — see `isCheckTitle`.
  */
 export function addressToSave(url: string): string {
   let address: URL;
@@ -133,10 +168,14 @@ export function addressToSave(url: string): string {
     return `${address.origin}/`;
   }
 
+  if (address.pathname.startsWith('/cdn-cgi/')) return `${address.origin}/`;
+
+  const redditCheck = address.searchParams.has('js_challenge');
   let changed = false;
   for (const key of [...address.searchParams.keys()]) {
     const visitOnly =
       key.startsWith('__cf_chl_') ||
+      (redditCheck && REDDIT_CHECK_PARAMS.has(key)) ||
       (google && address.pathname === '/search' && GOOGLE_VISIT_PARAMS.has(key));
     if (visitOnly) {
       address.searchParams.delete(key);

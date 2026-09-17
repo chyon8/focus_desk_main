@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { LogOut, X } from 'lucide-react';
+import { KeyRound, LogOut, X } from 'lucide-react';
 import { centreCamera } from '../canvas/layout';
 import { getCamera, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
+import { partitionOf } from '../spaces/signIns';
 import { siteOf } from '../widgets/browserAddress';
 import type { WidgetDoc } from '../spaces/types';
 
@@ -34,14 +35,20 @@ function widgetsBySite(widgets: Record<string, WidgetDoc>) {
 /**
  * What this space is signed in to (D-074).
  *
- * Every space runs its browser and web app widgets on its own cookie jar, so the
- * same site is a different account in each one. Nothing said so and nothing could
- * undo it: the panel exists to make the separation visible and to empty one jar
- * without touching the others.
+ * A space signs in with the jar every shared space uses, or with its own, where
+ * the same site can be another account. The panel says which, switches it, and
+ * empties the jar it shows — and says when that reaches other spaces too.
  */
 export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const spaceId = useSpaceStore((s) => s.activeSpaceId);
   const spaceName = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.name ?? '');
+  const separate = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.signIns === 'separate');
+  const partition = useSpaceStore((s) => partitionOf(s.spaces[s.activeSpaceId]));
+  /** The other spaces a sign-out here also reaches. */
+  const sharedWith = useSpaceStore(
+    (s) =>
+      Object.values(s.spaces).filter((space) => space.id !== s.activeSpaceId && space.signIns !== 'separate')
+        .length
+  );
   const widgets = useSpaceStore((s) => s.spaces[s.activeSpaceId]?.widgets);
   const bySite = useMemo(() => widgetsBySite(widgets ?? {}), [widgets]);
   const [sites, setSites] = useState<string[] | null>(null);
@@ -50,8 +57,8 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
 
   const read = useCallback(() => {
     setSites(null);
-    void window.session?.summary(spaceId).then((summary) => setSites(summary.sites));
-  }, [spaceId]);
+    void window.session?.summary(partition).then((summary) => setSites(summary.sites));
+  }, [partition]);
 
   useEffect(read, [read]);
 
@@ -66,13 +73,13 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
 
   const signOutSite = async (site: string) => {
     setBusy(site);
-    await window.session?.clearSite(spaceId, site);
+    await window.session?.clearSite(partition, site);
     setBusy(null);
     read();
   };
 
   const signOutAll = async () => {
-    await window.session?.clear(spaceId);
+    await window.session?.clear(partition);
     setConfirmingAll(false);
     read();
   };
@@ -95,9 +102,28 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
           </button>
         </div>
         <p className="t-faint mb-3 text-meta leading-snug">
-          This space keeps its own cookies. The same site can be a different account in another
-          space, and signing out here leaves the others alone. Sites stay listed after their widget
-          is closed, because the cookies belong to the space.
+          {separate
+            ? 'This space keeps its own sign-ins. The same site can be a different account in another space, and signing out here leaves the others alone.'
+            : sharedWith > 0
+            ? `Shared with ${sharedWith === 1 ? '1 other space' : `${sharedWith} other spaces`}. Signing in or out here does the same there.`
+            : 'Shared. New spaces sign in with these too.'}{' '}
+          Sites stay listed after their widget is closed.
+        </p>
+
+        <button
+          onClick={() => useSpaceStore.getState().setSignIns(separate ? 'shared' : 'separate')}
+          className={`chrome-button w-full h-9 shrink-0 flex items-center justify-center gap-1.5 mb-1 rounded-control text-meta ${
+            separate ? 'chrome-button-on' : ''
+          }`}
+        >
+          <KeyRound size={13} />
+          Keep this space's sign-ins separate
+        </button>
+        <p className="t-faint mb-3 px-0.5 text-micro leading-snug">
+          {separate
+            ? 'Off, this space uses the shared sign-ins. Its own are kept for when you turn this back on.'
+            : 'On, this space uses sign-ins of its own.'}{' '}
+          Pages in this space reload.
         </p>
 
         {sites === null ? (
@@ -111,8 +137,8 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
           </div>
         ) : sites.length === 0 ? (
           <div className="t-faint text-ui leading-snug">
-            Not signed in anywhere yet. Open a site in a browser or web app widget in this space and
-            it will be listed here.
+            Not signed in anywhere yet. Sign in to a site in a browser or web app widget and it will
+            be listed here.
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-0.5">
@@ -150,7 +176,11 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
                   <button
                     onClick={() => void signOutSite(site)}
                     disabled={busy === site}
-                    title={`Sign this space out of ${site}`}
+                    title={
+                      separate
+                        ? `Sign this space out of ${site}`
+                        : `Sign out of ${site} in every shared space`
+                    }
                     className="press t-faint t-danger shrink-0 opacity-0 group-hover:opacity-100 disabled:opacity-40"
                   >
                     <LogOut size={11} />
@@ -164,8 +194,9 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
         {confirmingAll ? (
           <div className="glass border-hair shrink-0 mt-3 p-3 rounded-control border">
             <p className="t-ink text-meta leading-snug mb-2">
-              Sign “{spaceName}” out of every site? Its cookies, storage and caches are deleted.
-              Other spaces keep theirs.
+              {separate
+                ? `Sign “${spaceName}” out of every site? Its cookies, storage and caches are deleted. Other spaces keep theirs.`
+                : `Sign ${sharedWith > 0 ? `this and ${sharedWith === 1 ? '1 other space' : `${sharedWith} other spaces`}` : 'the shared sign-ins'} out of every site? Cookies, storage and caches are deleted. Separate spaces keep theirs.`}
             </p>
             <div className="flex gap-1.5">
               <button
@@ -189,7 +220,7 @@ export const SpaceSessionPanel: React.FC<{ onClose: () => void }> = ({ onClose }
             className="row shrink-0 mt-3 flex items-center justify-center gap-2 py-1.5 rounded-control text-meta disabled:opacity-40"
           >
             <LogOut size={11} />
-            Sign out of everything here
+            {separate ? 'Sign out of everything here' : 'Sign out of everything, in every shared space'}
           </button>
         )}
       </motion.div>

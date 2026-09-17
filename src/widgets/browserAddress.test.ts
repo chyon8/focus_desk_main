@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addressToSave, hostOf, toAddress } from './browserAddress';
+import { addressToSave, hostOf, isCheckTitle, toAddress } from './browserAddress';
 
 describe('toAddress', () => {
   it('adds a scheme to a bare host', () => {
@@ -85,10 +85,44 @@ describe('addressToSave', () => {
     );
   });
 
+  it("drops Reddit's JS check parameters, and only next to js_challenge", () => {
+    expect(
+      addressToSave('https://www.reddit.com/r/mac/?solution=e81f&js_challenge=1&jsc_token=7afd&jsc_orig_r=&sort=new')
+    ).toBe('https://www.reddit.com/r/mac/?sort=new');
+    expect(addressToSave('https://example.com/?solution=42')).toBe('https://example.com/?solution=42');
+  });
+
+  it("goes to the home page from a Cloudflare challenge path", () => {
+    expect(addressToSave('https://www.producthunt.com/cdn-cgi/challenge-platform/h/g/orchestrate/jsch/v1')).toBe(
+      'https://www.producthunt.com/'
+    );
+  });
+
   it('leaves every other address exactly as it was', () => {
     const url = 'https://www.youtube.com/watch?v=abc&ei=keep';
     expect(addressToSave(url)).toBe(url);
     expect(addressToSave('https://www.google.com/maps?ei=keep')).toBe('https://www.google.com/maps?ei=keep');
     expect(addressToSave('not a url')).toBe('not a url');
+  });
+});
+
+describe('isCheckTitle', () => {
+  it('knows bot-check and block page titles', () => {
+    for (const title of [
+      'Just a moment...',
+      '잠시만 기다리십시오…',
+      "Making sure you're not a bot!",
+      'Reddit - Prove your humanity',
+      'Access Denied',
+      'Attention Required! | Cloudflare',
+    ]) {
+      expect(isCheckTitle(title)).toBe(true);
+    }
+  });
+
+  it('leaves ordinary titles alone', () => {
+    for (const title of ['GitHub · Change is constant.', 'Reddit - 인터넷의 맥박', '', 'weather seoul - Google 검색']) {
+      expect(isCheckTitle(title)).toBe(false);
+    }
   });
 });

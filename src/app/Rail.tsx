@@ -131,6 +131,7 @@ const SpaceMenu: React.FC<{
 }) => {
   const id = useSpaceStore((s) => s.activeSpaceId);
   const name = useSpaceStore((s) => s.spaces[id]?.name ?? '');
+  const separate = useSpaceStore((s) => s.spaces[id]?.signIns === 'separate');
   const spaceCount = useSpaceStore(useShallow((s) => Object.keys(s.spaces))).length;
   const today = useToday();
   const seconds = useSpaceTimeStore((s) => s.time[id]?.[today] ?? 0);
@@ -190,14 +191,17 @@ const SpaceMenu: React.FC<{
           className="row w-full flex items-center gap-2 px-2 py-2 rounded-control text-ui"
         >
           <KeyRound size={14} />
-          <span className="t-ink flex-1 text-left">Sign-ins in this space</span>
+          <span className="t-ink flex-1 text-left">Sign-ins</span>
+          <span className="t-soft text-micro">{separate ? 'Separate' : 'Shared'}</span>
         </button>
 
         {spaceCount > 1 &&
           (isConfirming ? (
             <div className="mt-1">
               <p className="t-ink px-2 pb-2 text-meta leading-snug">
-                Delete “{name}”? Its widgets, its logged time and its logins go with it.
+                {separate
+                  ? `Delete “${name}”? Its widgets, its logged time and its logins go with it.`
+                  : `Delete “${name}”? Its widgets and its logged time go with it. The shared sign-ins stay.`}
               </p>
               <div className="flex gap-1.5">
                 <button

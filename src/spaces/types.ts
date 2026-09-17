@@ -4,7 +4,7 @@ import type { ArrangeMode } from '../canvas/layout';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 export type WidgetType =
   | 'todo'
@@ -88,6 +88,12 @@ export interface SpaceDoc {
    * 되는 편이 모드를 매번 고르는 것보다 손이 덜 간다.
    */
   arrange?: { mode: ArrangeMode; columns?: number } | null;
+  /**
+   * Whose cookies this space's browser and web app widgets use. `shared` is the
+   * one jar every shared space signs in with; `separate` is a jar of this space's
+   * own, so the same site can be another account here (D-074). See `partitionOf`.
+   */
+  signIns: 'shared' | 'separate';
   camera: Camera;
   ambience: AmbienceLevels;
   widgets: Record<string, WidgetDoc>;

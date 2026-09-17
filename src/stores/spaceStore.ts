@@ -86,6 +86,8 @@ interface SpaceState {
   setPolarity: (polarity: 'light' | 'dark' | null) => void;
   /** Null means the default, which is a grid. */
   setPattern: (pattern: 'none' | 'grid' | null) => void;
+  /** Moves the active space onto the shared sign-in or onto its own. Its pages reload. */
+  setSignIns: (signIns: SpaceDoc['signIns']) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
   fitToWidgets: () => void;
   /**
@@ -205,6 +207,7 @@ export function newSpace(name: string): SpaceDoc {
     background: null,
     camera: { x: -40, y: -40, zoom: 1 },
     ambience: { ...SILENT_AMBIENCE },
+    signIns: 'shared',
     widgets: {},
   };
 }
@@ -604,6 +607,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   setPolarity: (polarity) => updateActive(set, (space) => ({ ...space, polarity })),
 
   setPattern: (pattern) => updateActive(set, (space) => ({ ...space, pattern })),
+  setSignIns: (signIns) => updateActive(set, (space) => ({ ...space, signIns })),
 
   // Fill the canvas with the widgets in play, then frame the result.
   arrangeWidgets: (mode, columns) => {

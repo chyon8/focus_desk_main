@@ -172,6 +172,13 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     doc.arrange = null;
   }
 
+  if (doc.schemaVersion < 15) {
+    // v15 let spaces share one sign-in. Every space saved before it has signed in
+    // on a jar of its own, and moving it to the shared one would sign it out of
+    // everything, so it stays separate until the user switches it.
+    doc.signIns = 'separate';
+  }
+
   doc.schemaVersion = SCHEMA_VERSION;
   return doc;
 }
@@ -318,6 +325,8 @@ export function migrateLegacySpaces(raw: unknown): SpaceDoc[] {
         camera: { x: 0, y: 0, zoom: 1 },
         // The MVP stored ambience volumes but never played anything, so start silent.
         ambience: { ...SILENT_AMBIENCE },
+        // Its widgets signed in on a jar of their own, as every space did then.
+        signIns: 'separate' as const,
         widgets,
       };
     });

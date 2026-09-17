@@ -109,13 +109,13 @@ contextBridge.exposeInMainWorld('chromeImport', {
 });
 
 contextBridge.exposeInMainWorld('session', {
-  /** Which sites this space is signed in on, read from its own cookie jar. */
-  summary: (spaceId: string) => ipcRenderer.invoke('session:summary', spaceId),
-  /** Signs this space out of one site. */
-  clearSite: (spaceId: string, site: string) =>
-    ipcRenderer.invoke('session:clear-site', spaceId, site),
-  /** Signs this space out of everything: cookies, storage, caches. */
-  clear: (spaceId: string) => ipcRenderer.invoke('session:clear', spaceId),
+  /** Which sites a sign-in jar is signed in on. */
+  summary: (partition: string) => ipcRenderer.invoke('session:summary', partition),
+  /** Signs a jar out of one site. */
+  clearSite: (partition: string, site: string) =>
+    ipcRenderer.invoke('session:clear-site', partition, site),
+  /** Signs a jar out of everything: cookies, storage, caches. */
+  clear: (partition: string) => ipcRenderer.invoke('session:clear', partition),
 });
 
 contextBridge.exposeInMainWorld('spaces', {
