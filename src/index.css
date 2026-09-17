@@ -669,6 +669,63 @@ body {
   background: var(--accent);
 }
 
+/* 공간 메뉴를 여는 버튼. 우클릭을 모르는 사람을 위한 보이는 경로라 타일에 마우스를
+   올렸을 때와 메뉴가 열려 있을 때만 보인다. 사진 위에 얹히므로 면 색을 깐다. */
+.rail-space-more {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-mark);
+  background: var(--surface);
+  color: var(--ink-soft);
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.rail-space-wrap:hover .rail-space-more,
+.rail-space-more:focus-visible,
+.rail-space-more-on {
+  opacity: 1;
+}
+.rail-space-more:hover {
+  color: var(--ink);
+}
+
+/* 켜짐/꺼짐 한 줄짜리 스위치. 메뉴 줄 오른쪽 끝에 놓인다. */
+.switch {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  flex: none;
+  border-radius: 7px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--panel-border);
+  transition: background-color 0.15s;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  transition: transform 0.15s, background-color 0.15s;
+}
+.switch-on {
+  background: var(--accent);
+  box-shadow: none;
+}
+.switch-on::after {
+  transform: translateX(10px);
+  background: var(--surface);
+}
+
 .rail-add {
   width: 38px;
   height: 38px;

@@ -24,7 +24,7 @@ import { isComposing } from './ime';
 import { ChromeImportPanel } from './ChromeImportPanel';
 import { ArrangeTools, CanvasTools } from './Dock';
 import { SettingsPanel } from './SettingsPanel';
-import { SpaceSessionPanel } from './SpaceSessionPanel';
+import { SignInsPanel } from './SignInsPanel';
 
 function sceneStyle(scene: SceneSpec): React.CSSProperties {
   switch (scene.kind) {
@@ -45,16 +45,18 @@ function sceneStyle(scene: SceneSpec): React.CSSProperties {
  * faster than a name, and the same picture is what fills the screen after the
  * click, so the button and its result match.
  */
-const SpaceTile: React.FC<{ id: string; onOpenMenu: (top: number) => void }> = ({
-  id,
-  onOpenMenu,
-}) => {
+const SpaceTile: React.FC<{
+  id: string;
+  isMenuOpen: boolean;
+  onOpenMenu: (id: string, top: number) => void;
+}> = ({ id, isMenuOpen, onOpenMenu }) => {
   const name = useSpaceStore((s) => s.spaces[id]?.name ?? '');
   const themeId = useSpaceStore((s) => s.spaces[id]?.themeId);
   const background = useSpaceStore((s) => s.spaces[id]?.background);
   const isActive = useSpaceStore((s) => s.activeSpaceId === id);
   const today = useToday();
   const seconds = useSpaceTimeStore((s) => (isActive ? (s.time[id]?.[today] ?? 0) : 0));
+  const [draft, setDraft] = useState<string | null>(null);
 
   const scene: SceneSpec = background
     ? background.type === 'IMAGE'
@@ -62,28 +64,72 @@ const SpaceTile: React.FC<{ id: string; onOpenMenu: (top: number) => void }> = (
       : { kind: 'color', value: background.value }
     : getTheme(themeId).scene;
 
+  const commitName = () => {
+    if (draft !== null) useSpaceStore.getState().renameSpace(id, draft);
+    setDraft(null);
+  };
+
   return (
     <div className="flex flex-col items-center w-full">
-      <button
-        /* 이미 서 있는 공간을 다시 누르는 것은 전환이 아니다. 그 자리에서 이름
-           바꾸기·삭제·오늘 기록을 연다 — 떠 있는 이름판을 없애면서 그 셋이 갈 곳이
-           여기가 됐다. */
-        onClick={(e) => {
-          if (isActive) onOpenMenu(e.currentTarget.getBoundingClientRect().top);
-          else useSpaceStore.getState().setActiveSpace(id);
+      {/* 메뉴는 우클릭과 모서리 … 버튼으로 연다. 지금 공간을 한 번 더 누르면 열리던
+          방식은 뺐다(2026-09-17) — 보이는 표시가 없었고, 다른 공간의 이름을 바꾸거나
+          지우려면 그 공간으로 먼저 옮겨가야 했다. 누르기는 이동만 한다. */}
+      <div
+        className="rail-space-wrap relative"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onOpenMenu(id, e.currentTarget.getBoundingClientRect().top);
         }}
-        title={isActive ? `${name} - rename, time, sign-ins, delete` : name}
-        aria-current={isActive}
-        aria-label={name}
-        className={`rail-space ${isActive ? 'rail-space-on' : ''}`}
-        style={{ ...sceneStyle(scene), backgroundSize: 'cover', backgroundPosition: 'center' }}
-      />
-      {/* 서 있는 공간에만. 60px 안이라 이름은 잘리고, 전체는 툴팁과 메뉴에 있다. */}
+      >
+        <button
+          onClick={() => {
+            if (!isActive) useSpaceStore.getState().setActiveSpace(id);
+          }}
+          title={name}
+          aria-current={isActive}
+          aria-label={name}
+          className={`rail-space ${isActive ? 'rail-space-on' : ''}`}
+          style={{ ...sceneStyle(scene), backgroundSize: 'cover', backgroundPosition: 'center' }}
+        />
+        <button
+          onClick={(e) =>
+            onOpenMenu(id, (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect().top)
+          }
+          title={`${name} - rename, sign-ins, delete`}
+          aria-label={`${name} options`}
+          className={`rail-space-more ${isMenuOpen ? 'rail-space-more-on' : ''}`}
+        >
+          <Ellipsis size={11} />
+        </button>
+      </div>
+      {/* 서 있는 공간에만. 60px 안이라 이름은 잘리고, 전체는 툴팁과 메뉴에 있다.
+          더블클릭하면 그 자리에서 고친다. */}
       {isActive && (
         <>
-          <span className="t-ink max-w-full mt-1 px-0.5 truncate text-micro font-semibold">
-            {name}
-          </span>
+          {draft !== null ? (
+            <input
+              autoFocus
+              aria-label="Space name"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitName}
+              onFocus={(e) => e.currentTarget.select()}
+              onKeyDown={(e) => {
+                if (isComposing(e)) return;
+                if (e.key === 'Enter') commitName();
+                if (e.key === 'Escape') setDraft(null);
+              }}
+              className="field w-[52px] mt-1 px-0.5 text-center text-micro font-semibold"
+            />
+          ) : (
+            <span
+              onDoubleClick={() => setDraft(name)}
+              title="Double-click to rename"
+              className="t-ink max-w-full mt-1 px-0.5 truncate text-micro font-semibold cursor-default select-none"
+            >
+              {name}
+            </span>
+          )}
           <span className="t-faint text-micro font-mono tabular-nums">
             {formatDuration(seconds)}
           </span>
@@ -112,24 +158,18 @@ const RailTool: React.FC<{
 );
 
 /**
- * 서 있는 공간에 거는 것들 — 이름 바꾸기, 오늘 기록, 로그인, 삭제.
+ * 공간 하나에 거는 것들 — 이름 바꾸기, 오늘 기록, 로그인 방식, 삭제.
  *
- * 레일의 활성 타일을 다시 누르면 그 타일 옆에 뜬다. 예전에는 화면 왼쪽 위에 판이
- * 상시로 떠 있었는데, 낱말 하나를 위해 레일·독 말고 세 번째 물체가 늘 화면에
- * 있는 꼴이었다. 이름 자체는 레일 안 타일 밑에 있다.
+ * 레일의 어느 공간 타일에서든 우클릭이나 모서리 … 버튼으로 연다. 그 공간으로
+ * 옮겨가지 않는다. 로그인 목록은 앱 전체의 것이라 설정(More)에 있고, 여기에는
+ * 이 공간이 공유 로그인을 쓸지 자기 것을 쓸지만 있다.
  */
 const SpaceMenu: React.FC<{
+  id: string;
   top: number;
   onClose: () => void;
   onOpenInsights: () => void;
-  onOpenSessions: () => void;
-}> = ({
-  top,
-  onClose,
-  onOpenInsights,
-  onOpenSessions,
-}) => {
-  const id = useSpaceStore((s) => s.activeSpaceId);
+}> = ({ id, top, onClose, onOpenInsights }) => {
   const name = useSpaceStore((s) => s.spaces[id]?.name ?? '');
   const separate = useSpaceStore((s) => s.spaces[id]?.signIns === 'separate');
   const spaceCount = useSpaceStore(useShallow((s) => Object.keys(s.spaces))).length;
@@ -145,7 +185,7 @@ const SpaceMenu: React.FC<{
 
   return (
     <>
-      <div className="fixed inset-0 z-[59]" onClick={onClose} />
+      <div className="fixed inset-0 z-[59]" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
       <div
         className="glass-panel fixed z-[60] w-60 p-2 rounded-surface"
         style={{ left: RAIL_WIDTH, top }}
@@ -184,16 +224,24 @@ const SpaceMenu: React.FC<{
         </button>
 
         <button
-          onClick={() => {
-            onOpenSessions();
-            onClose();
-          }}
+          role="switch"
+          aria-checked={separate}
+          onClick={() => useSpaceStore.getState().setSignIns(id, separate ? 'shared' : 'separate')}
+          title={
+            separate
+              ? 'This space has sign-ins of its own. Turn off to use the shared ones; these are kept.'
+              : 'This space uses the shared sign-ins. Turn on to give it its own.'
+          }
           className="row w-full flex items-center gap-2 px-2 py-2 rounded-control text-ui"
         >
           <KeyRound size={14} />
-          <span className="t-ink flex-1 text-left">Sign-ins</span>
-          <span className="t-soft text-micro">{separate ? 'Separate' : 'Shared'}</span>
+          <span className="t-ink flex-1 text-left">Separate sign-ins</span>
+          <span className={`switch ${separate ? 'switch-on' : ''}`} aria-hidden />
         </button>
+        <p className="t-faint px-2 pb-1.5 text-micro leading-snug">
+          {separate ? 'Own sign-ins. ' : 'Shared with other spaces. '}Pages here reload when this
+          changes.
+        </p>
 
         {spaceCount > 1 &&
           (isConfirming ? (
@@ -252,11 +300,11 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
     return !!a && a.rain + a.fire + a.cafe > 0;
   });
   const spaceIds = useSpaceStore(useShallow((s) => Object.keys(s.spaces)));
-  const [menuTop, setMenuTop] = useState<number | null>(null);
+  const [menu, setMenu] = useState<{ id: string; top: number } | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [isSessionOpen, setIsSessionOpen] = useState(false);
+  const [isSignInsOpen, setIsSignInsOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const create = () => {
@@ -298,7 +346,12 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
           >
             <div className="flex flex-col items-center gap-2 w-full min-h-0 overflow-y-auto no-scrollbar">
               {spaceIds.map((id) => (
-                <SpaceTile key={id} id={id} onOpenMenu={setMenuTop} />
+                <SpaceTile
+                  key={id}
+                  id={id}
+                  isMenuOpen={menu?.id === id}
+                  onOpenMenu={(spaceId, top) => setMenu({ id: spaceId, top })}
+                />
               ))}
             </div>
 
@@ -357,12 +410,13 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
         )}
       </AnimatePresence>
 
-      {isOpen && !isMaximized && menuTop !== null && (
+      {isOpen && !isMaximized && menu && (
         <SpaceMenu
-          top={menuTop}
-          onClose={() => setMenuTop(null)}
+          key={menu.id}
+          id={menu.id}
+          top={menu.top}
+          onClose={() => setMenu(null)}
           onOpenInsights={onOpenInsights}
-          onOpenSessions={() => setIsSessionOpen(true)}
         />
       )}
 
@@ -412,8 +466,16 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
       )}
 
       {isImportOpen && <ChromeImportPanel onClose={() => setIsImportOpen(false)} />}
-      {isSessionOpen && <SpaceSessionPanel onClose={() => setIsSessionOpen(false)} />}
-      {isMoreOpen && <SettingsPanel onClose={() => setIsMoreOpen(false)} />}
+      {isSignInsOpen && <SignInsPanel onClose={() => setIsSignInsOpen(false)} />}
+      {isMoreOpen && (
+        <SettingsPanel
+          onClose={() => setIsMoreOpen(false)}
+          onOpenSignIns={() => {
+            setIsMoreOpen(false);
+            setIsSignInsOpen(true);
+          }}
+        />
+      )}
     </>
   );
 };

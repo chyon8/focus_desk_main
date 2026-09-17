@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { usePrefsStore } from '../stores/prefsStore';
 import { useUiStore } from '../stores/uiStore';
-import { AppWindow, Download, FolderOpen, Upload, X } from 'lucide-react';
+import { AppWindow, Download, FolderOpen, KeyRound, Upload, X } from 'lucide-react';
 
 /**
  * The app's own settings.
@@ -29,7 +29,8 @@ const Row: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void 
 
 export const SettingsPanel: React.FC<{
   onClose: () => void;
-}> = ({ onClose }) => {
+  onOpenSignIns: () => void;
+}> = ({ onClose, onOpenSignIns }) => {
   const attachApps = usePrefsStore((s) => s.attachApps);
   const [accessibility, setAccessibility] = useState(true);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
@@ -132,6 +133,15 @@ export const SettingsPanel: React.FC<{
           </button>
         )}
         {(!attachApps || accessibility) && <div className="mb-6" />}
+
+        <Label>Sign-ins</Label>
+        <div className="mb-6">
+          <Row
+            icon={<KeyRound size={14} className="t-soft" />}
+            label="Manage sign-ins…"
+            onClick={onOpenSignIns}
+          />
+        </div>
 
         <Label>Data</Label>
         <p className="t-faint mb-2 px-0.5 text-micro leading-snug">
