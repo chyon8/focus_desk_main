@@ -10,6 +10,7 @@
 | [landing.html](landing.html) | v1 — 안 쓴다. **지우지 않고 둔다.** 히어로 Summer Lake 고정 + 사진 크기 104%↔100% 반복을 해본 파일 |
 | [hero-b.html](hero-b.html) · [hero-c.html](hero-c.html) | 첫 화면 대안. B가 v2 히어로가 됐다. 지우지 않고 둔다 |
 | [landing.css](landing.css) | 위 파일들이 같이 쓴다 |
+| [VIDEO-SCENARIO.md](VIDEO-SCENARIO.md) | **히어로 제품 영상 시나리오 (2026-09-17).** Prague Trip / New App Idea 두 편, 사용자가 하나 고른다. 편집 수준 미정 |
 | `/tmp/port.mjs` | 캔버스 아트보드 변환기. 세션 끝나면 사라진다. `/tmp/mkv2.mjs`(v2 생성기)는 이제 v1과 안 맞아서 안 쓴다 — v2는 직접 고친다 |
 | `../landing-shots/` | **앱 스크린샷 시안 원본 23장 (2026-09-14, 2880×1800).** `tools/`에 공간 JSON 생성·캡처 스크립트. 스크립트 안 경로는 그 세션 scratchpad 기준이라 다시 쓸 때 고쳐야 한다 |
 
