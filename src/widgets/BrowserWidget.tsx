@@ -6,12 +6,15 @@ import { useSiteVisitStore } from '../stores/siteVisitStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 import { useWebAppStore } from '../stores/webappStore';
-import { addressToSave, hostOf, isCheckTitle, toAddress } from './browserAddress';
+import { addressToSave, hostOf, isCheckTitle, isGoogleBlock, toAddress } from './browserAddress';
 import { BrowserStartPage } from './BrowserStartPage';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
 import { ALLOW_POPUPS, ERR_ABORTED, LINK_SHIM } from './browserLinks';
 import { openTabBeside, sendToCanvas } from './newTab';
 import { useWidgetData } from './useWidgetData';
+
+// How long Google's block page stays before the widget opens the page again.
+const BLOCK_RETRY_MS = 1000;
 
 // The levels a browser's ⌘+/⌘− walks through.
 const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
@@ -310,6 +313,11 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     // replace the page it is guarding.
     let requested = '';
     let checkShowing = false;
+
+    // Google's block page: open the page it guards again after a few seconds.
+    // Once per widget, so a block that stays does not reload forever.
+    let blockRetried = false;
+    let blockTimer: ReturnType<typeof setTimeout> | undefined;
     const onStartNavigation = (e: Electron.DidStartNavigationEvent) => {
       if (e.isMainFrame && !e.isInPlace && !checkShowing) requested = e.url;
     };
@@ -327,6 +335,10 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
       useSiteVisitStore.getState().record(url);
       setFailure(null);
       readHistory();
+      if (isGoogleBlock(e.url) && !blockRetried) {
+        blockRetried = true;
+        blockTimer = setTimeout(() => el.loadURL(url), BLOCK_RETRY_MS);
+      }
     };
     // Single-page sites (YouTube among them) change page with history.pushState,
     // which only surfaces here — so this has to persist too, or reopening the app
@@ -391,6 +403,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     el.addEventListener('did-stop-loading', onStop);
     el.addEventListener('did-fail-load', onFail);
     return () => {
+      clearTimeout(blockTimer);
       el.removeEventListener('dom-ready', onDomReady);
       el.removeEventListener('did-start-navigation', onStartNavigation);
       el.removeEventListener('did-navigate', onNavigate);

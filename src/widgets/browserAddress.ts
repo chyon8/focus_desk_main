@@ -117,6 +117,20 @@ export function isCheckTitle(title: string): boolean {
 }
 
 /**
+ * Whether this is Google's "unusual traffic" page. It is decided by IP and
+ * request pattern, and opening the page it guards again got through (measured
+ * 2026-09-01) — so the widget retries once (BrowserWidget).
+ */
+export function isGoogleBlock(url: string): boolean {
+  try {
+    const address = new URL(url);
+    return GOOGLE_HOST.test(address.hostname) && address.pathname.startsWith('/sorry/');
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The address a browser widget keeps for next time.
  *
  * A widget reopens the address it saved, on every launch and every switch into

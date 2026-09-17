@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addressToSave, hostOf, isCheckTitle, toAddress } from './browserAddress';
+import { addressToSave, hostOf, isCheckTitle, isGoogleBlock, toAddress } from './browserAddress';
 
 describe('toAddress', () => {
   it('adds a scheme to a bare host', () => {
@@ -124,5 +124,15 @@ describe('isCheckTitle', () => {
     for (const title of ['GitHub · Change is constant.', 'Reddit - 인터넷의 맥박', '', 'weather seoul - Google 검색']) {
       expect(isCheckTitle(title)).toBe(false);
     }
+  });
+});
+
+describe('isGoogleBlock', () => {
+  it('matches only Google\'s /sorry/ page', () => {
+    expect(isGoogleBlock('https://www.google.com/sorry/index?continue=https://www.google.com/search')).toBe(true);
+    expect(isGoogleBlock('https://www.google.co.kr/sorry/index')).toBe(true);
+    expect(isGoogleBlock('https://www.google.com/search?q=sorry')).toBe(false);
+    expect(isGoogleBlock('https://example.com/sorry/index')).toBe(false);
+    expect(isGoogleBlock('not a url')).toBe(false);
   });
 });

@@ -138,7 +138,7 @@ export const SettingsPanel: React.FC<{
         <div className="mb-6">
           <Row
             icon={<KeyRound size={14} className="t-soft" />}
-            label="Manage sign-ins…"
+            label="Sites with saved data…"
             onClick={onOpenSignIns}
           />
         </div>

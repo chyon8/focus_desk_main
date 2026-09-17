@@ -98,7 +98,7 @@ const Jar: React.FC<{
           ))}
         </div>
       ) : sites.length === 0 ? (
-        <div className="t-faint px-2 py-1 text-meta leading-snug">Not signed in anywhere yet.</div>
+        <div className="t-faint px-2 py-1 text-meta leading-snug">No site has saved data yet.</div>
       ) : (
         <div className="space-y-0.5">
           {sites.map((site) => {
@@ -200,13 +200,15 @@ export const SignInsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         className="glass-panel fixed bottom-4 left-[88px] z-[99] w-[21rem] max-h-[70vh] flex flex-col p-4 rounded-surface"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className="t-soft text-meta font-semibold uppercase tracking-widest">Sign-ins</span>
+          <span className="t-soft text-meta font-semibold uppercase tracking-widest">Sites with saved data</span>
           <button onClick={onClose} className="press t-faint hover:t-ink ml-auto shrink-0">
             <X size={12} />
           </button>
         </div>
+        {/* Listed by long-lived httpOnly cookies (`isLoginCookie`), not by an actual
+            sign-in, so a site the user never signed in to can be here too. */}
         <p className="t-faint mb-3 text-meta leading-snug">
-          Spaces share one set of sign-ins. A space kept separate has its own, so the same site can
+          Sites that kept cookies here, which is usually a sign-in. Spaces share one set of sign-ins. A space kept separate has its own, so the same site can
           be another account there — right-click a space to switch.
         </p>
 
