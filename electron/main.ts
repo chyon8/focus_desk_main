@@ -46,23 +46,36 @@ if (process.env.FOCUS_DESK_DEBUG_PORT) {
   app.commandLine.appendSwitch('remote-debugging-port', process.env.FOCUS_DESK_DEBUG_PORT);
 }
 
+// Pages see no passkey support. Electron has no passkey/Touch ID dialog on macOS:
+// `isUserVerifyingPlatformAuthenticatorAvailable()` is false, yet a
+// `navigator.credentials.get({ publicKey })` never settles (measured 2026-09-17).
+// Google's 2-step sign-in offered "use your passkey" and loaded forever. Without
+// `PublicKeyCredential` a site should offer its other methods instead.
+app.commandLine.appendSwitch('disable-blink-features', 'WebAuth');
+
 // Privileged schemes must be declared before the app is ready.
 registerImageProtocolScheme();
 
 // Electron's default user agent is Chrome's with two tokens Chrome never sends:
-// the app's own `<name>/<version>` and ` Electron/<version>`. Real Chrome has
-// nothing between `(KHTML, like Gecko)` and `Chrome/`, and reduces its version to
-// `<major>.0.0.0`. Set before the app is ready so every session and <webview>
-// gets it.
+// the app's own `<name>/<version>` and ` Electron/<version>`. The Electron token
+// is removed and the version reduced to `<major>.0.0.0` as Chrome does. Set
+// before the app is ready so every session, <webview> and popup gets it.
+//
+// The app token stays, written here so the packaged name ("Focus Desk", with a
+// space) does not end up in it. Without any token the agent is exactly Chrome's,
+// and Google's sign-in then expects Chrome's page API (`window.chrome.loadTimes`
+// and the like), which Electron does not have: entering an email went to
+// `/v3/signin/rejected`. With the token it goes on to the next step. Measured
+// 2026-09-17 on Electron 39 and in this widget; the token had been removed on
+// 2026-09-01, which is when sign-in stopped working. Details in docs/LOGIN-ISSUE.md.
 //
 // This does not stop Google's "unusual traffic" page. Measured 2026-09-01: the
 // widget was served `/sorry/index`, and on a retry the same untouched agent went
 // straight through — that page is decided on the address the request comes from,
-// not on this string. What is here is only the part of the request the app is
-// responsible for.
+// not on this string.
 app.userAgentFallback = app.userAgentFallback
   .replace(/ Electron\/[\d.]+/, '')
-  .replace(` ${app.getName()}/${app.getVersion()}`, '')
+  .replace(/\(KHTML, like Gecko\) .*?Chrome\//, `(KHTML, like Gecko) FocusDesk/${app.getVersion()} Chrome/`)
   .replace(/Chrome\/(\d+)[\d.]*/, 'Chrome/$1.0.0.0');
 
 // Pages in widgets used to get every permission they asked for: with no handler
