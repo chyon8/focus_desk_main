@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   Ellipsis,
   Image,
-  KeyRound,
   LayoutGrid,
   Plus,
   Search,
@@ -95,7 +94,7 @@ const SpaceTile: React.FC<{
           onClick={(e) =>
             onOpenMenu(id, (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect().top)
           }
-          title={`${name} - rename, sign-ins, delete`}
+          title={`${name} - rename, delete`}
           aria-label={`${name} options`}
           className={`rail-space-more ${isMenuOpen ? 'rail-space-more-on' : ''}`}
         >
@@ -119,7 +118,7 @@ const SpaceTile: React.FC<{
                 if (e.key === 'Enter') commitName();
                 if (e.key === 'Escape') setDraft(null);
               }}
-              className="field w-[52px] mt-1 px-0.5 text-center text-micro font-semibold"
+              className="name-input w-[52px] mt-1 px-0.5 text-center text-micro font-semibold outline-none"
             />
           ) : (
             <span
@@ -158,11 +157,11 @@ const RailTool: React.FC<{
 );
 
 /**
- * 공간 하나에 거는 것들 — 이름 바꾸기, 오늘 기록, 로그인 방식, 삭제.
+ * 공간 하나에 거는 것들 — 이름 바꾸기, 오늘 기록, 삭제.
  *
  * 레일의 어느 공간 타일에서든 우클릭이나 모서리 … 버튼으로 연다. 그 공간으로
- * 옮겨가지 않는다. 로그인 목록은 앱 전체의 것이라 설정(More)에 있고, 여기에는
- * 이 공간이 공유 로그인을 쓸지 자기 것을 쓸지만 있다.
+ * 옮겨가지 않는다. 로그인은 2026-09-18부터 공간이 아니라 위젯이 고른다 —
+ * 위젯 주소줄에서 고르고, 목록은 설정(More)에 있다.
  */
 const SpaceMenu: React.FC<{
   id: string;
@@ -171,7 +170,6 @@ const SpaceMenu: React.FC<{
   onOpenInsights: () => void;
 }> = ({ id, top, onClose, onOpenInsights }) => {
   const name = useSpaceStore((s) => s.spaces[id]?.name ?? '');
-  const separate = useSpaceStore((s) => s.spaces[id]?.signIns === 'separate');
   const spaceCount = useSpaceStore(useShallow((s) => Object.keys(s.spaces))).length;
   const today = useToday();
   const seconds = useSpaceTimeStore((s) => s.time[id]?.[today] ?? 0);
@@ -207,7 +205,7 @@ const SpaceMenu: React.FC<{
             }
             if (e.key === 'Escape') onClose();
           }}
-          className="field w-full mb-1 text-ui font-semibold"
+          className="name-input w-full mb-1 text-ui font-semibold outline-none"
         />
 
         <button
@@ -223,33 +221,11 @@ const SpaceMenu: React.FC<{
           </span>
         </button>
 
-        <button
-          role="switch"
-          aria-checked={separate}
-          onClick={() => useSpaceStore.getState().setSignIns(id, separate ? 'shared' : 'separate')}
-          title={
-            separate
-              ? 'This space has sign-ins of its own. Turn off to use the shared ones; these are kept.'
-              : 'This space uses the shared sign-ins. Turn on to give it its own.'
-          }
-          className="row w-full flex items-center gap-2 px-2 py-2 rounded-control text-ui"
-        >
-          <KeyRound size={14} />
-          <span className="t-ink flex-1 text-left">Separate sign-ins</span>
-          <span className={`switch ${separate ? 'switch-on' : ''}`} aria-hidden />
-        </button>
-        <p className="t-faint px-2 pb-1.5 text-micro leading-snug">
-          {separate ? 'Own sign-ins. ' : 'Shared with other spaces. '}Pages here reload when this
-          changes.
-        </p>
-
         {spaceCount > 1 &&
           (isConfirming ? (
             <div className="mt-1">
               <p className="t-ink px-2 pb-2 text-meta leading-snug">
-                {separate
-                  ? `Delete “${name}”? Its widgets, its logged time and its logins go with it.`
-                  : `Delete “${name}”? Its widgets and its logged time go with it. The shared sign-ins stay.`}
+                {`Delete “${name}”? Its widgets and its logged time go with it. Sign-ins stay — they belong to the app, not to a space.`}
               </p>
               <div className="flex gap-1.5">
                 <button
@@ -292,6 +268,7 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
   const isOpen = useUiStore((s) => s.isSidebarOpen);
   const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
   const isAtmosphereOpen = useUiStore((s) => s.openDock === 'atmosphere');
+  const isSignInsOpen = useUiStore((s) => s.isSignInsOpen);
   const isSoundOpen = useUiStore((s) => s.openDock === 'sound');
   // 소리가 나고 있으면 버튼이 액센트를 쓴다. 불리언이라 페이더를 움직여도 레일이
   // 프레임마다 다시 그려지지 않는다.
@@ -304,7 +281,6 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [isSignInsOpen, setIsSignInsOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const create = () => {
@@ -431,7 +407,7 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
           <input
             id="new-space-name"
             autoFocus
-            className="field w-full px-2 h-8 rounded-control text-ui outline-none"
+            className="name-input w-full py-1 text-ui outline-none"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
@@ -466,13 +442,13 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
       )}
 
       {isImportOpen && <ChromeImportPanel onClose={() => setIsImportOpen(false)} />}
-      {isSignInsOpen && <SignInsPanel onClose={() => setIsSignInsOpen(false)} />}
+      {isSignInsOpen && <SignInsPanel onClose={() => useUiStore.getState().setSignInsOpen(false)} />}
       {isMoreOpen && (
         <SettingsPanel
           onClose={() => setIsMoreOpen(false)}
           onOpenSignIns={() => {
             setIsMoreOpen(false);
-            setIsSignInsOpen(true);
+            useUiStore.getState().setSignInsOpen(true);
           }}
         />
       )}

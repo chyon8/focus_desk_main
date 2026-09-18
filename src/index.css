@@ -251,6 +251,24 @@ body {
   color: var(--accent);
 }
 
+/* 이름을 그 자리에서 고치는 칸 — 공간 이름, sign-in 이름.
+   `.field`의 채워진 사각형은 여기 쓰지 않는다. 이름은 이미 화면에 있는 글자이고,
+   고치는 것은 그 글자를 고치는 일이다. 상자를 씌우면 원래 글자가 사라지고 폼이
+   하나 생긴다(2026-09-18 사용자). 고치는 동안에만 밑줄 한 줄이 생긴다. */
+.name-input {
+  background: transparent;
+  color: var(--ink);
+  border-bottom: 1px solid transparent;
+  caret-color: var(--accent);
+  transition: border-color 0.15s;
+}
+.name-input::placeholder {
+  color: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.name-input:focus {
+  border-bottom-color: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
 /* A text input. */
 .field {
   background: color-mix(in srgb, var(--ink) 7%, transparent);

@@ -1,4 +1,4 @@
-import { partitionOf } from '../spaces/signIns';
+import { SHARED_PARTITION } from '../spaces/signIns';
 import { useSpaceStore } from '../stores/spaceStore';
 import { textToHtml } from '../widgets/memoContent';
 
@@ -24,7 +24,8 @@ export async function addDroppedContent(transfer: DataTransfer, at: { x: number;
   if (src) {
     // Copied in rather than linked: a page that changes, or one behind a login,
     // would otherwise leave an empty frame on the canvas.
-    const saved = await window.images?.fromUrl(src, partitionOf(spaces[activeSpaceId]));
+    // Dropped from outside the app, so there is no widget whose sign-in to use.
+    const saved = await window.images?.fromUrl(src, SHARED_PARTITION);
     if (saved) {
       addWidget('photo', { url: saved, caption: '', fit: true }, at);
       return true;

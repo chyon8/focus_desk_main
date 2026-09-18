@@ -1,17 +1,17 @@
 import { ipcMain, session } from 'electron';
-import { isSpacePartition } from '../../src/spaces/signIns';
+import { isSignInPartition } from '../../src/spaces/signIns';
 import { siteOf } from '../../src/widgets/browserAddress';
 
 /**
  * The sign-in jars (D-074).
  *
- * Browser and web app widgets run on the shared jar or on a space's own
- * (`partitionOf`). The panel names the jar it is showing, and these handlers
- * take that name — anything that is not one of those jars is refused, so the
- * renderer cannot reach another session by naming it.
+ * Browser and web app widgets run on the shared jar or on a named one the widget
+ * carries (`partitionFor`). The panel names the jar it is showing, and these
+ * handlers take that name — anything that is not one of those jars is refused,
+ * so the renderer cannot reach another session by naming it.
  */
 function jar(partition: unknown) {
-  if (!isSpacePartition(partition)) throw new Error(`Not a sign-in jar: ${String(partition)}`);
+  if (!isSignInPartition(partition)) throw new Error(`Not a sign-in jar: ${String(partition)}`);
   return session.fromPartition(partition);
 }
 

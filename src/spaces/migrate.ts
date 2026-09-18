@@ -3,6 +3,7 @@ import { asDocument } from '../widgets/memoContent';
 import { DEFAULT_THEME_ID, THEMES } from '../themes/themes';
 import { ColumnData, SCHEMA_VERSION, SpaceDoc, WidgetDoc, WidgetType } from './types';
 import { columnHeight, COLUMN_WIDTH } from '../canvas/columns';
+import { ownPartition, type SignIn } from './signIns';
 
 // 2026-09-13에 장당 10MB PNG를 webp로 바꿨다. 그림은 같고 확장자만 다르다.
 const PNG_TO_WEBP = [
@@ -32,6 +33,27 @@ const RETIRED_WALLPAPERS: Record<string, string> = {
 
 function currentWallpaper(src: string): string {
   return RETIRED_WALLPAPERS[src] ?? src;
+}
+
+/** The pre-v16 field, gone from `SpaceDoc`: which jar the whole space used. */
+function legacySignIns(doc: SpaceDoc): { signIns?: 'shared' | 'separate' } {
+  return doc as unknown as { signIns?: 'shared' | 'separate' };
+}
+
+/**
+ * The sign-in a space carried before v16, for the store to put in its list.
+ *
+ * The list is app-wide, so it cannot be built inside a space document's own
+ * migration — this is read from the stored document before `migrateSpace`
+ * clears the field. The space's id is the sign-in's id, which is what the
+ * v16 step stamps on its widgets.
+ */
+export function signInFromSpace(raw: SpaceDoc): SignIn | null {
+  if ((raw?.schemaVersion ?? 0) >= 16) return null;
+  // Before v15 there was no field: every space had a jar of its own.
+  const own = raw.schemaVersion < 15 || legacySignIns(raw).signIns === 'separate';
+  if (!own) return null;
+  return { id: raw.id, name: raw.name?.trim() || 'Space', partition: ownPartition(raw.id) };
 }
 
 /**
@@ -176,7 +198,22 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     // v15 let spaces share one sign-in. Every space saved before it has signed in
     // on a jar of its own, and moving it to the shared one would sign it out of
     // everything, so it stays separate until the user switches it.
-    doc.signIns = 'separate';
+    legacySignIns(doc).signIns = 'separate';
+  }
+
+  if (doc.schemaVersion < 16) {
+    // v16 moved the choice of sign-in from the space to the widget (2026-09-18).
+    // A space that had a jar of its own hands it to its own browser and web app
+    // widgets, under the space's id — `signInFromSpace` puts that id in the list
+    // with the same partition, so nothing is signed out.
+    if (legacySignIns(doc).signIns === 'separate') {
+      for (const widget of Object.values(doc.widgets ?? {})) {
+        if (widget.type === 'browser' || widget.type === 'webapp') {
+          (widget.data as { signIn?: string }).signIn = doc.id;
+        }
+      }
+    }
+    delete legacySignIns(doc).signIns;
   }
 
   doc.schemaVersion = SCHEMA_VERSION;
@@ -313,7 +350,9 @@ export function migrateLegacySpaces(raw: unknown): SpaceDoc[] {
       });
       return {
         id: legacy.id,
-        schemaVersion: SCHEMA_VERSION,
+        // v15, not the current version: `migrateSpace` runs over these on the way
+        // in, and its v16 step is what hands this jar to the widgets.
+        schemaVersion: 15,
         name: legacy.name,
         themeId: DEFAULT_THEME_ID,
         // The MVP's own wallpaper choice is kept, as an override on that theme.
@@ -326,6 +365,7 @@ export function migrateLegacySpaces(raw: unknown): SpaceDoc[] {
         // The MVP stored ambience volumes but never played anything, so start silent.
         ambience: { ...SILENT_AMBIENCE },
         // Its widgets signed in on a jar of their own, as every space did then.
+        // The v16 step turns that into a sign-in the widgets carry.
         signIns: 'separate' as const,
         widgets,
       };

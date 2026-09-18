@@ -25,7 +25,7 @@ import {
 import { useAppTimeStore } from './appTimeStore';
 import { useSpaceTimeStore } from './spaceTimeStore';
 import { canvasArea, useUiStore } from './uiStore';
-import { migrateLegacySpaces, migrateSpace } from '../spaces/migrate';
+import { migrateLegacySpaces, migrateSpace, signInFromSpace } from '../spaces/migrate';
 import {
   ColumnData,
   ParticlesChoice,
@@ -37,6 +37,8 @@ import {
   WidgetType,
 } from '../spaces/types';
 import { DEFAULT_THEME_ID, getTheme } from '../themes/themes';
+import { useSignInStore } from './signInStore';
+import type { SignIn } from '../spaces/signIns';
 import { WIDGET_DEFS } from '../widgets/defs';
 
 const ACTIVE_SPACE_KEY = 'active-space-id';
@@ -86,8 +88,6 @@ interface SpaceState {
   setPolarity: (polarity: 'light' | 'dark' | null) => void;
   /** Null means the default, which is a grid. */
   setPattern: (pattern: 'none' | 'grid' | null) => void;
-  /** Moves a space onto the shared sign-in or onto its own. Its pages reload. */
-  setSignIns: (id: string, signIns: SpaceDoc['signIns']) => void;
   arrangeWidgets: (mode?: ArrangeMode, columns?: number) => void;
   fitToWidgets: () => void;
   /**
@@ -209,7 +209,6 @@ export function newSpace(name: string): SpaceDoc {
     background: { type: 'COLOR', value: '#f4f5f7' },
     camera: { x: -40, y: -40, zoom: 1 },
     ambience: { ...SILENT_AMBIENCE },
-    signIns: 'shared',
     widgets: {},
   };
 }
@@ -468,6 +467,14 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       for (const doc of docs) void window.spaces?.save(doc);
     }
 
+    // Spaces used to sign in one jar per space. The jars of those that had their
+    // own become named sign-ins their widgets carry (`migrateSpace` v16), and the
+    // list they go in is app-wide — so it is read here rather than in App, where
+    // this load would race it and write the merged list back over itself.
+    await useSignInStore.getState().load();
+    const adopted = docs.map(signInFromSpace).filter((signIn): signIn is SignIn => !!signIn);
+    if (adopted.length) useSignInStore.getState().adopt(adopted);
+
     const spaces: Record<string, SpaceDoc> = {};
     for (const doc of docs) {
       // Every column is put right on the way in: its box is a function of its
@@ -510,15 +517,6 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       const trimmed = name.trim();
       if (!current || !trimmed || trimmed === current.name) return {};
       const next = { ...current, name: trimmed };
-      scheduleSave(next);
-      return { spaces: { ...state.spaces, [id]: next } };
-    }),
-
-  setSignIns: (id, signIns) =>
-    set((state) => {
-      const current = state.spaces[id];
-      if (!current || current.signIns === signIns) return {};
-      const next = { ...current, signIns };
       scheduleSave(next);
       return { spaces: { ...state.spaces, [id]: next } };
     }),

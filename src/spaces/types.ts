@@ -4,7 +4,7 @@ import type { ArrangeMode } from '../canvas/layout';
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 export type WidgetType =
   | 'todo'
@@ -88,12 +88,6 @@ export interface SpaceDoc {
    * 되는 편이 모드를 매번 고르는 것보다 손이 덜 간다.
    */
   arrange?: { mode: ArrangeMode; columns?: number } | null;
-  /**
-   * Whose cookies this space's browser and web app widgets use. `shared` is the
-   * one jar every shared space signs in with; `separate` is a jar of this space's
-   * own, so the same site can be another account here (D-074). See `partitionOf`.
-   */
-  signIns: 'shared' | 'separate';
   camera: Camera;
   ambience: AmbienceLevels;
   widgets: Record<string, WidgetDoc>;
@@ -153,6 +147,12 @@ export interface KanbanData {
 
 export interface BrowserData {
   url: string;
+  /**
+   * Which sign-in this page runs on (`partitionFor`). Absent is the shared one,
+   * which is nearly every widget — a widget only carries an id when the user
+   * gave it another account.
+   */
+  signIn?: string;
   /** Page zoom, like a browser's ⌘+/⌘−. 1 is 100%. */
   zoom?: number;
   /**
@@ -238,6 +238,8 @@ export type WebAppIcon = { kind: 'emoji'; char: string } | { kind: 'image'; src:
 export interface WebAppData {
   /** Which saved web app this widget stands for. Empty = unpicked. */
   appId: string;
+  /** Which sign-in the page runs on, as a browser widget's does. */
+  signIn?: string;
   name: string;
   /** Where the tile opens. Follows the user as they navigate, so it reopens where they left off. */
   url: string;

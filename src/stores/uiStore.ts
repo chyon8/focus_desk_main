@@ -101,6 +101,12 @@ interface UiState {
    * 버튼을 눌렀는데 패널이 맨 위에 뜨면 손이 화면을 세로로 가로지른다.
    */
   dockTop: number | null;
+  /**
+   * The sign-ins panel. In the store because three places open it — settings,
+   * a widget's address row and its right-click menu — and only one of them is
+   * near the rail that draws it.
+   */
+  isSignInsOpen: boolean;
   /** Search across everything openable (K). */
   isLauncherOpen: boolean;
   /** The keyboard cheatsheet. */
@@ -159,6 +165,7 @@ interface UiState {
   setDropSpot: (spot: { x: number; y: number; width: number; height: number } | null) => void;
   setDraggingWidget: (widgetId: string | null) => void;
   toggleDock: (dock: 'atmosphere' | 'sound', top?: number) => void;
+  setSignInsOpen: (isSignInsOpen: boolean) => void;
   closeDock: () => void;
   openQuickAdd: (screen: Point, world: Point, teaches?: boolean) => void;
   closeQuickAdd: () => void;
@@ -198,6 +205,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   firstStepSpace: '',
   firstStepSampleId: null,
   openDock: null,
+  isSignInsOpen: false,
   dockTop: null,
   isLauncherOpen: false,
   isShortcutsOpen: false,
@@ -257,6 +265,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   toggleDock: (dock, top) =>
     set((s) => ({ openDock: s.openDock === dock ? null : dock, dockTop: top ?? null })),
   closeDock: () => set({ openDock: null }),
+
+  setSignInsOpen: (isSignInsOpen) => set({ isSignInsOpen }),
 
   openQuickAdd: (screen, world, teaches) => set({ quickAdd: { screen, world, teaches } }),
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { migrateLegacySpaces, migrateSpace } from './migrate';
+import { migrateLegacySpaces, migrateSpace, signInFromSpace } from './migrate';
 import { SCHEMA_VERSION, SpaceDoc } from './types';
 
 const legacy = [
@@ -34,7 +34,8 @@ describe('migrateLegacySpaces', () => {
     const [space] = migrateLegacySpaces(legacy);
     expect(space.id).toBe('space-1');
     expect(space.name).toBe('Deep Work');
-    expect(space.schemaVersion).toBe(SCHEMA_VERSION);
+    // The v15 shape: `migrateSpace` runs over these on the way in and finishes them.
+    expect(space.schemaVersion).toBe(15);
     expect(space.background).toEqual({ type: 'COLOR', value: '#1e1e24' });
   });
 
@@ -95,8 +96,10 @@ describe('migrateSpace', () => {
       background: { type: 'IMAGE', value: `/wallpapers/${old}` },
     };
     const migrated = migrateSpace(raw);
+    const { signIns: _dropped, ...rest } = raw as typeof raw & { signIns?: string };
     expect(migrated).toEqual({
-      ...raw,
+      // v16 took the space's own sign-in off the document (its widgets carry it).
+      ...rest,
       schemaVersion: SCHEMA_VERSION,
       background: { type: 'IMAGE', value: `/wallpapers/${replacement}` },
     });
@@ -201,7 +204,7 @@ describe('migrateSpace', () => {
     expect(migrateSpace(saved('stack')).arrange).toEqual({ mode: 'stack' });
   });
 
-  it('keeps a space saved before v15 on its own sign-ins, and leaves a newer one as it is', () => {
+  it('hands a space\'s own sign-in to its browser and web app widgets (v16)', () => {
     const saved = (schemaVersion: number, signIns?: string) =>
       ({
         id: 's',
@@ -210,12 +213,34 @@ describe('migrateSpace', () => {
         themeId: 'swiss',
         background: null,
         camera: { x: 0, y: 0, zoom: 1 },
-        widgets: {},
+        widgets: {
+          b: { id: 'b', type: 'browser', x: 0, y: 0, width: 900, height: 600, z: 1, data: { url: 'https://gmail.com' } },
+          w: { id: 'w', type: 'webapp', x: 0, y: 0, width: 300, height: 200, z: 2, data: { appId: 'a', url: 'https://figma.com' } },
+          m: { id: 'm', type: 'memo', x: 0, y: 0, width: 300, height: 200, z: 3, data: { content: '', theme: 'LIGHT' } },
+        },
         signIns,
       }) as unknown as SpaceDoc;
 
-    expect(migrateSpace(saved(14)).signIns).toBe('separate');
-    expect(migrateSpace(saved(SCHEMA_VERSION, 'shared')).signIns).toBe('shared');
-    expect(migrateLegacySpaces(legacy)[0].signIns).toBe('separate');
+    // Saved before v15: it had a jar of its own, so its pages keep it.
+    const own = migrateSpace(saved(14));
+    expect((own.widgets.b.data as { signIn?: string }).signIn).toBe('s');
+    expect((own.widgets.w.data as { signIn?: string }).signIn).toBe('s');
+    // Only pages sign in; a memo has nothing to sign in to.
+    expect((own.widgets.m.data as { signIn?: string }).signIn).toBeUndefined();
+    expect(signInFromSpace(saved(14))).toEqual({
+      id: 's',
+      name: 'Client',
+      partition: 'persist:space-s',
+    });
+    // The field is gone either way, and a shared space's widgets stay shared.
+    expect((own as unknown as { signIns?: string }).signIns).toBeUndefined();
+    const shared = migrateSpace(saved(15, 'shared'));
+    expect((shared.widgets.b.data as { signIn?: string }).signIn).toBeUndefined();
+    expect(signInFromSpace(saved(15, 'shared'))).toBeNull();
+
+    // The MVP import: its spaces each had a jar, and go the same way.
+    const [imported] = migrateLegacySpaces(legacy);
+    expect(signInFromSpace(imported)?.partition).toBe(`persist:space-${imported.id}`);
+    expect(migrateSpace(imported).schemaVersion).toBe(SCHEMA_VERSION);
   });
 });

@@ -1,5 +1,9 @@
 import React, { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Copy, Image, LogOut, Maximize2, PanelLeft, Volume2, X } from 'lucide-react';
+import { SHARED_ID } from '../spaces/signIns';
+import { useSignInStore } from '../stores/signInStore';
+import { SignInMenu } from '../widgets/SignInPicker';
 import { hostOf } from '../widgets/browserAddress';
 import { getCamera, useSpaceStore, useWidget } from '../stores/spaceStore';
 import { screenToWorld } from './camera';
@@ -9,6 +13,10 @@ import { WIDGET_REGISTRY } from '../widgets/registry';
 import { colorOf } from '../widgets/widgetColors';
 
 export const HEADER_HEIGHT = 30;
+// The right-click sign-in menu, so it can be kept inside the window. Roughly its
+// size with a few sign-ins in it; being a little out is only a few pixels of gap.
+const MENU_WIDTH = 224;
+const MENU_HEIGHT = 300;
 // 최대화한 위젯의 헤더는 앱의 상단 바다 — 맥 창 버튼과 컨트롤을 더 이고 있어서
 // 캔버스 위젯의 헤더보다 한 단 높다.
 const FULL_HEADER_HEIGHT = 40;
@@ -148,6 +156,17 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
     app?.name ||
     entry.label;
 
+  // Where the right-click menu is, in window coordinates. Null when closed.
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+
+  // The name of the sign-in this page is on, when it is not the shared one. Two
+  // widgets on the same site are two accounts, and nothing else on screen says
+  // which is which (2026-09-18). A colour dot would have to be memorised, and
+  // the frame already wears a colour mark.
+  const signInName = useSignInStore((s) =>
+    page?.signIn && page.signIn !== SHARED_ID ? s.signIns[page.signIn]?.name : undefined
+  );
+
   const box = overlay ?? widget;
   const bodyHeight = box.height - (isFull ? FULL_HEADER_HEIGHT : hasHeader ? HEADER_HEIGHT : 0);
   const contentScale =
@@ -269,6 +288,15 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
           // is just another widget that happens to be in front.
           boxShadow: isFull ? undefined : 'var(--shadow-float)',
         }),
+      }}
+      onContextMenu={(e) => {
+        // Only pages have a sign-in to pick, and inside a loaded page the guest
+        // takes the right-click itself (its own menu, in main.ts) — so this is
+        // the header, the frame, and the whole of a card.
+        if (!page) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuAt({ x: e.clientX, y: e.clientY });
       }}
       onPointerDownCapture={(e) => {
         if (e.shiftKey) return; // Let the canvas band-select over this widget.
@@ -394,6 +422,14 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
               {label}
             </span>
           )}
+          {signInName && (
+            <span
+              className="t-faint shrink-0 text-micro truncate max-w-[7rem]"
+              title={`Sign-in: ${signInName}`}
+            >
+              {signInName}
+            </span>
+          )}
 
           <div className="ml-auto shrink-0 flex items-center gap-0.5">
             {/* 최대화 중에는 레일이 가려지므로 배경·소리의 입구가 여기다. */}
@@ -510,6 +546,34 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
           <Body id={id} />
         </div>
       </div>
+
+      {menuAt &&
+        page &&
+        /* Drawn on the body, not in the frame: the canvas is transformed, and
+           inside a transform even `position: fixed` is measured from that
+           element — the menu came up a widget away from the click. It also
+           keeps the menu at its own size rather than the canvas zoom's. */
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[95]" onPointerDown={() => setMenuAt(null)} />
+            <div
+              className="glass-panel fixed z-[96] rounded-surface"
+              style={{
+                // Kept on screen: a right-click near the bottom right would
+                // otherwise open a menu half of which is off the window.
+                left: Math.min(menuAt.x, window.innerWidth - MENU_WIDTH - 8),
+                top: Math.min(menuAt.y, window.innerHeight - MENU_HEIGHT - 8),
+              }}
+            >
+              <SignInMenu
+                value={page.signIn}
+                onPick={(signIn) => useSpaceStore.getState().updateWidgetData(id, { signIn })}
+                onDone={() => setMenuAt(null)}
+              />
+            </div>
+          </>,
+          document.body
+        )}
 
       {!overlay && (
         <div

@@ -1,21 +1,45 @@
 import { describe, expect, it } from 'vitest';
-import { isSpacePartition, partitionOf, SHARED_PARTITION } from './signIns';
+import {
+  isSignInPartition,
+  partitionFor,
+  SHARED_ID,
+  SHARED_PARTITION,
+  SHARED_SIGN_IN,
+  type SignIn,
+} from './signIns';
 
-describe('partitionOf', () => {
-  it('puts shared spaces on one jar and a separate space on its own', () => {
-    expect(partitionOf({ id: 'a', signIns: 'shared' })).toBe(SHARED_PARTITION);
-    expect(partitionOf({ id: 'b', signIns: 'shared' })).toBe(SHARED_PARTITION);
-    expect(partitionOf({ id: 'a', signIns: 'separate' })).toBe('persist:space-a');
+const work: SignIn = { id: 'w', name: 'Work', partition: 'persist:jar-w' };
+const moved: SignIn = { id: 's1', name: 'Old space', partition: 'persist:space-s1' };
+const list = { [SHARED_ID]: SHARED_SIGN_IN, w: work, s1: moved };
+
+describe('partitionFor', () => {
+  it('uses the shared jar for a widget with no sign-in', () => {
+    expect(partitionFor(undefined, list)).toBe(SHARED_PARTITION);
+    expect(partitionFor({}, list)).toBe(SHARED_PARTITION);
+    expect(partitionFor({ signIn: SHARED_ID }, list)).toBe(SHARED_PARTITION);
+  });
+
+  it('uses the named jar a widget carries', () => {
+    expect(partitionFor({ signIn: 'w' }, list)).toBe('persist:jar-w');
+    expect(partitionFor({ signIn: 's1' }, list)).toBe('persist:space-s1');
+  });
+
+  // A sign-in the user deleted while a widget still named it.
+  it('falls back to the shared jar for an id that is gone', () => {
+    expect(partitionFor({ signIn: 'nope' }, list)).toBe(SHARED_PARTITION);
   });
 });
 
-describe('isSpacePartition', () => {
-  it('takes only the sign-in jars', () => {
-    expect(isSpacePartition(SHARED_PARTITION)).toBe(true);
-    expect(isSpacePartition('persist:space-0b6f6a2e-1c4d-4b7e-9f00-1a2b3c4d5e6f')).toBe(true);
-    expect(isSpacePartition('')).toBe(false);
-    expect(isSpacePartition('persist:other')).toBe(false);
-    expect(isSpacePartition('persist:space-a/../b')).toBe(false);
-    expect(isSpacePartition(undefined)).toBe(false);
+describe('isSignInPartition', () => {
+  it('takes the shared jar, a space jar and a named jar', () => {
+    for (const name of [SHARED_PARTITION, 'persist:space-abc-1', 'persist:jar-abc-1']) {
+      expect(isSignInPartition(name)).toBe(true);
+    }
+  });
+
+  it('refuses anything else', () => {
+    for (const name of ['persist:other', 'persist:jar-../x', '', null, 7]) {
+      expect(isSignInPartition(name)).toBe(false);
+    }
   });
 });

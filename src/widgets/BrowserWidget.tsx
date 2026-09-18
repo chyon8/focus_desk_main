@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Home, RotateCw, Star, X, ZoomIn, ZoomOut } from 'lucide-react';
-import { partitionOf } from '../spaces/signIns';
+import { partitionFor } from '../spaces/signIns';
 import { BrowserData } from '../spaces/types';
 import { useSiteVisitStore } from '../stores/siteVisitStore';
+import { useSignInStore } from '../stores/signInStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 import { useWebAppStore } from '../stores/webappStore';
@@ -11,6 +12,7 @@ import { BrowserStartPage } from './BrowserStartPage';
 import { FULLSCREEN_CSS, FULLSCREEN_SHIM } from './browserFullscreen';
 import { ALLOW_POPUPS, ERR_ABORTED, LINK_SHIM } from './browserLinks';
 import { openTabBeside, sendToCanvas } from './newTab';
+import { SignInPicker } from './SignInPicker';
 import { useWidgetData } from './useWidgetData';
 
 // How long Google's block page stays before the widget opens the page again.
@@ -151,7 +153,10 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   const onFaviconRef = useRef(onFavicon);
   onFaviconRef.current = onFavicon;
   const favorites = useWebAppStore((s) => s.apps);
-  const partition = useSpaceStore((s) => partitionOf(s.spaces[s.activeSpaceId]));
+  // The widget's own sign-in, not the space's: two widgets side by side can be
+  // two accounts on the same site (2026-09-18).
+  const signIns = useSignInStore((s) => s.signIns);
+  const partition = partitionFor(data, signIns);
   const [address, setAddress] = useState(savedUrl);
   const [history, setHistory] = useState({ back: false, forward: false });
   const [isLoading, setIsLoading] = useState(false);
@@ -543,6 +548,10 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
         >
           <Star size={12} fill={starred ? 'currentColor' : 'none'} />
         </NavButton>
+
+        {/* Which account this page is on (2026-09-18). Beside the star because
+            both are about this page rather than about where it is. */}
+        <SignInPicker value={data.signIn} onPick={(signIn) => update({ signIn })} />
 
         <NavButton
           label="Zoom out (⌘−)"

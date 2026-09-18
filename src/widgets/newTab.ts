@@ -1,5 +1,6 @@
-import { partitionOf } from '../spaces/signIns';
+import { partitionFor } from '../spaces/signIns';
 import type { WidgetType } from '../spaces/types';
+import { useSignInStore } from '../stores/signInStore';
 import { showWhereItLanded, useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
 import { WIDGET_DEFS } from './defs';
@@ -42,7 +43,17 @@ export function placeBeside(
  * the same rule.
  */
 export function openTabBeside(sourceId: string, url: string) {
-  placeBeside(sourceId, 'browser', { url }, 'Opened in a new tab beside this one');
+  // The new tab signs in as the page it came out of: a link clicked in a widget
+  // on the Work sign-in opens on Work, and a site's sign-in popup that becomes a
+  // tab reaches the account it was started from.
+  placeBeside(sourceId, 'browser', { url, signIn: signInOf(sourceId) }, 'Opened in a new tab beside this one');
+}
+
+/** The sign-in id the widget carries, if it has one. */
+function signInOf(sourceId: string): string | undefined {
+  const state = useSpaceStore.getState();
+  const widget = state.spaces[state.activeSpaceId]?.widgets[sourceId];
+  return (widget?.data as { signIn?: string } | undefined)?.signIn;
 }
 
 /**
@@ -60,8 +71,12 @@ export async function sendToCanvas(sourceId: string, kind: 'image' | 'text', val
       'Text taken out of the page'
     );
   } else {
-    const { spaces, activeSpaceId } = useSpaceStore.getState();
-    const url = await window.images?.fromUrl(value, partitionOf(spaces[activeSpaceId]));
+    // Fetched on the page's own sign-in: a picture behind a login is only
+    // readable with the cookies the page it came from was using.
+    const url = await window.images?.fromUrl(
+      value,
+      partitionFor({ signIn: signInOf(sourceId) }, useSignInStore.getState().signIns)
+    );
     if (!url) {
       useUiStore.getState().showNotice('That image could not be saved.');
       return;

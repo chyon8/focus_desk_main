@@ -1,7 +1,6 @@
-import { app, ipcMain, session } from 'electron';
+import { app, ipcMain } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { ownPartition } from '../../src/spaces/signIns';
 
 // One JSON file per space, so saving a space never rewrites the others.
 function spacesDir() {
@@ -56,12 +55,11 @@ export function registerSpacesIpc() {
     event.returnValue = true;
   });
 
-  ipcMain.handle('spaces:delete', async (_event, id: string) => {
+  // A sign-in is not the space's since 2026-09-18 — widgets carry it and widgets
+  // move between spaces — so deleting a space clears no cookies. The sign-ins
+  // panel is where a jar is emptied.
+  ipcMain.handle('spaces:delete', (_event, id: string) => {
     const file = fileFor(id);
     if (fs.existsSync(file)) fs.unlinkSync(file);
-    // The space's own cookie jar goes with it (D-074). Left behind, it is a set
-    // of live logins for a project that no longer exists, kept on disk for good.
-    // The shared jar stays: the other shared spaces are signed in with it.
-    await session.fromPartition(ownPartition(id)).clearStorageData();
   });
 }

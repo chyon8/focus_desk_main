@@ -70,7 +70,7 @@ export const MoveMenu: React.FC<{ selectedIds: string[] }> = ({ selectedIds }) =
               e.stopPropagation();
             }}
             placeholder="New space…"
-            className="field flex-1 min-w-0 px-2 h-8 rounded-control text-ui"
+            className="name-input flex-1 min-w-0 px-1 h-8 text-ui outline-none"
           />
           <button
             onClick={moveToNew}
