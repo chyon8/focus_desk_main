@@ -11,111 +11,10 @@
 | 14 | **랜딩에 실제 스크린샷 반영** | 중간 | 고른 컷을 다듬어 2배로 뽑고 랜딩 시안에 넣었다. 진행 기록은 [APP-DESIGN-RENEWAL.md](../design-ref/APP-DESIGN-RENEWAL.md) 맨 아래 "스크린샷 계획", 랜딩 쪽은 [NOTES.md](../design-ref/landing-canvas/NOTES.md) |
 | 10 | **온보딩** | 큼 | 임포트 / 웹앱 고르기 / 건너뛰기 세 갈래가 다 끝까지 간다 |
 | 18 | **월페이퍼 정리** | 작음 | 번들 23장에서 뺄 것을 뺐고, 픽커 순서 상수에 남은 없는 파일 이름을 지웠다 |
-| 19 | 작은 브라우저 화면 | 중간 | 손으로 좁힌 브라우저에서 시작 페이지와 도구줄이 쓸 만하다 |
 | 11 | 서명·공증 | — | **사용자만 가능.** 하드 블로커 |
 
-> 순서 13 → 14는 2026-09-16 사용자가 정했다. 12(정렬)는 2026-09-19에 다시 만들어서 끝났다 — 아래 12번 참고.
-> 16(구글 로그인)은 2026-09-17에 끝나서 지웠다 — UA에 `FocusDesk/<버전>` 토큰을 넣고 패스키를 껐다. 사용자가 실제 계정으로 로그인이 되는 것을 확인했다. 조사 기록은 [LOGIN-ISSUE.md](LOGIN-ISSUE.md), 이유는 [main.ts](../electron/main.ts) 주석. 막히면 시스템 크롬에서 로그인하고 쿠키를 옮기는 방법(안 C)으로 간다.
-> 15(공간 메뉴 여는 방법)는 2026-09-17에 끝나서 지웠다 — 레일 타일은 누르면 이동만 하고, 우클릭·모서리 `…`로 어느 공간이든 메뉴(이름·삭제)가 열린다. 로그인 스위치는 17-4에서 뺐다. 로그인 목록은 More → Sign-ins([SignInsPanel.tsx](../src/app/SignInsPanel.tsx)). 이유는 [Rail.tsx](../src/app/Rail.tsx) 주석.
-> 1~9는 끝나서 지웠다. 7(겹치지 않게 놓기)은 2026-09-06에 계획에서 뺐다 — 번호는 안 당겼다.
-
----
-
-## 12. 정렬 다시 만들기 — 끝 (2026-09-19)
-
-**정렬은 자리만 바꾼다. 위젯 크기는 건드리지 않는다.** 900×620 브라우저는 정렬 후에도 900×620이다. 예전 정렬은 위젯을 칸 크기에 맞춰 다시 그려서, 브라우저를 좁히면 주소줄이 사라지고 시작 페이지가 두 열로 줄었다.
-
-- 계산은 [tidy.ts](../src/canvas/tidy.ts). 출력은 위젯별 `{x, y}`뿐이고 폭·높이는 반환 타입에 없다. `layout.ts`의 `arrange`는 온보딩·크롬 가져오기가 계속 쓰므로 그대로 뒀다
-- 모드 둘 — **Compact**(구멍 없이 채움) · **Rows**(한 줄씩 왼쪽부터, 윗변 맞춤, Auto·1~5열). 집는 순서는 둘 다 지금 놓인 자리 `y → x → id`
-- 간격 16px(`TIDY_GAP`). `ARRANGE_GAP`(32)은 새 위젯 놓기·복제·컬럼이 계속 쓴다
-- 정렬 직후 카메라는 **100%가 상한**(`tidyCamera`). 수동 줌·페이지 줌은 제한하지 않는다
-- `SCHEMA_VERSION` 17. `grid`·`stack` → `rows`, `masonry` → `compact`. 설정만 바꾸고 위젯은 G를 누르기 전까지 그대로다
-- 이미 정리된 책상에서 G를 누르면 저장도 Undo 기록도 만들지 않는다
-
-**확인한 것** (앱 실행, 1440×872): 크기 유지 · 반복 G 동일 · 간격 16 · 100% 상한 · 선택만 정렬 · Undo · 마이그레이션. 자동 테스트는 [tidy.test.ts](../src/canvas/tidy.test.ts) 21개.
-
-**12개일 때 배율:** Compact 54%(2448×1332), Rows Auto 47%(2800×1256). 크기를 유지하면 12개는 100%에 안 들어간다 — 알고 택한 결과다.
-
-**남은 것:** 기획의 "선택 도구막대가 떠 있으면 그 영역도 피한다"는 안 넣었다. `canvasArea()`가 레일·상단만 빼고 도구막대 높이를 모른다. 겹치는 게 실제로 거슬리면 그때 넣는다.
-
----
-
-## 13. 브라우저가 봇 검사에 덜 막히게 — 끝 (2026-09-19)
-
-**완전히 막을 방법은 없다.** Electron은 크롬과 똑같지 않아서 검사가 엄격한 사이트는 알아챌 수 있다. 목표는 두 가지다 — 막히는 경우를 줄이고, 막혔을 때 빠져나갈 길을 둔다.
-
-**D(측정), A1(같은 프로필 두 번 실행 막기), A2(검사 페이지 주소 저장 안 하기), A3(로그인 공유)은 끝났다 (2026-09-17).** A2는 주소 규칙(`addressToSave`)에 레딧 검사 파라미터·`/cdn-cgi/`를 더하고, 검사 제목(`isCheckTitle`)이 뜨면 리다이렉트 전 주소를 저장한다. A3는 새 공간이 `persist:shared`를 쓰고, 기존 공간은 `separate`로 옮겼다 — 공간 메뉴(우클릭)의 "Separate sign-ins" 스위치로 바꾼다. **사용자 쪽 할 일: 지금 쓰는 공간들은 아직 따로다. 공유로 쓰려면 공간마다 이 스위치를 끈다** 고친 뒤에 같은 방법으로 다시 재서 아래 "전"과 비교한다.
-
-**D1 — 고치기 전 (Electron 39, check 프로필, 사이트마다 새 공간·새 브라우저 위젯, 15초 뒤 읽음)**
-- 통과 18: 구글 검색 · 유튜브 · 지메일(소개 페이지로 감) · 구글 로그인(이메일 입력 화면까지) · 깃허브 · 노션 · 피그마 · X · 링크드인 · 인스타그램 · 네이버 · 챗GPT · 클로드 · 언스플래시 · 핀터레스트 · 아마존 · 디스코드 · 스포티파이
-- 레딧: 통과. 단 JS 검사를 거쳐 주소가 `?solution=…&js_challenge=1&jsc_token=…`가 된다 — 이 주소가 위젯 주소로 저장되던 것은 A2에서 고쳤다. 같은 때 새 프로필 크롬 152는 "Prove your humanity" 화면이 떴다
-- 쿠팡: 5번 중 1번 "Access Denied"(Akamai). 20곳을 연달아 열 때 났고, 따로 연 4번과 크롬은 통과
-- 구글 로그인의 "안전하지 않은 브라우저"는 이메일을 넣어야 나오므로 안 봤다(C2, 사용자 계정으로 확인)
-
-**D2 — 크롬 152와 다른 점** (sannysoft는 둘 다 전부 통과, browserscan은 둘 다 Normal, creepjs headless 비슷 38%/31%)
-| 차이 | 앱 | 크롬 | 어디서 고치나 |
-|---|---|---|---|
-| 버전 | ~~142~~ → 152 | 152 | B1에서 맞췄다 |
-| `Sec-Ch-Ua*` 요청 헤더 | ~~아예 안 보낸다~~ → 보낸다 | 보낸다 | B2에서 직접 붙였다 |
-| `userAgentData.brands` | ~~Not_A Brand, Chromium~~ → 크롬과 같다 | Chromium, Not?A_Brand, Google Chrome | B2에서 맞췄다 |
-| `Accept-Language` / `navigator.languages` | `ko` / ko, ko-KR, en-KR | `ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7` / ko-KR, ko, en-US, en | **그냥 둔다** (2026-09-17 사용자). 앱도 맥 언어를 따르고, 목록 길이만 다르다. 이것 때문에 막힌 사이트는 없었다 |
-| `window.chrome` | 빈 객체 | loadTimes · csi · app | **그냥 둔다** (2026-09-19 사용자). 채우려면 페이지에 스크립트를 넣어야 하는데, 그것이 아래 "하지 않을 것"이다 |
-| WebRTC | 내부 IP가 그대로 보인다 | `.local` 주소로 가린다 | **그냥 둔다** (2026-09-19 사용자). 아래 B3 참고 |
-| 알림·위치 권한 조회 | granted | prompt | 의도한 것([main.ts](../electron/main.ts) 주석) |
-| 페이지에 보이는 전역 | ~~두 개~~ → 없다 | 없음 | B3에서 없앴다 |
-| `navigator.share` | 없음 | 있음 | 작다 |
-
-**B1 끝 (2026-09-18)** — Electron 39.2.7 → 44.4.2, 크롬 142 → 152.0.7977.130. 깨진 API 없었다. `npm run dist`로 DMG까지 나온다.
-
-**B2 끝 (2026-09-19)** — [clientHints.ts](../electron/clientHints.ts). 헤더 3개는 `onBeforeSendHeaders`로, `navigator.userAgentData`는 위젯·팝업마다 CDP로 건다. 이유와 시점은 그 파일 주석에 있다.
-
-- **여기 적혀 있던 가설은 틀렸다.** UA 문자열 탓이 아니라 **Electron이 원래 client hints를 안 보낸다.** 설정으로 켤 방법이 없어 직접 붙였다
-- 확인: 위젯·팝업 둘 다 헤더 3개와 brands가 크롬과 같음 · 깃허브 · 네이버 · 언스플래시 · 레딧 · 쿠팡 · ChatGPT · X 로드됨. 앱 자기 창은 안 건드렸다(⌥⌘I 그대로)
-
-**B3 끝 (2026-09-19).** 셋 중 하나만 고쳤다.
-
-- **고침 — 페이지에 보이는 전역.** 두 shim이 재주입을 막으려고 쓰던 `window.__focusDesk*` 두 개를 심볼로 옮겼다([browserFullscreen.ts](../src/widgets/browserFullscreen.ts) · [browserLinks.ts](../src/widgets/browserLinks.ts)). `Object.keys`에도 `getOwnPropertyNames`에도 안 나온다. 가드는 그대로 있어야 한다 — 없으면 링크 클릭 하나에 탭이 두 개 열린다. 확인: 전역 0개, 전체화면 shim 동작, `target="_blank"` 클릭에 위젯이 딱 하나 열림
-- **안 고침 — WebRTC 내부 IP** (2026-09-19 사용자). 가리는 방법은 `media` 권한 **조회**에 false로 답하는 것 하나뿐이다. 재서 확인했다: false면 크롬처럼 `<uuid>.local`이 되고, true면 사설 IP가 그대로 나온다. Chromium 스위치(`force-webrtc-ip-handling-policy`)는 두 값 다 효과가 없었다. 그런데 그 false는 2026-09-14에 일부러 피한 답이다 — 사이트가 권한을 "차단됨"으로 읽어 Meet이 요청 대신 안내를 띄운다([main.ts](../electron/main.ts) `setPermissionCheckHandler` 주석). mDNS 판단과 `permissions.query`는 핸들러에 똑같은 모양(`permission=media`)으로 들어와 구분할 수 없다
-- **안 고침 — `window.chrome` 빈 객체** (2026-09-19 사용자). 채우려면 페이지에 스크립트를 넣어야 하고, 그것이 아래 "하지 않을 것"에 적힌 그것이다
-
-**C1 끝 (2026-09-19).** 검사나 차단 화면이 15초 넘게 그대로면 위젯 아래에 막대가 뜬다 — "This page won't load here." + **Open in browser**.
-
-- **아래 가로 막대**다(2026-09-19 사용자). 전체를 덮지 않는다 — CAPTCHA는 보통 가운데 있고, 덮으면 누를 수가 없다
-- **기본 브라우저**로 연다(2026-09-19 사용자). "Open in Chrome"이라고 쓰면 사파리가 기본인 사람에게 틀린 말이 된다. `apps:open-url` → `shell.openExternal`, **http·https만** 받는다([apps.ts](../electron/ipc/apps.ts))
-- 여는 주소는 위젯이 저장한 주소(`data.url`)다. 검사 파라미터와 구글 차단의 `continue`는 `addressToSave`가 이미 풀어놨다
-- **구글 차단 화면도 대상**이다. 그 화면은 지키는 페이지의 제목을 그대로 달고 있어 `isCheckTitle`로는 안 걸린다 — 주소로 따로 본다(`blockedPage`)
-- 15초를 기다리는 이유: 검사는 대개 1~2초에 지나간다. 도중에 버튼이 뜨면 앱이 포기한 것처럼 보인다
-- 확인: 제목이 "Just a moment..."인 로컬 페이지로 재니 14초엔 안 뜨고 17초에 떴다 · 통과하면 사라진다 · 버튼을 누르니 기본 브라우저가 실제로 그 주소를 받아갔다(서버 로그) · `file://`는 막힌다
-
-**C2는 안 한다** (2026-09-19). "구글 로그인이 막히면 시스템 브라우저로"는 16번이 끝나면서 전제가 없어졌다 — UA에 앱 토큰을 넣고 패스키를 끈 뒤 사용자가 실제 계정으로 로그인되는 것을 확인했다(2026-09-17). 시스템 브라우저에서 로그인해도 쿠키가 위젯으로 안 넘어와서 도움도 안 된다. 다시 막히면 [LOGIN-ISSUE.md](LOGIN-ISSUE.md)의 안 C(쿠키 옮기기)로 간다.
-
-**D3(사이트 20곳 재측정)는 안 한다** (2026-09-19 사용자). 쓰면서 확인한다. 실제로 막히는 사이트가 나오면 그때 D1 목록과 비교한다.
-
-**하지 않을 것** — 자동화 탐지를 속이는 스크립트 주입(stealth 플러그인류). 사이트가 바뀔 때마다 깨지고, 들키면 더 강하게 막힌다.
-
----
-
-## 17. 로그인 정리 — 끝 (2026-09-18)
-
-**17-1~17-3은 끝났다 (2026-09-17, 확인용 앱에서 봄).** 새 공간은 Paper 테마로 열린다(`newSpace`, 2026-09-19에 Cloud 단색에서 바꿨다 — 배경을 안 고른 상태라 테마 색 `#efe7d9`가 보인다). 로그인 목록 이름은 "Sites with saved data"다. 구글 차단 화면(`/sorry/`)을 받으면 1초 뒤 원래 주소를 한 번만 다시 연다(`BrowserWidget`의 `blockRetried`) — 확인 때 이 IP가 실제로 막혀 있어서, 다시 열린 뒤 또 막혔고 거기서 멈췄다.
-
-**17-4는 끝났다 (2026-09-18).** 로그인은 공간이 아니라 위젯이 고른다. 화면에 쓰는 말은 **sign-in**, 실체는 쿠키 저장소 하나다. 기본 이름은 **Main**이다.
-
-- **고르기**: 브라우저 위젯 주소줄의 사람 버튼, 또는 위젯 우클릭([SignInPicker.tsx](../src/widgets/SignInPicker.tsx)의 `SignInMenu`가 둘 다 쓴다). 카드로 닫힌 위젯은 주소줄이 없어서 우클릭이 유일한 길이다. 열린 페이지 안의 우클릭은 페이지 메뉴라 위젯 머리·테두리에서 눌러야 한다
-- **관리는 한 곳**: 설정 → Sign-ins([SignInsPanel.tsx](../src/app/SignInsPanel.tsx)). 목록(이름·쓰는 위젯 수) → 한 개 상세(사이트별 Sign out, ⋯ 메뉴의 이름 바꾸기·전체 로그아웃·삭제). 만들기는 목록과 고르기 메뉴 둘 다에 있다
-- **쓰는 위젯 0개**면 목록에 "safe to delete"로 표시한다. 자동으로 안 지운다 — 쿠키가 남아 있으면 로그인이 살아 있는 것이다
-- **삭제**하면 쿠키를 지우고 그 위젯들은 Main으로 돌아간다(경고 문구에 위젯 수를 적는다). 위젯 문서는 안 고친다 — `partitionFor`가 없는 id를 Main으로 읽는다
-- **표시**: 위젯 머리에 이름을 옅은 글씨로. Main은 안 붙는다
-- **데이터**: 목록은 앱 단위([signInStore.ts](../src/stores/signInStore.ts)), 위젯은 `data.signIn`에 id. 이사(schemaVersion 16)는 따로 쓰던 공간마다 그 이름의 sign-in을 만들고 `persist:space-<id>`를 그대로 쓴다. 상세에 "공간에서 왔다"고 적는다(`isFromSpace`)
-- **새 탭**은 원래 위젯의 sign-in을 따라간다. 팝업은 같은 세션이라 자동
-- **백업에 쿠키는 없다.** 목록만 복원되고 로그인은 다시 해야 한다
-- **이름 칸에 회색 상자를 쓰지 않는다** (2026-09-18 사용자). 이름은 그 자리에서 고친다 — 배경 없음, 고치는 동안만 밑줄([index.css](../src/index.css)의 `.name-input`). sign-in 이름·공간 이름·새 공간·"다른 공간으로 옮기기"가 이 방식이다. 주소창과 코드 칸만 상자로 남는다
-- 우클릭 메뉴는 `createPortal`로 body에 그린다 — 캔버스가 transform이라 프레임 안에서는 `fixed`도 화면 기준이 아니다([WidgetFrame.tsx](../src/canvas/WidgetFrame.tsx) 주석)
-- 확인(실제 프로필 복사본): 공간 7개 이사 · 쿠키 유지 · 새 sign-in에서 로그아웃 상태로 다시 뜸 · 새 탭 상속 · 카드 우클릭으로 바꾸기 · 패널 목록/상세/⋯ 메뉴. 확인 뒤 복사본은 지웠다
-
-**왜 바꿨나 (사용자 지적, 2026-09-17)** — 공간 스위치는 껐다 켜면 로그아웃처럼 보였고(저장소가 바뀐 것이다), 한 화면에 두 계정을 띄울 수 없었다.
-
-**미확인:** 유튜브가 로그아웃된 원인. 후보는 ① 스위치를 꺼서 공용 저장소로 바뀜 ② 오늘 UA 변경으로 구글이 세션을 끊음.
+> 순서는 2026-09-16 사용자가 정했다. 끝난 것은 지운다 — 무엇을 왜 했는지는 코드 주석과 git 이력에 있다.
+> 끝나서 지운 것: 1~9 · 12(정렬) · 13(봇 검사) · 15~17. 7(겹치지 않게 놓기)은 2026-09-06에 계획에서 뺐다 — 번호는 안 당겼다.
 
 ---
 
@@ -156,6 +55,12 @@ Paper가 보이는 동안(호버·고른 뒤)은 어두운 층을 걷고 글자�
 
 ---
 
+**코드 위치**
+- **온보딩** = [Onboarding.tsx](../src/onboarding/Onboarding.tsx) · [FirstSteps.tsx](../src/onboarding/FirstSteps.tsx) · [samplePage.ts](../src/onboarding/samplePage.ts). ④의 답이 기본 공간의 이름이 되고 배경·앰비언스도 거기 붙는다
+- **온보딩 화면의 색은 토큰을 안 쓴다.** 사진 위에 얹히는 화면이라 `glass-panel`·`chrome-button-on`이 너무 옅게 나온다 — 흰색 알파를 직접 쓴다. Paper 같은 단색 방에서는 `--ob-*` 변수로 밝은 색과 어두운 색이 자리를 바꾼다
+- **첫 실행 판정** = `spaceStore.needsOnboarding`. 공간은 **비어 있게** 만든다
+- **테스트 프로필** = `npm run dev:fresh`. 실제 프로필과 안 섞이므로 실사용 앱과 동시에 켜도 된다
+
 ## 18. 월페이퍼 정리 — 급하지 않다 (2026-09-19 사용자)
 
 번들 월페이퍼는 `public/wallpapers` 23장이고 픽커는 폴더를 그대로 읽는다([images.ts](../electron/ipc/images.ts)의 `images:wallpapers`). 그래서 파일을 빼거나 이름을 바꾸는 것이 곧 목록 변경이다.
@@ -166,20 +71,6 @@ Paper가 보이는 동안(호버·고른 뒤)은 어두운 층을 걷고 글자�
 - **파일을 빼거나 이름을 바꾸면** [migrate.ts](../src/spaces/migrate.ts)의 `RETIRED` 표에 옛 이름 → 대체 월페이퍼를 넣는다. 안 넣으면 그 배경을 쓰던 공간이 빈 배경이 된다
 - **장수와 주제 구성**(계절·비·밤이 몇 장씩, 겹치는 장면)은 사용자가 고른다. 새로 만들 때 기준은 [WALLPAPER-GENERATION-PROMPT.md](../design-ref/WALLPAPER-GENERATION-PROMPT.md)
 - 같이 확인할 것: 패키징본에서 번들 월페이퍼가 실제로 보이는지. 빌드는 `dist/wallpapers`에 23장을 복사하므로 보일 것으로 보지만 실기로 안 봤다
-
----
-
-## 19. 작은 브라우저 화면 — 12번 다음
-
-손으로 좁힌 브라우저에서 시작 페이지와 도구줄이 쓸 만해야 한다. **정렬이 만들어내는 크기가 아니다** — 12번이 끝나면 정렬은 브라우저를 좁히지 않는다.
-
-- 먼저 확인할 것: [BrowserStartPage.tsx](../src/widgets/BrowserStartPage.tsx)는 이미 `overflow-y-auto`라 스크롤이 된다. "스크롤이 안 되는 잘림"이 실제로 재현되는지 보고 범위를 정한다.
-- 시작 페이지는 **줌 적용 전 본문 폭 560px 미만 또는 높이 280px 미만**이면 컴팩트 목록, 아니면 지금의 아이콘 격자. 캔버스 줌만으로 목록·격자가 바뀌면 안 된다.
-- 목록은 아이콘 20px, 행 높이 36px, 바깥 여백 12px. 아이콘 옆에 사이트 이름, 긴 이름은 말줄임. 즐겨찾기 → 자주 방문 순서와 기존 데이터는 그대로. 본문 전체가 한 스크롤 영역이고 가로 스크롤은 만들지 않는다.
-- 폭 560px 미만의 도구줄은 **뒤로 · 주소 입력 · 더보기**로 줄인다. 앞으로, 새로고침/중지, 시작 페이지, 즐겨찾기, 로그인 선택, 페이지 줌은 더보기 메뉴에 넣는다. 메뉴는 캔버스 배율과 위젯 테두리에 잘리지 않는 화면 좌표로 띄운다.
-- **기존 임계값과 정리할 것:** [BrowserWidget.tsx](../src/widgets/BrowserWidget.tsx) `CHROME_MIN_WIDTH = 380`이 이미 있고 그 밑이면 주소줄을 통째로 숨긴다. 560 규칙과 겹치므로 380을 없앨지 남길지 먼저 정한다.
-- 실제 웹페이지의 뷰포트 처리와 사용자 페이지 줌은 유지한다. 목록·격자 전환 때문에 페이지를 다시 읽거나 로그인·스크롤 상태를 잃지 않는다.
-- 검증: 브라우저 900×620 · 480×320 · 300×207에서 빈 시작 페이지 · 즐겨찾기 많을 때 · 실제 웹페이지.
 
 ---
 
@@ -226,55 +117,21 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 
 ## 확인 안 된 것
 
-**손으로만 되는 것** (네이티브 메뉴·자동화 권한·창 순서라 CDP로 못 한다)
-- **웹뷰 우클릭** — 이미지 위(`Send image to the canvas`) / 글 선택 후 / 링크 위. **투어 3단계가 통째로 여기 달려 있다**
-- **기능 목록의 `drag-out`·`chrome` 두 줄** — 나머지 다섯은 2026-09-05에 확인했다
-- **크롬 임포트 `Bring in`** — 읽고 창 목록 그리는 데까지는 봤다(2026-09-08). 창 2개 이상 골라서: 공간이 딱 그 개수만 생기는지 / 앞 4개가 진짜 페이지로 뜨는지 / 줌아웃 끝 배율이 1.0인지 / 카드에 로고와 사이트 색이 붙는지(1~2초 뒤) / G를 눌렀을 때 큰 타일 2개가 브라우저인지
-- **팝업 창이 메인 창 뒤로 안 숨는지** — `parent: win`을 넣었다. 사이트에서 로그인 팝업을 띄우고 캔버스를 눌러볼 것
-- **빈 프로필 가져오기** — `mv ~/Library/Application\ Support/focus-desk{,.real}` → ⚙ Import → `Added N spaces` → Show them. 끝나면 되돌린다
-- **빈 프로필 첫 실행에 접근성 프롬프트 없음** — 앱 위젯을 만들어 클릭. 스위치를 켜면 그때 뜨는지도
-- **세션 패널의 로그아웃 버튼** — `session:clear-site`가 `siteOf`로 묶이게 바뀐 것. 실제 로그인이 지워지므로 아무 사이트에서나 하면 안 된다
+출시 전에 꼭 볼 것만 남긴다. 나머지는 그 기능을 손댈 때 같이 본다.
 
-**실기로 봐야 하는 것**
-- **앱 아이콘** (2026-09-12에 교체·패키징까지 함). `release/mac-arm64/Focus Desk.app`을 열어 독에서 새 아이콘이 뜨는지. **dev는 기본 Electron 아이콘이다.** 옛 아이콘이 남으면 `killall Dock Finder`
-- **패키징본 실사용 QA** (2026-09-12 빌드, `release/mac-arm64`). 접근성 권한을 새로 줘야 하고, dev 인스턴스를 같이 띄우면 안 된다 — 팝업·링크 / 앱 숨김 알림 / 앱·웹앱 위젯 / 공간별 로그인
-- **Swiss Editorial 폰트** — 패키징본에서 네트워크 없이 IBM Plex Sans KR·Noto Sans KR가 뜨는지
-- **월페이퍼 23장** — 재시작 후 복원·공간별 독립 저장, 16:9·16:10·울트라와이드 잘림, 수동 Light/Dark. 새 장면 생성 기준은 [WALLPAPER-GENERATION-PROMPT.md](../design-ref/WALLPAPER-GENERATION-PROMPT.md)
-- **팔레트에서 끌어다 놓는 것** — 놓은 자리 그대로여야 한다(스토어로는 확인함). 런처·N·더블클릭은 모두 현재 화면 왼쪽 위부터 빈자리를 찾고, 자리가 없으면 24px 계단으로 겹친다 — 카메라는 안 움직인다. 더블클릭의 메뉴는 누른 자리에 열린다([Canvas.tsx](../src/canvas/Canvas.tsx)). 이 세 경로의 같은 배치·화면이 찼을 때의 겹침·이동 및 줌 70% 상태·투어 단계 전환은 별도 프로필 앱에서 확인했다(2026-09-19)
-- **휠 스크롤이 다른 위젯에서도 목록을 먼저 움직이는지** — 캔버스가 휠을 전부 가로채던 것을 고쳤다(2026-09-19, [useCameraControls.ts](../src/canvas/useCameraControls.ts) `listTakesWheel`). 즐겨찾기 목록에서만 봤다. 메모·할 일·칸반·컬럼에서도 볼 것
-- **설정 모달 두 개**(Favorites · Sign-ins) 실사용 — 가운데 560px로 바꿨다(2026-09-19). Esc로 안 닫히는 게 괜찮은지도 같이 정한다
-- **컬럼 카드 높이 210** (196→210). 컬럼 높이 계산이 이 상수를 쓰므로 **기존 컬럼이 열렸을 때 카드가 안 겹치는지**
-- **컬럼 카드 안 위젯 12종 스케일** — 어두운 배경 한 번만 봤다. **메모 카드가 세로줄로 보이던 것**도 같이 본다
-- **독이 한 줄에 컨트롤 8개다.** 창을 좁히면 넘치는지 안 봤다
-- **focus 정렬을 위젯 종류가 섞인 공간에서** — 앞 2개가 커지는 게 말이 되는지. 테스트는 크기·순서만 본다
-- **B2 뒤 실사용** — 구글 로그인 팝업이 끝까지 가는지, 유튜브·스포티파이 DRM 재생, 새 위젯의 첫 페이지. check 프로필에서 사이트 로드는 봤지만 로그인과 재생은 안 봤다
-- **UA 수정 후 Google 검색** — "비정상적인 트래픽"·reCAPTCHA가 실제로 줄어드는지는 며칠 써봐야 안다. 구글 차단 페이지가 계속 뜨던 건 저장된 주소 탓이라 고쳤다(2026-09-13, `addressToSave`). 다른 사이트에서 인증이 또 뜨면 Electron 버전부터 본다 — 2026-09-18에 Electron 44.4.2(크롬 152)로 올렸다
-- **사이트 권한 묻기 창** ([main.ts](../electron/main.ts) `setPermissionRequestHandler`) — Meet에서 카메라를 켜면 Allow/Block 창이 뜨는지, Block 후 다시 안 묻는지. 답은 `permissions.json`에 저장해 앱을 다시 켜도 안 묻는다(2026-09-15) — 재시작 후에도 그런지, Block을 풀 방법이 파일 삭제뿐인 게 괜찮은지. 구글 로그인 창이 요청하는 저장소 권한(`storage-access`)은 묻지 않고 허용하게 바꿨다(2026-09-14) — 사이트를 열 때마다 "wants to use its sign-in here" 창이 떴다
-
----
-
-## 코드 위치
-
-- **온보딩** = [Onboarding.tsx](../src/onboarding/Onboarding.tsx) · [FirstSteps.tsx](../src/onboarding/FirstSteps.tsx) · [samplePage.ts](../src/onboarding/samplePage.ts). ④의 답이 기본 공간의 이름이 되고 배경·앰비언스도 거기 붙는다
-- **온보딩 화면의 색은 토큰을 안 쓴다.** 사진 위에 얹히는 화면이라 `glass-panel`·`chrome-button-on`이 너무 옅게 나온다 — 흰색 알파를 직접 쓴다. Paper 같은 단색 방에서는 `--ob-*` 변수로 밝은 색과 어두운 색이 자리를 바꾼다
-- **첫 실행 판정** = `spaceStore.needsOnboarding`. 공간은 **비어 있게** 만든다
-- **테스트 프로필** = `npm run dev:fresh`. 실제 프로필과 안 섞이므로 실사용 앱과 동시에 켜도 된다
-- **공간 모양** = [ThemePicker.tsx](../src/app/ThemePicker.tsx) — 배경·날씨·UI 밝기를 현재 공간에만 건다. 값은 [backgrounds.ts](../src/spaces/backgrounds.ts) · [SceneLayer.tsx](../src/themes/SceneLayer.tsx)
-- **즐겨찾기** = 위젯은 고르기만 한다([WebAppWidget.tsx](../src/widgets/WebAppWidget.tsx)의 `WebAppPicker`, 행 우클릭으로 이름·주소·삭제). 목록 관리는 설정 → Favorites 모달([FavoritesPanel.tsx](../src/app/FavoritesPanel.tsx)). 삭제는 확인 대신 Undo 토스트다(`webappStore.lastRemoved`)
-- **월페이퍼 폴더** = `userData/wallpapers`. 앱이 들고 오는 사진은 번들(`/wallpapers/…`), 사용자 것은 `focusdesk-image://wallpaper/…`([images.ts](../electron/ipc/images.ts)). **패키징본에서는 번들 폴더가 asar 안이라 사진을 직접 넣을 수 없다** — 보이는지는 18번에서 확인한다
-- **앱 아이콘** = [make_icon.py](../build/make_icon.py)가 그려서 `build/icon.png`·`icon.icns`를 만든다. 색 상수 3개와 좌표만 고치면 다시 나온다. `electron-builder.yml`이 icns를 쓴다
-- **백업** = [backup.ts](../electron/ipc/backup.ts). 하루 1회 스냅샷(최근 5개). **가져오기는 id가 같으면 건너뛴다** — 같은 프로필에 되가져오면 "Nothing new"가 정상이다. 쿠키는 백업에 없다
-- **앱 창 붙이기** = `prefsStore.attachApps`, 기본 `false`. 접근성 프롬프트는 헬퍼의 `place`·`windows` 두 곳에서만 뜬다
-- **기능 목록 위젯** = `TOUR_LINES`. 줄은 `TodoItem.hint`로 식별한다([types.ts](../src/spaces/types.ts)의 `TourHint`) — 텍스트로 맞추면 사용자가 글을 고치는 순간 깨진다
+- **웹뷰 우클릭** — 이미지 위(`Send image to the canvas`) / 글 선택 후 / 링크 위. **투어 3단계가 통째로 여기 달려 있다.** 네이티브 메뉴라 CDP로 못 한다
+- **크롬 임포트 `Bring in`** — 창 목록까지는 봤다(2026-09-08). 창 2개 이상 골라서 공간이 그 개수만 생기는지, 앞 4개가 진짜 페이지로 뜨는지
+- **패키징본 실사용 QA** (`release/mac-arm64`) — 접근성 권한을 새로 줘야 하고 dev를 같이 띄우면 안 된다. 팝업·링크 / 앱 숨김 알림 / 앱·웹앱 위젯 / 로그인 / 독 아이콘 / 네트워크 없이 IBM Plex Sans KR·Noto Sans KR
+- **사이트 권한 묻기 창** ([main.ts](../electron/main.ts) `setPermissionRequestHandler`) — Meet에서 카메라를 켜면 Allow/Block이 뜨는지, Block 후 다시 안 묻는지. 답은 `permissions.json`에 남아 재시작해도 안 묻는다 — Block을 풀 방법이 파일 삭제뿐인 게 괜찮은지
+- **빈 프로필 가져오기** — `mv ~/Library/Application\ Support/focus-desk{,.real}` → ⚙ Import → `Added N spaces`. 끝나면 되돌린다
 
 ---
 
 ## 규칙
 
-- git 명령은 사용자가 직접 실행 (CLAUDE.md 워크플로우)
-- dev 실행 시 `unset ELECTRON_RUN_AS_NODE` 필요(VSCode 확장 변수)
+CLAUDE.md에 없는 것만 적는다.
+
 - **`npm install`은 Electron 바이너리를 안 받는다** (Electron 42부터). 첫 실행 때 받거나 `npx install-electron`
-- **같은 프로필로는 앱이 하나만 뜬다.** 두 번째는 로그에 `already running … quitting`을 찍고 꺼지고, 첫 창이 앞으로 온다. 확인용 앱을 같이 띄우려면 `FOCUS_DESK_PROFILE`을 다르게 준다
-- **main 프로세스 변경은 Electron 완전 재시작이 필요하다.** 렌더러 새로고침으로는 옛 핸들러가 계속 돈다
-- **dev 중에 md 파일을 고치면 vite가 페이지를 새로 고친다** — 온보딩 진행 상태가 날아간다. 확인하는 동안은 문서를 안 고친다
-- **다른 세션이 `dev:fresh`(test 프로필)를 쓰고 있을 수 있다.** 확인용은 따로 띄운다: `rm -rf "$HOME/Library/Application Support/focus-desk-check" && FOCUS_DESK_PROFILE=check FOCUS_DESK_DEBUG_PORT=9333 npx vite` → CDP로 누르고 찍는다
+- **같은 프로필로는 앱이 하나만 뜬다.** 두 번째는 `already running … quitting`을 찍고 꺼진다. 확인용을 같이 띄우려면 `FOCUS_DESK_PROFILE`을 다르게 준다
+- **dev 중에 md 파일을 고치면 vite가 페이지를 새로 고친다** — 온보딩 진행 상태가 날아간다
+- 확인용 앱: `FOCUS_DESK_PROFILE=check FOCUS_DESK_DEBUG_PORT=9334 npx vite --port 3005 --strictPort` → CDP로 누르고 찍는다. 3000·3001은 사용자 것일 수 있다

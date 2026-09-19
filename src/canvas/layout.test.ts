@@ -1,14 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   arrange,
-  autoColumns,
   centreCamera,
   clampCamera,
   findFreeSpot,
   fitCamera,
-  inLaneOrder,
   minZoomFor,
-  orderFor,
   inReadingOrder,
   isFullyVisible,
   placeInView,
@@ -26,7 +23,7 @@ const boxes: Box[] = [
 const area = { width: 1400, height: 900 };
 
 /** Boxes with their arranged position and size applied, ready to measure. */
-function placed(input: Box[], ...args: [] | [typeof area, 'grid' | 'stack', number?]) {
+function placed(input: Box[], ...args: [] | [typeof area, 'grid', number?]) {
   const placements = arrange(input, args[0] ?? area, args[1], args[2]);
   return input.map((box) => ({ id: box.id, ...placements[box.id] }));
 }
@@ -86,14 +83,6 @@ describe('arrange', () => {
     expect(width).toBe(450 * 2 + 32);
   });
 
-  it('a tall, narrow area is filled with one column', () => {
-    expect(autoColumns(boxes, { width: 500, height: 1600 })).toBe(1);
-  });
-
-  it('a wide, short area is filled with one row', () => {
-    expect(autoColumns(boxes, { width: 2400, height: 400 })).toBe(3);
-  });
-
   it('one column stacks every box vertically', () => {
     const out = placed(boxes, area, 'grid', 1);
     const ys = out.map((p) => p.y).sort((m, n) => m - n);
@@ -109,149 +98,6 @@ describe('arrange', () => {
   it('returns an empty map for no boxes', () => {
     expect(arrange([], area)).toEqual({});
   });
-});
-
-describe('arrange stack', () => {
-  // A tall photo among short widgets: the case a grid handles badly, because the
-  // whole row grows to the photo's height.
-  const mixed: Box[] = [
-    { id: 'photo', x: 0, y: 0, width: 280, height: 640, natural: { width: 280, height: 640 } },
-    { id: 'memo', x: 0, y: 0, width: 420, height: 300, natural: { width: 420, height: 300 } },
-    { id: 'todo', x: 0, y: 0, width: 320, height: 280, natural: { width: 320, height: 280 } },
-    { id: 'clock', x: 0, y: 0, width: 320, height: 300, natural: { width: 320, height: 300 } },
-  ];
-
-  it('puts boxes on a lane directly under one another', () => {
-    const out = placed(mixed, area, 'stack', 2);
-    const lanes = new Map<number, typeof out>();
-    for (const p of out) lanes.set(p.x, [...(lanes.get(p.x) ?? []), p]);
-    for (const lane of lanes.values()) {
-      const sorted = [...lane].sort((a, b) => a.y - b.y);
-      sorted.slice(1).forEach((p, i) => {
-        const above = sorted[i];
-        expect(p.y).toBe(above.y + above.height + 32); // ARRANGE_GAP, nothing more
-      });
-    }
-  });
-
-  it('leaves a tall box tall instead of fitting it to a row', () => {
-    const [photo] = placed(mixed, area, 'stack', 2);
-    expect(photo.height / photo.width).toBeCloseTo(640 / 280, 1);
-  });
-
-  it('never overlaps two boxes', () => {
-    const out = placed(mixed, area, 'stack', 2);
-    for (const a of out) {
-      for (const b of out) {
-        if (a.id === b.id) continue;
-        const apart =
-          a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
-        expect(apart).toBe(true);
-      }
-    }
-  });
-
-  it('makes every card as wide as its lane, and every lane the same width', () => {
-    const withPage: Box[] = [
-      ...mixed,
-      { id: 'page', x: 0, y: 0, width: 900, height: 620 },
-    ];
-    const out = placed(withPage, area, 'stack', 3);
-    expect(new Set(out.map((p) => p.width))).toEqual(new Set([300]));
-    const page = out.find((p) => p.id === 'page')!;
-    expect(page.height).toBe(Math.round((620 * 300) / 900));
-  });
-
-  it('deals cards out row by row, in the order given', () => {
-    const [photo, memo, todo, clock] = placed(mixed, area, 'stack', 3);
-    // First three make the top row, left to right.
-    expect([photo.y, memo.y, todo.y]).toEqual([0, 0, 0]);
-    expect(photo.x).toBeLessThan(memo.x);
-    expect(memo.x).toBeLessThan(todo.x);
-    // The fourth goes under the first, whatever the lane heights.
-    expect(clock.x).toBe(photo.x);
-    expect(clock.y).toBe(photo.y + photo.height + 32);
-  });
-
-  it('reads a stack back in the order it was made from', () => {
-    const cards: Box[] = Array.from({ length: 7 }, (_, i) => ({
-      id: String(i), x: 0, y: 0, width: 300, height: 200 + ((i * 37) % 150),
-    }));
-    const out = arrange(cards, area, 'stack', 3);
-    const laid = cards.map((box) => ({ ...box, ...out[box.id] }));
-    const shuffled = [laid[4], laid[0], laid[6], laid[2], laid[1], laid[5], laid[3]];
-    expect(inLaneOrder(shuffled).map((b) => b.id)).toEqual(cards.map((b) => b.id));
-  });
-
-  it('keeps a card in the lane it was dragged to', () => {
-    const lane = (x: number, y: number, id: string): Box => ({ id, x, y, width: 300, height: 200 });
-    // a and b on the left, c on the right; b dragged to the top of the right lane.
-    const order = inLaneOrder([lane(0, 0, 'a'), lane(340, -40, 'b'), lane(332, 0, 'c')]);
-    expect(order.map((b) => b.id)).toEqual(['a', 'b', 'c']);
-  });
-
-  it('leaves a column at the size it owns', () => {
-    const withColumn: Box[] = [
-      ...mixed,
-      { id: 'col', x: 0, y: 0, width: 300, height: 900, fixed: true },
-    ];
-    const col = placed(withColumn, area, 'stack', 2).find((p) => p.id === 'col')!;
-    expect(col.width).toBe(300);
-    expect(col.height).toBe(900);
-  });
-});
-
-describe('arrange masonry', () => {
-  const cards: Box[] = [300, 180, 420, 240, 260, 500, 200].map((height, i) => ({
-    id: String(i), x: 0, y: 0, width: 300, height,
-  }));
-
-  it('puts each card on the shortest lane so far', () => {
-    const out = arrange(cards, area, 'masonry', 3);
-    // 0,1,2 make the top row; lane 1 (180) is shortest, so 3 goes under 1.
-    expect(out['3'].x).toBe(out['1'].x);
-    expect(out['3'].y).toBe(180 + 32);
-    // Then lane 0 (300) is shortest.
-    expect(out['4'].x).toBe(out['0'].x);
-  });
-
-  it('gives every lane the same width', () => {
-    const out = Object.values(arrange(cards, area, 'masonry', 3));
-    expect(new Set(out.map((p) => p.width))).toEqual(new Set([300]));
-  });
-});
-
-describe('arranging twice', () => {
-  // Scattered, the way a desk looks before anything is arranged.
-  const desk: Box[] = [
-    { id: 'photo', x: 900, y: 40, width: 280, height: 420, natural: { width: 280, height: 320 } },
-    { id: 'memo', x: 100, y: 700, width: 420, height: 460, natural: { width: 420, height: 460 } },
-    { id: 'page', x: 50, y: 20, width: 900, height: 620, natural: { width: 900, height: 620 } },
-    { id: 'todo', x: 1400, y: 300, width: 320, height: 420, natural: { width: 320, height: 420 } },
-    { id: 'clock', x: 700, y: 900, width: 320, height: 400, natural: { width: 320, height: 400 } },
-    { id: 'col', x: 1200, y: 1000, width: 300, height: 900, fixed: true },
-    { id: 'timer', x: 300, y: 1500, width: 340, height: 340, natural: { width: 340, height: 340 } },
-  ];
-
-  for (const mode of ['grid', 'stack', 'masonry'] as const) {
-    for (const columns of [undefined, 3]) {
-      it(`gives the same desk in ${mode} (${columns ?? 'auto'} columns)`, () => {
-        const once = (boxes: Box[]) => {
-          const out = arrange(orderFor(mode, boxes), area, mode, columns);
-          return boxes.map((box) => ({ ...box, ...out[box.id] }));
-        };
-        const first = once(desk);
-        const second = once(first);
-        const third = once(second);
-        for (const [i, box] of second.entries()) {
-          for (const key of ['x', 'y', 'width', 'height'] as const) {
-            expect(Math.abs(box[key] - first[i][key])).toBeLessThanOrEqual(2);
-            expect(Math.abs(third[i][key] - first[i][key])).toBeLessThanOrEqual(2);
-          }
-        }
-      });
-    }
-  }
 });
 
 describe('arrange focus', () => {

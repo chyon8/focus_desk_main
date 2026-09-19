@@ -68,7 +68,7 @@ registerImageProtocolScheme();
 // and the like), which Electron does not have: entering an email went to
 // `/v3/signin/rejected`. With the token it goes on to the next step. Measured
 // 2026-09-17 on Electron 39 and in this widget; the token had been removed on
-// 2026-09-01, which is when sign-in stopped working. Details in docs/LOGIN-ISSUE.md.
+// 2026-09-01, which is when sign-in stopped working.
 //
 // This does not stop Google's "unusual traffic" page. Measured 2026-09-01: the
 // widget was served `/sorry/index`, and on a retry the same untouched agent went

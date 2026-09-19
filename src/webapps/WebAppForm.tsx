@@ -3,7 +3,8 @@ import { Check } from 'lucide-react';
 import type { WebAppIcon } from '../spaces/types';
 import type { WebApp } from '../stores/webappStore';
 import { isComposing } from '../app/ime';
-import { ICON_EMOJI, hostOf, normalizeUrl } from './presets';
+import { ICON_EMOJI, normalizeUrl } from './presets';
+import { hostOf } from '../widgets/browserAddress';
 
 /**
  * Making or changing a saved web app: an address, a name, an icon.

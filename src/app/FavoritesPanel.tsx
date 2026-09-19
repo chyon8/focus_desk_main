@@ -1,9 +1,10 @@
+import { hostOf } from '../widgets/browserAddress';
 import React, { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { MoreHorizontal, Plus, X } from 'lucide-react';
 import { useWebAppStore, type WebApp } from '../stores/webappStore';
-import { hostOf } from '../webapps/presets';
+
 import { WebAppForm } from '../webapps/WebAppForm';
 import { WebAppMark } from '../webapps/WebAppMark';
 import { isComposing } from './ime';

@@ -126,12 +126,22 @@ function rowsInto(ordered: TidyBox[], columns: number): { spot: Spot; box: TidyB
  * Compact: 순서대로 집어서 놓을 수 있는 가장 위·왼쪽 빈자리에 넣는다.
  *
  * 검사할 자리는 원점과, 이미 놓인 위젯들의 오른쪽·아래 모서리다. 그 지점들만
- * 봐도 구멍의 왼쪽 위는 전부 걸린다. 늦게 집힌 위젯이 먼저 집힌 것보다 위에
- * 놓여도 그대로 둔다 — 구멍을 남기지 않는 쪽을 택했고, 순서를 지키는 쪽은
- * Rows다. 둘 다 순서를 지키면 두 모드가 같은 그림이 된다.
+ * 봐도 구멍의 왼쪽 위는 전부 걸린다.
+ *
+ * **집은 순서보다 앞(위·왼쪽)에는 놓지 않는다.** 처음에는 늦게 집힌 위젯이 더
+ * 위로 올라가도 두게 했는데, 그러면 G를 두 번 눌렀을 때 결과가 달라진다 —
+ * 집는 순서를 지금 놓인 자리에서 읽으므로, 1회차가 순서를 뒤섞으면 2회차는
+ * 다른 순서로 집어 다른 배치를 만든다. 무작위 책상 500개 중 32개에서 났다.
+ * 자리가 뒤로만 가면 결과를 `y → x`로 읽은 것이 집은 순서와 같아져 두 번째가
+ * 첫 번째와 같아진다. 짧은 위젯 아래로 다음 것이 올라오는 것은 그대로라 Rows와
+ * 같은 그림이 되지도 않는다.
  */
 function compactInto(ordered: TidyBox[], targetWidth: number): { spot: Spot; box: TidyBox }[] {
   const placed: { spot: Spot; box: TidyBox }[] = [];
+  // 검사할 x·y 후보. 놓을 때마다 그 위젯의 오른쪽·아래가 더해진다.
+  const xs = new Set([0]);
+  const ys = new Set([0]);
+  let last: Spot = { x: 0, y: 0 };
 
   const hits = (spot: Spot, box: TidyBox) =>
     placed.some(
@@ -143,11 +153,11 @@ function compactInto(ordered: TidyBox[], targetWidth: number): { spot: Spot; box
     );
 
   for (const box of ordered) {
-    const xs = [0, ...placed.map((p) => p.spot.x + p.box.width + TIDY_GAP)];
-    const ys = [0, ...placed.map((p) => p.spot.y + p.box.height + TIDY_GAP)];
     const spots: Spot[] = [];
     for (const y of ys) {
+      if (y < last.y) continue;
       for (const x of xs) {
+        if (y === last.y && x < last.x) continue;
         if (x + box.width <= targetWidth + ZOOM_EPSILON) spots.push({ x, y });
       }
     }
@@ -157,6 +167,9 @@ function compactInto(ordered: TidyBox[], targetWidth: number): { spot: Spot; box
       y: Math.max(0, ...placed.map((p) => p.spot.y + p.box.height + TIDY_GAP)),
     };
     placed.push({ spot, box });
+    xs.add(spot.x + box.width + TIDY_GAP);
+    ys.add(spot.y + box.height + TIDY_GAP);
+    last = spot;
   }
   return placed;
 }
@@ -191,7 +204,7 @@ export function tidy(
       (w) => w >= widest
     );
     // 어떤 후보도 가장 넓은 위젯을 담지 못하면 그 위젯 폭이 목표가 된다 — 한 줄이다.
-    const targets = widths.length ? widths : [widest];
+    const targets = [...new Set(widths.length ? widths : [widest])];
     best = bestOf(
       targets.map((w) => candidateOf(compactInto(ordered, w))),
       area

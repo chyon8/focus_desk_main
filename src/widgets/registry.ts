@@ -56,4 +56,3 @@ export const WIDGET_REGISTRY = Object.fromEntries(
   ])
 ) as Record<WidgetType, WidgetEntry>;
 
-export const WIDGET_TYPES = Object.keys(WIDGET_REGISTRY) as WidgetType[];

@@ -76,3 +76,13 @@ docs/
 - `tokens`는 `useThemeVariables`가 `:root`에 CSS 변수로 주입(`--ink`, `--panel`, `--surface`, `--accent`, `--font-ui` …). UI 전체가 여기서 색을 읽는다
 - **배경은 카메라를 따라가지 않는다**. 배경에 움직임을 넣으려면 카메라와 무관하게 스스로 움직이는 것(파티클·글로우)으로 할 것
 - 코드로 씬을 그리는 시도(SVG·three.js)는 폐기됨. 다시 하려면 아트 디렉션부터
+
+## 어디에 뭐가 있나
+
+- **공간 모양** = [ThemePicker.tsx](../src/app/ThemePicker.tsx) — 배경·날씨·UI 밝기를 현재 공간에만 건다. 값은 [backgrounds.ts](../src/spaces/backgrounds.ts) · [SceneLayer.tsx](../src/themes/SceneLayer.tsx)
+- **즐겨찾기** = 위젯은 고르기만 한다([WebAppWidget.tsx](../src/widgets/WebAppWidget.tsx)의 `WebAppPicker`, 행 우클릭으로 이름·주소·삭제). 목록 관리는 설정 → Favorites 모달([FavoritesPanel.tsx](../src/app/FavoritesPanel.tsx)). 삭제는 확인 대신 Undo 토스트다(`webappStore.lastRemoved`)
+- **월페이퍼 폴더** = `userData/wallpapers`. 앱이 들고 오는 사진은 번들(`/wallpapers/…`), 사용자 것은 `focusdesk-image://wallpaper/…`([images.ts](../electron/ipc/images.ts)). **패키징본에서는 번들 폴더가 asar 안이라 사진을 직접 넣을 수 없다** — 보이는지는 18번에서 확인한다
+- **앱 아이콘** = [make_icon.py](../build/make_icon.py)가 그려서 `build/icon.png`·`icon.icns`를 만든다. 색 상수 3개와 좌표만 고치면 다시 나온다. `electron-builder.yml`이 icns를 쓴다
+- **백업** = [backup.ts](../electron/ipc/backup.ts). 하루 1회 스냅샷(최근 5개). **가져오기는 id가 같으면 건너뛴다** — 같은 프로필에 되가져오면 "Nothing new"가 정상이다. 쿠키는 백업에 없다
+- **앱 창 붙이기** = `prefsStore.attachApps`, 기본 `false`. 접근성 프롬프트는 헬퍼의 `place`·`windows` 두 곳에서만 뜬다
+- **기능 목록 위젯** = `TOUR_LINES`. 줄은 `TodoItem.hint`로 식별한다([types.ts](../src/spaces/types.ts)의 `TourHint`) — 텍스트로 맞추면 사용자가 글을 고치는 순간 깨진다

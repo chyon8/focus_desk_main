@@ -9,7 +9,8 @@ import { OPEN_TABS, spacesFrom, windowChoices, type WindowChoice } from '../spac
 import { newSpace, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
 import { useWebAppStore } from '../stores/webappStore';
-import { WEB_APP_PRESETS, hostOf, normalizeUrl, type WebAppGroup } from '../webapps/presets';
+import { WEB_APP_PRESETS, normalizeUrl, type WebAppGroup } from '../webapps/presets';
+import { hostOf } from '../widgets/browserAddress';
 import type { TodoItem, TourHint, WebAppIcon } from '../spaces/types';
 import { ParticleLayer } from '../themes/ParticleLayer';
 import { greetingForHour, roomsForHour, type Room } from './rooms';

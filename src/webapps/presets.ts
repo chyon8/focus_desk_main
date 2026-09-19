@@ -97,11 +97,3 @@ export function normalizeUrl(input: string) {
   return /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-/** The host, for naming a web app the user has not named themselves. */
-export function hostOf(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
-}

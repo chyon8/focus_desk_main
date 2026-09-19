@@ -9,6 +9,27 @@ import { WIDGET_REGISTRY } from '../widgets/registry';
 /** Long enough to notice the mistake, short enough not to sit there. */
 const VISIBLE_MS = 8000;
 
+type Slot = { key: string; label: string; undo: () => void; dismiss: () => void } | null;
+
+/**
+ * One slot's countdown. Every slot gets its own, not just the one on screen:
+ * with a single timer on the winner, a losing slot sat in the store untouched
+ * and popped up as a stale toast once the winner cleared — close a widget, then
+ * delete a space, and "Closed Memo" came back 16 seconds later.
+ */
+function useAutoDismiss(slot: Slot) {
+  const dismiss = slot?.dismiss;
+  const key = slot?.key;
+  useEffect(() => {
+    if (!dismiss) return;
+    const timer = setTimeout(dismiss, VISIBLE_MS);
+    return () => clearTimeout(timer);
+    // A new key restarts the countdown; `dismiss` is rebuilt every render and
+    // would restart it on every one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+}
+
 /**
  * Closing a widget throws away everything in it — a memo's text included — and
  * there is no other way back. So every ✕ leaves this behind for a few seconds
@@ -16,7 +37,7 @@ const VISIBLE_MS = 8000;
  * its logins with it, so nothing is actually deleted until this clears. Moving
  * widgets to another space is here too: they are off screen afterwards, so
  * without this there is no way to tell where they went. An arrange is last: it
- * only moves and resizes, but a desk placed by hand cannot be put back by hand.
+ * only moves widgets, but a desk placed by hand cannot be put back by hand.
  */
 export const UndoToast: React.FC = () => {
   const removedWidget = useSpaceStore((s) => s.lastRemoved);
@@ -27,62 +48,55 @@ export const UndoToast: React.FC = () => {
   // The selection bar owns the bottom slot while it is up; the toast sits above it.
   const hasSelection = useUiStore((s) => s.selectedIds.length > 0);
 
-  // A deleted space wins the slot: it is the larger of the two undos, and the
-  // space it was in took the widget toast with it anyway.
-  const entry = removedSpace
-    ? {
-        key: removedSpace.doc.id,
-        label: `Deleted ${removedSpace.doc.name}`,
-        undo: () => useSpaceStore.getState().undoRemoveSpace(),
-        dismiss: () => useSpaceStore.getState().dismissRemovedSpace(),
-      }
-    : removedWidget
-      ? {
-          key: removedWidget.widgets.map((w) => w.id).join(),
-          label:
-            removedWidget.widgets.length === 1
-              ? `Closed ${WIDGET_REGISTRY[removedWidget.widgets[0].type].label}`
-              : `Closed ${removedWidget.widgets.length} widgets`,
-          undo: () => useSpaceStore.getState().undoRemove(),
-          dismiss: () => useSpaceStore.getState().dismissRemoved(),
-        }
-      : moved
-        ? {
-            key: moved.widgets.map((w) => w.id).join(),
-            label: `Moved ${
-              moved.widgets.length === 1
-                ? WIDGET_REGISTRY[moved.widgets[0].type].label
-                : `${moved.widgets.length} widgets`
-            } to ${useSpaceStore.getState().spaces[moved.toSpaceId]?.name ?? 'another space'}`,
-            undo: () => useSpaceStore.getState().undoMove(),
-            dismiss: () => useSpaceStore.getState().dismissMoved(),
-          }
-        : arranged
-          ? {
-              key: `arrange-${Object.keys(arranged.boxes).join()}`,
-              label: `Arranged ${Object.keys(arranged.boxes).length} widgets`,
-              undo: () => useSpaceStore.getState().undoArrange(),
-              dismiss: () => useSpaceStore.getState().dismissArranged(),
-            }
-          : removedFavorite
-            ? {
-                key: `favorite-${removedFavorite.id}`,
-                label: `Removed ${removedFavorite.name}`,
-                undo: () => useWebAppStore.getState().undoRemove(),
-                dismiss: () => useWebAppStore.getState().dismissRemoved(),
-              }
-            : null;
+  // Most far-reaching first — only one can be on screen, and a deleted space is
+  // the larger undo of the two anyway (the space it was in took the widget
+  // toast with it). The rest keep counting down where they are.
+  const removedSpaceSlot: Slot = removedSpace && {
+    key: removedSpace.doc.id,
+    label: `Deleted ${removedSpace.doc.name}`,
+    undo: () => useSpaceStore.getState().undoRemoveSpace(),
+    dismiss: () => useSpaceStore.getState().dismissRemovedSpace(),
+  };
+  const removedWidgetSlot: Slot = removedWidget && {
+    key: removedWidget.widgets.map((w) => w.id).join(),
+    label:
+      removedWidget.widgets.length === 1
+        ? `Closed ${WIDGET_REGISTRY[removedWidget.widgets[0].type].label}`
+        : `Closed ${removedWidget.widgets.length} widgets`,
+    undo: () => useSpaceStore.getState().undoRemove(),
+    dismiss: () => useSpaceStore.getState().dismissRemoved(),
+  };
+  const movedSlot: Slot = moved && {
+    key: moved.widgets.map((w) => w.id).join(),
+    label: `Moved ${
+      moved.widgets.length === 1
+        ? WIDGET_REGISTRY[moved.widgets[0].type].label
+        : `${moved.widgets.length} widgets`
+    } to ${useSpaceStore.getState().spaces[moved.toSpaceId]?.name ?? 'another space'}`,
+    undo: () => useSpaceStore.getState().undoMove(),
+    dismiss: () => useSpaceStore.getState().dismissMoved(),
+  };
+  const arrangedSlot: Slot = arranged && {
+    key: `arrange-${Object.keys(arranged.boxes).join()}`,
+    label: `Arranged ${Object.keys(arranged.boxes).length} widgets`,
+    undo: () => useSpaceStore.getState().undoArrange(),
+    dismiss: () => useSpaceStore.getState().dismissArranged(),
+  };
+  const removedFavoriteSlot: Slot = removedFavorite && {
+    key: `favorite-${removedFavorite.id}`,
+    label: `Removed ${removedFavorite.name}`,
+    undo: () => useWebAppStore.getState().undoRemove(),
+    dismiss: () => useWebAppStore.getState().dismissRemoved(),
+  };
 
-  const key = entry?.key;
-  const dismiss = entry?.dismiss;
-  useEffect(() => {
-    if (!dismiss) return;
-    const timer = setTimeout(dismiss, VISIBLE_MS);
-    return () => clearTimeout(timer);
-    // Restarting the countdown is what a new key means; `dismiss` is rebuilt
-    // every render and would restart it on every one.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  useAutoDismiss(removedSpaceSlot);
+  useAutoDismiss(removedWidgetSlot);
+  useAutoDismiss(movedSlot);
+  useAutoDismiss(arrangedSlot);
+  useAutoDismiss(removedFavoriteSlot);
+
+  const entry =
+    removedSpaceSlot ?? removedWidgetSlot ?? movedSlot ?? arrangedSlot ?? removedFavoriteSlot;
 
   return (
     <AnimatePresence>

@@ -35,7 +35,7 @@ export interface Placement {
 // first run, where the two tabs read last should come back big (`focus`), and the
 // even grid for everything else. The arrange a user presses is in `tidy.ts`
 // instead: it keeps every widget at the size it already is.
-export type LayoutMode = 'grid' | 'stack' | 'masonry' | 'focus';
+export type LayoutMode = 'grid' | 'focus';
 
 export const ARRANGE_GAP = 32;
 const FIT_PADDING = 20;
@@ -154,10 +154,6 @@ function bestColumns(boxes: Box[], inner: Area): number {
   return best;
 }
 
-export function autoColumns(boxes: Box[], area: Area): number {
-  return bestColumns(boxes, innerArea(area));
-}
-
 /**
  * A `cols`-wide grid: every box takes as much of its cell as it may, and the
  * grid is then pulled in to exactly what the boxes turned out to need.
@@ -227,169 +223,6 @@ function fillGrid(boxes: Box[], area: Area, columns?: number): Record<string, Pl
   const inner = innerArea(area);
   const cols = Math.max(1, Math.min(boxes.length, columns ?? bestColumns(boxes, inner)));
   return fillInto(boxes, inner, cols, 0);
-}
-
-/**
- * Every lane in a stack is this wide, and every card fills it: the width of a
- * column widget, so a column sits in the stack as one more lane.
- */
-const LANE_WIDTH = COLUMN_WIDTH;
-
-/**
- * Lanes that read like a kanban board: every lane the same width, every card as
- * wide as its lane (height from its own shape), cards dealt out in order — the
- * first `cols` make the top row, the next `cols` go under them, and so on.
- * Nothing lines up across lanes below the top row, and the bottom is left ragged.
- *
- * This is the layout the user picked on 2026-09-16. It used to come out that way
- * only by accident: lanes were as wide as their widest card and cards went on the
- * shortest lane, which matched this only while every widget happened to be 300
- * wide. Once sizes differed, lanes differed, a clock that could not grow floated
- * in a wider lane, and a tall column got a lane to itself. Also tried that day
- * and turned down: widening lanes until they all end level (a photo or page lane
- * grew to several times the rest), and a shared width taken from the widgets'
- * designed sizes with a small stretch.
- */
-function stackInto(boxes: Box[], cols: number): Record<string, Placement> {
-  // A box that owns its size (a column) keeps it; a lane holding one wider than
-  // the rest is as wide as it.
-  const laneWidths = Array<number>(cols).fill(LANE_WIDTH);
-  boxes.forEach((box, i) => {
-    if (box.fixed) laneWidths[i % cols] = Math.max(laneWidths[i % cols], box.width);
-  });
-  const laneXs = laneWidths.map((_, lane) =>
-    laneWidths.slice(0, lane).reduce((x, width) => x + width + ARRANGE_GAP, 0)
-  );
-
-  const tops = Array<number>(cols).fill(0);
-  const placements: Record<string, Placement> = {};
-  boxes.forEach((box, i) => {
-    const lane = i % cols;
-    const width = box.fixed ? box.width : laneWidths[lane];
-    const height = box.fixed ? box.height : Math.round((box.height * width) / box.width);
-    placements[box.id] = { x: laneXs[lane], y: tops[lane], width, height };
-    tops[lane] += height + ARRANGE_GAP;
-  });
-  return placements;
-}
-
-/**
- * Masonry: the same even lanes, but each card goes on whichever lane is shortest
- * so far (the leftmost on a tie), so the lanes end close together and the cards
- * no longer sit in rows.
- *
- * Every lane is as wide as the widest box that owns its size, so a lane's width
- * never depends on which cards land on it — with widths that followed the cards
- * (the first stack, 2026-09-16), placing a card changed the lane it was measured
- * against, and the same desk came out differently from one arrange to the next.
- */
-function masonryInto(boxes: Box[], cols: number): Record<string, Placement> {
-  const width = Math.max(LANE_WIDTH, ...boxes.filter((box) => box.fixed).map((box) => box.width));
-  const tops = Array<number>(cols).fill(0);
-  const placements: Record<string, Placement> = {};
-  for (const box of boxes) {
-    const lane = tops.indexOf(Math.min(...tops));
-    const w = box.fixed ? box.width : width;
-    const height = box.fixed ? box.height : Math.round((box.height * w) / box.width);
-    placements[box.id] = {
-      x: lane * (width + ARRANGE_GAP) + Math.round((width - w) / 2),
-      y: tops[lane],
-      width: w,
-      height,
-    };
-    tops[lane] += height + ARRANGE_GAP;
-  }
-  return placements;
-}
-
-/** A lane layout at `columns` lanes, or at the count that fills the screen best. */
-function laneGrid(
-  laneInto: (boxes: Box[], cols: number) => Record<string, Placement>,
-  boxes: Box[],
-  area: Area,
-  columns?: number
-): Record<string, Placement> {
-  const inner = innerArea(area);
-  if (columns) return laneInto(boxes, Math.max(1, Math.min(boxes.length, columns)));
-
-  let best = laneInto(boxes, 1);
-  let bestScore = fitScore(Object.values(best), inner);
-  for (let cols = 2; cols <= boxes.length; cols++) {
-    const placed = laneInto(boxes, cols);
-    const score = fitScore(Object.values(placed), inner);
-    if (score > bestScore) {
-      bestScore = score;
-      best = placed;
-    }
-  }
-  return best;
-}
-
-/**
- * The order a stack reads its cards in, taken from where they sit now, so
- * arranging again leaves them where they are and a card dragged to another lane
- * stays there.
- *
- * Cards whose left-right spans overlap are one lane; lanes go left to right and
- * cards in a lane top to bottom. The order is then row by row — every lane's
- * first card, then every lane's second — which is how `stackInto` deals them out,
- * so a stack read back gives the order it was made from.
- */
-export function inLaneOrder<T extends Box>(boxes: T[]): T[] {
-  const lanes: { right: number; cards: T[] }[] = [];
-  for (const box of [...boxes].sort((a, b) => a.x - b.x || a.y - b.y)) {
-    const lane = lanes[lanes.length - 1];
-    if (lane && box.x < lane.right) {
-      lane.cards.push(box);
-      lane.right = Math.max(lane.right, box.x + box.width);
-    } else {
-      lanes.push({ right: box.x + box.width, cards: [box] });
-    }
-  }
-  for (const lane of lanes) lane.cards.sort((a, b) => a.y - b.y);
-
-  const ordered: T[] = [];
-  const rows = Math.max(0, ...lanes.map((lane) => lane.cards.length));
-  for (let row = 0; row < rows; row++) {
-    for (const lane of lanes) if (lane.cards[row]) ordered.push(lane.cards[row]);
-  }
-  return ordered;
-}
-
-/**
- * Rows, read the way a grid lays them out: boxes whose top-bottom spans overlap
- * are one row; rows go top to bottom and boxes in a row left to right. A grid
- * centres each box in its row, so tops within a row differ and a plain sort by
- * top would shuffle the row.
- */
-export function inRowOrder<T extends Box>(boxes: T[]): T[] {
-  const rows: { bottom: number; boxes: T[] }[] = [];
-  for (const box of [...boxes].sort((a, b) => a.y - b.y || a.x - b.x)) {
-    const row = rows[rows.length - 1];
-    if (row && box.y < row.bottom) {
-      row.boxes.push(box);
-      row.bottom = Math.max(row.bottom, box.y + box.height);
-    } else {
-      rows.push({ bottom: box.y + box.height, boxes: [box] });
-    }
-  }
-  return rows.flatMap((row) => row.boxes.sort((a, b) => a.x - b.x));
-}
-
-/**
- * The order an arrange takes its boxes in: read off where they sit now, by the
- * same rule the mode lays them out with, so arranging a desk twice gives the same
- * desk. Clicking a widget used to reorder the next arrange (grid went most
- * recently used first), and the user wants the same result every time
- * (2026-09-16). To reorder, move the cards.
- *
- * Masonry reads top first, then left: its cards are placed at the lowest free top,
- * leftmost on a tie, so that is the order they were placed in.
- */
-export function orderFor<T extends Box>(mode: LayoutMode, boxes: T[]): T[] {
-  if (mode === 'stack') return inLaneOrder(boxes);
-  if (mode === 'masonry') return inReadingOrder(boxes);
-  return inRowOrder(boxes);
 }
 
 /** How many boxes get the bigger tile, and how many cells across one of those is. */
@@ -507,8 +340,6 @@ function focusGrid(boxes: Box[], area: Area): Record<string, Placement> {
  * the first box takes the first cell. The caller decides what that order means.
  * - grid: fills `area` — `columns` per row, or the count that wastes the least
  *   space when omitted. Boxes are resized to their cells (aspect kept).
- * - stack: even lanes, every card as wide as its lane, dealt out row by row.
- * - masonry: the same lanes, each card on the shortest lane so far.
  * - focus: a mosaic — the first two get a tile twice the size, on the same grid.
  */
 export function arrange(
@@ -518,14 +349,8 @@ export function arrange(
   columns?: number
 ): Record<string, Placement> {
   if (boxes.length === 0) return {};
-  const ordered = boxes;
-
-  if (mode === 'stack') return laneGrid(stackInto, ordered, area, columns);
-  if (mode === 'masonry') return laneGrid(masonryInto, ordered, area, columns);
-
-  if (mode === 'focus') return focusGrid(ordered, area);
-
-  return fillGrid(ordered, area, columns);
+  if (mode === 'focus') return focusGrid(boxes, area);
+  return fillGrid(boxes, area, columns);
 }
 
 /** How far a bounded search moves between tries: fine enough to use a gap. */

@@ -15,6 +15,18 @@ const desk: TidyBox[] = [
 const area = { width: 1400, height: 900 };
 const MODES: ArrangeMode[] = ['compact', 'rows'];
 
+/** 씨앗 하나로 같은 책상이 나오는 난수 — 실패한 경우를 seed로 다시 만들 수 있다. */
+function randomDesk(seed: number, count: number): TidyBox[] {
+  let s = seed;
+  const next = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  // 실제 위젯 크기들: 브라우저 · 메모 · 시계 · 타이머 · 할 일 · 사진 · 컬럼.
+  const sizes = [[900, 620], [420, 460], [320, 400], [340, 340], [320, 420], [280, 320], [320, 560]];
+  return Array.from({ length: count }, (_, i) => {
+    const [width, height] = sizes[Math.floor(next() * sizes.length)];
+    return { id: 'w' + i, x: Math.round(next() * 2500), y: Math.round(next() * 2000), width, height };
+  });
+}
+
 /** 정렬 결과를 크기와 함께 — 겹침·간격을 재려면 상자가 온전해야 한다. */
 function laid(boxes: TidyBox[], mode: ArrangeMode, columns?: number): TidyBox[] {
   const spots = tidy(boxes, area, mode, columns);
@@ -90,6 +102,36 @@ describe('두 번 눌러도 같은 책상', () => {
     const shuffled = [...desk].reverse();
     expect(tidy(shuffled, area, 'compact')).toEqual(tidy(desk, area, 'compact'));
   });
+
+  // 고정 책상 하나로는 부족했다. Compact이 늦게 집힌 위젯을 먼저 것보다 위에
+  // 놓던 동안, 위 책상은 통과하면서 무작위 책상 500개 중 32개가 두 번째 G에서
+  // 달라졌다. 실패하면 어느 책상인지 나오게 seed를 같이 적는다.
+  for (const mode of MODES) {
+    it(`${mode}: 무작위 책상 500개에서도 두 번째가 같다`, () => {
+      const broken: string[] = [];
+      for (let seed = 1; seed <= 500; seed++) {
+        const boxes = randomDesk(seed, 3 + (seed % 8));
+        const first = laid(boxes, mode);
+        if (JSON.stringify(laid(first, mode)) !== JSON.stringify(first)) {
+          broken.push(`seed ${seed} (${boxes.length}개)`);
+        }
+      }
+      expect(broken.slice(0, 5)).toEqual([]);
+    });
+  }
+});
+
+describe('속도', () => {
+  // 정렬은 `arrangeWidgets`의 zustand `set` 안에서 동기로 돈다 — 느리면 창이 멈춘다.
+  // 자리 후보를 위젯마다 새로 만들고 전부 충돌 검사하던 때는 150개가 1.2초였다.
+  for (const n of [80, 150]) {
+    it(`compact ${n}개가 150ms 안에 끝난다`, () => {
+      const boxes = randomDesk(7, n);
+      const started = performance.now();
+      tidy(boxes, area, 'compact');
+      expect(performance.now() - started).toBeLessThan(150);
+    });
+  }
 });
 
 describe('rows', () => {

@@ -8,6 +8,7 @@ import { isFromSpace, partitionFor, SHARED_ID, type SignIn } from '../spaces/sig
 import { useSignInStore } from '../stores/signInStore';
 import { siteOf } from '../widgets/browserAddress';
 import type { SpaceDoc, WidgetDoc } from '../spaces/types';
+import { isComposing } from './ime';
 
 type SignIns = Record<string, SignIn>;
 
@@ -68,7 +69,8 @@ const NameField: React.FC<{
     onChange={(e) => onChange(e.target.value)}
     onBlur={onCommit}
     onKeyDown={(e) => {
-      if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      // 한글은 조합 중에도 Enter가 온다 — 가드가 없으면 마지막 글자가 잘린 채 저장된다.
+      if (e.key === 'Enter' && !isComposing(e)) (e.target as HTMLInputElement).blur();
       if (e.key === 'Escape') onCancel();
     }}
     placeholder="Work, Personal, Client…"

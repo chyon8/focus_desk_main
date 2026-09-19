@@ -1282,7 +1282,6 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 // --- Selectors ---
 
 export const useActiveSpace = () => useSpaceStore((s) => s.spaces[s.activeSpaceId]);
-export const useCamera = () => useSpaceStore((s) => s.spaces[s.activeSpaceId]?.camera);
 export const useWidget = (id: string) =>
   useSpaceStore((s) => s.spaces[s.activeSpaceId]?.widgets[id]);
 
