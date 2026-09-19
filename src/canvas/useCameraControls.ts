@@ -30,6 +30,35 @@ export function looksLikeMouse(e: Pick<WheelEvent, 'deltaX'> & { wheelDeltaY?: n
 }
 
 /**
+ * A list under the cursor takes the wheel before the camera does.
+ *
+ * The viewport calls `preventDefault` on every wheel event, so without this no
+ * list inside a widget can be scrolled at all — the canvas panned instead
+ * (2026-09-19 사용자). Handed over only while that list can still move the way
+ * the wheel is going; at the end of it the camera takes over again.
+ *
+ * A pinch is not handed over: it is a camera gesture wherever it happens.
+ */
+function listTakesWheel(target: EventTarget | null, viewport: HTMLElement, e: WheelEvent) {
+  let el = target instanceof Element ? target : null;
+  while (el && el !== viewport) {
+    const style = getComputedStyle(el);
+    if (e.deltaY !== 0 && /auto|scroll/.test(style.overflowY) && el.scrollHeight > el.clientHeight) {
+      const atTop = el.scrollTop <= 0;
+      const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      if (!(e.deltaY < 0 ? atTop : atEnd)) return true;
+    }
+    if (e.deltaX !== 0 && /auto|scroll/.test(style.overflowX) && el.scrollWidth > el.clientWidth) {
+      const atStart = el.scrollLeft <= 0;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+      if (!(e.deltaX < 0 ? atStart : atEnd)) return true;
+    }
+    el = el.parentElement;
+  }
+  return false;
+}
+
+/**
  * Wires pan/zoom gestures onto the viewport element.
  * - trackpad pinch (wheel + ctrlKey) or cmd+wheel: zoom at cursor
  * - mouse wheel: zoom at cursor; ⇧ + mouse wheel pans instead
@@ -51,6 +80,8 @@ export function useCameraControls(ref: React.RefObject<HTMLElement | null>) {
     let lastWheelAt = -Infinity;
 
     const onWheel = (e: WheelEvent) => {
+      const isPinch = e.ctrlKey || e.metaKey;
+      if (!isPinch && listTakesWheel(e.target, el, e)) return;
       e.preventDefault();
       const { setCamera } = useSpaceStore.getState();
       const camera = getCamera();
@@ -62,7 +93,6 @@ export function useCameraControls(ref: React.RefObject<HTMLElement | null>) {
       // ±120 that says nothing about how far the fingers moved — so reading a
       // pinch as a wheel zoomed a flat 10% per event whether the fingers went
       // 3px or 22px, which is a staircase with no fine adjustment in it.
-      const isPinch = e.ctrlKey || e.metaKey;
       if (!isPinch && e.timeStamp - lastWheelAt > BURST_GAP_MS) isMouse = looksLikeMouse(e);
       lastWheelAt = e.timeStamp;
 
