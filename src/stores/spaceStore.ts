@@ -361,28 +361,39 @@ export function showWhereItLanded(widget: WidgetDoc, label: string) {
 }
 
 /**
- * Brings a widget just made into the view, zooming out only as far as it takes.
+ * Where a widget goes when the screen has no room left for it.
  *
- * A new widget goes in the first spot clear of everything, and once a screenful
- * is down that spot is off the edge. Panning to it instead would push what the
- * user was working next to out of sight, which is the same loss the other way
- * round, so the camera steps back to hold the space — every widget stays where
- * it was put and all of them are on screen, which is the answer this app has
- * instead of a scrollbar.
+ * A step down and right of the topmost widget it would have landed on, the way
+ * a window manager opens a second window: they overlap, because the screen is
+ * full and something has to, but each one can be seen and picked up. Landing on
+ * the exact same pixel is what made three in a row look like one.
  *
- * Nothing happens while the new widget is already fully visible, which is the
- * ordinary case: an empty space, or one with room left in it.
+ * Kept on screen by `placeInView` — being visible is the whole point of the step.
  */
-function frameNewWidget(id: string) {
-  const store = useSpaceStore.getState();
-  const space = store.spaces[store.activeSpaceId];
-  const widget = space?.widgets[id];
-  if (!space || !widget) return;
-  const area = canvasArea();
-  if (isFullyVisible(getCamera(), widget, area)) return;
-  const boxes = Object.values(space.widgets).filter((w) => !ownerOf(space.widgets, w.id));
-  const camera = fitCamera(boxes, area);
-  if (camera) store.setCamera(camera);
+function cascadeFrom(
+  space: SpaceDoc,
+  wanted: { x: number; y: number },
+  size: { width: number; height: number },
+  area: ReturnType<typeof canvasArea>
+): { x: number; y: number } {
+  const under = Object.values(space.widgets)
+    .filter(
+      (w) =>
+        !ownerOf(space.widgets, w.id) &&
+        wanted.x < w.x + w.width &&
+        wanted.x + size.width > w.x &&
+        wanted.y < w.y + w.height &&
+        wanted.y + size.height > w.y
+    )
+    .sort((a, b) => a.z - b.z)
+    .pop();
+  if (!under) return wanted;
+  return placeInView(
+    space.camera,
+    size,
+    { x: under.x + DUPLICATE_OFFSET, y: under.y + DUPLICATE_OFFSET },
+    area
+  );
 }
 
 /** The widgets a column holds, and the column itself — what an operation on a column really acts on. */
@@ -743,21 +754,24 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     const def = WIDGET_DEFS[type];
     let created = '';
     updateActive(set, (space) => {
-      // Dropped from the palette: centre it on the pointer. Clicked: the middle of
-      // the canvas area the user is looking at. Double-clicked: `placeInView`.
+      // Dropped from the palette: centre it on the pointer. Double-clicked:
+      // `placeInView`. Made with no point at all — the launcher, N, a click on
+      // the palette — it starts at the top-left of the view and the search below
+      // fills rightward and down from there.
+      //
+      // It used to start in the middle, which reads well for the first widget and
+      // then wastes the screen: a 420-wide memo in the centre leaves two margins
+      // of about 300, and the third widget has nowhere to go even though three of
+      // them would fit across the window with room to spare.
       const area = canvasArea();
       const { camera } = space;
+      const view = viewBounds(camera, area);
       const wanted =
         at && inView
           ? placeInView(camera, def.defaultSize, at, area)
           : at
           ? { x: at.x - def.defaultSize.width / 2, y: at.y - def.defaultSize.height / 2 }
-          : {
-              x: camera.x + (area.width / camera.zoom - def.defaultSize.width) / 2,
-              y:
-                camera.y +
-                (area.y + (area.height - def.defaultSize.height * camera.zoom) / 2) / camera.zoom,
-            };
+          : { x: view.left, y: view.top };
       // Everything but a drag lands clear of what is already there. The launcher
       // and N ask for the middle of the view every time, so three in a row landed
       // on the same pixel with only the last one to be seen; a double-click asks
@@ -766,18 +780,20 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       // A drag is the exception, for the reason `takeOutOfColumn` gives: the user
       // pointed at a place, and a nudge puts the widget somewhere they did not.
       //
-      // A screen holds two or three widgets before the gaps between them are too
-      // narrow for the next one. Past that the spot is found outside the view and
-      // the camera steps back to it — see `frameNewWidget` below.
+      // The search stays on screen and stops there. A full screen is a full
+      // screen, and then the widget steps down and right of what it landed on
+      // (`cascadeFrom`) rather than covering it exactly. Putting it out past the
+      // edge, or stepping the camera back to take it in, both answer a question
+      // nobody asked — one hides what was just made, the other resizes everything
+      // the user was reading.
       const taken = Object.values(space.widgets).filter(
         (other) => !ownerOf(space.widgets, other.id)
       );
       const spot =
         at && !inView
           ? wanted
-          : findFreeSpot(wanted, def.defaultSize, taken, viewBounds(camera, area)) ??
-            findFreeSpot(wanted, def.defaultSize, taken) ??
-            wanted;
+          : findFreeSpot(wanted, def.defaultSize, taken, view) ??
+            cascadeFrom(space, wanted, def.defaultSize, area);
       const widget: WidgetDoc = {
         id: crypto.randomUUID(),
         type,
@@ -789,13 +805,6 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       created = widget.id;
       return { ...space, widgets: { ...space.widgets, [widget.id]: widget } };
     });
-    // A spot clear of everything can be outside the view, and a widget the user
-    // cannot see is the same as one that was never made. The camera steps back
-    // far enough to hold the whole space — the move `fitToWidgets` makes, which
-    // is what this app has instead of scrolling to find something.
-    //
-    // Not for a drag: it is already where the user put it, and on screen.
-    if (created && !(at && !inView)) frameNewWidget(created);
     return created;
   },
 

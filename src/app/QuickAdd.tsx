@@ -1,8 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
-import { getCamera, useSpaceStore } from '../stores/spaceStore';
-import { screenToWorld } from '../canvas/camera';
+import { useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, useUiStore } from '../stores/uiStore';
 import { MORE_TOOL_GROUPS, QUICK_ADD_ITEMS, PaletteEntry } from './WidgetPalette';
 
@@ -47,18 +46,14 @@ export function openQuickAddAtCentre() {
   // The canvas element starts at the sidebar's edge but at the window's top, so
   // only x is offset when going from window coordinates into the element.
   const local = { x: area.width / 2, y: area.y + area.height / 2 };
-  useUiStore
-    .getState()
-    .openQuickAdd(
-      { x: area.x + local.x, y: local.y },
-      screenToWorld(getCamera(), local)
-    );
+  // The panel opens in the middle; the widget does not. Without a point the user
+  // picked, it is set down where the next free spot is.
+  useUiStore.getState().openQuickAdd({ x: area.x + local.x, y: local.y }, null);
 }
 
 /**
- * The palette where the pointer already is: double-click bare canvas (or press N)
- * and the widget lands exactly there. This avoids crossing the screen to fetch a
- * widget (D-063).
+ * Double-click opens the palette at the pointer; N opens it in the middle.
+ * Both place the widget in the next free spot, like the launcher.
  */
 export const QuickAdd: React.FC = () => {
   const quickAdd = useUiStore((s) => s.quickAdd);
@@ -90,7 +85,10 @@ export const QuickAdd: React.FC = () => {
   );
 
   const add = (item: PaletteEntry) => {
-    useSpaceStore.getState().addWidget(item.payload.type, item.payload.data, quickAdd.world, true);
+    // N과 더블클릭 모두 좌표를 지정하지 않아 런처와 같은 배치 규칙을 쓴다.
+    useSpaceStore
+      .getState()
+      .addWidget(item.payload.type, item.payload.data, quickAdd.world ?? undefined, true);
     useUiStore.getState().closeQuickAdd();
   };
 

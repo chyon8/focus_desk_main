@@ -280,7 +280,7 @@ function createWindow() {
 }
 
 /** The physical keys ⇧ turns into app shortcuts, matching `useKeyboardShortcuts`. */
-const SHIFT_SHORTCUTS = new Set(['KeyK', 'KeyN', 'KeyG', 'KeyF', 'KeyM']);
+const SHIFT_SHORTCUTS = new Set(['KeyK', 'KeyN', 'KeyG', 'KeyM']);
 
 /** Stepping to the widget beside this one, which only exists while one is full screen. */
 const MAXIMISED_SHORTCUTS = new Set(['BracketLeft', 'BracketRight']);
@@ -417,8 +417,8 @@ app.on('web-contents-created', (_event, contents) => {
       e.preventDefault();
       win.webContents.send('guest-key', ZOOM_KEYS[input.key], contents.id);
     } else if (input.shift && !input.meta && !input.control && !input.alt) {
-      // The launcher, add, arrange, fit and fullscreen. The page keeps the plain
-      // letters (it may well be typing), so the app's copies are ⇧K/⇧N/⇧G/⇧F/⇧M.
+      // The launcher, add, arrange and fullscreen. The page keeps the plain
+      // letters (it may well be typing), so the app's copies are ⇧K/⇧N/⇧G/⇧M.
       // `code`, since that is what the renderer matches on too.
       //
       // ⇧[ and ⇧] are how `{` and `}` are typed, so they are only taken while a

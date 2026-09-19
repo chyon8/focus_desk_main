@@ -222,13 +222,12 @@ export const Canvas: React.FC = () => {
   // no longer means a round trip to the sidebar (D-063).
   const onDoubleClick = (e: React.MouseEvent) => {
     if (e.target !== e.currentTarget) return;
-    const box = viewportRef.current!.getBoundingClientRect();
-    const local = { x: e.clientX - box.left, y: e.clientY - box.top };
+    // 클릭 위치는 메뉴만 정한다. 위젯은 N·런처처럼 왼쪽 위부터 빈자리를 찾는다.
     // `teaches`가 붙는 건 여기뿐이다 — N도 같은 팔레트를 열지만 가르치는 동작은
     // 더블클릭이다. 투어 1단계는 팔레트가 닫힐 때 끝난다(`closeQuickAdd`).
     useUiStore
       .getState()
-      .openQuickAdd({ x: e.clientX, y: e.clientY }, screenToWorld(camera, local), true);
+      .openQuickAdd({ x: e.clientX, y: e.clientY }, null, true);
     useSpaceStore.getState().checkHint('add');
   };
 

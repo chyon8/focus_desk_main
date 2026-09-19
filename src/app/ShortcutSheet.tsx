@@ -11,7 +11,6 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['K', 'Open anything: search'],
       ['N', 'Add a widget'],
       ['G', 'Tidy up, the way this space was arranged last'],
-      ['F', 'Fit on screen: move the camera only'],
       ['M', 'Fullscreen'],
       ['[  ]', 'Filling the screen: the widget beside this one'],
       ['Double-click', 'Add one right here'],
@@ -45,7 +44,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
   {
     title: 'In a web page',
     items: [
-      ['⇧K ⇧N ⇧G ⇧F ⇧M', 'The same five'],
+      ['⇧K ⇧N ⇧G ⇧M', 'The same four'],
       ['⇧[  ⇧]', 'The widget beside this one'],
       ['⌘+ ⌘− ⌘0', 'Page zoom'],
     ],

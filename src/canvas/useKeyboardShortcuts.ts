@@ -15,21 +15,17 @@ function isTyping(target: EventTarget | null) {
  * twins, and the copies forwarded out of a browser widget.
  */
 function runShortcut(code: string) {
-  const { arrangeWidgets, fitToWidgets } = useSpaceStore.getState();
+  const { arrangeWidgets } = useSpaceStore.getState();
   if (code === 'KeyK') {
     useUiStore.getState().toggleLauncher();
     useSpaceStore.getState().checkHint('launcher');
   }
   else if (code === 'KeyN') openQuickAddAtCentre();
-  // G moves the widgets, F only moves the camera. Two keys that sound alike and
-  // do very different things, so they are labelled as the difference in the
-  // shortcut sheet rather than as "Arrange" and "Fit".
   else if (code === 'KeyG') {
     arrangeWidgets();
     // The welcome line teaches this key; once it has been used it is in the way.
     useUiStore.getState().dismissNotice();
   }
-  else if (code === 'KeyF') fitToWidgets();
   else if (code === 'KeyM') useUiStore.getState().toggleFullscreen();
   // [ and ] move to the widget beside this one without leaving the full screen.
   // Only while one is filling the screen: on the canvas the widget is already
@@ -99,7 +95,7 @@ export function useKeyboardShortcuts() {
 
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
 
-      // K·N·G·F·M and [·], with or without ⇧. The plain keys are for the canvas; ⇧ makes
+      // K·N·G·M and [·], with or without ⇧. The plain keys are for the canvas; ⇧ makes
       // the same shortcut reachable from inside a web page, where a plain letter
       // is something the page is being typed into (the main process forwards the
       // ⇧ ones back out of the guest).

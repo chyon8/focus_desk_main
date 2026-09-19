@@ -92,10 +92,11 @@ interface UiState {
    */
   isMoveMenuOpen: boolean;
   /**
-   * The quick-add palette, open at a point: `screen` places the popover in window
-   * coordinates, `world` is where the chosen widget lands. Null when closed.
+   * The quick-add palette: `screen` places the popover in window coordinates,
+   * `world` is the point the user picked for the widget — null when a keypress
+   * opened it and there is no such point. Null palette means closed.
    */
-  quickAdd: { screen: Point; world: Point; teaches?: boolean } | null;
+  quickAdd: { screen: Point; world: Point | null; teaches?: boolean } | null;
   /**
    * Which of the two top-bar panels is open, if either. In the store because the
    * button that opens one is not always in the same component as the panel: a
@@ -180,7 +181,8 @@ interface UiState {
   setSignInsOpen: (isSignInsOpen: boolean) => void;
   setFavoritesOpen: (isFavoritesOpen: boolean) => void;
   closeDock: () => void;
-  openQuickAdd: (screen: Point, world: Point, teaches?: boolean) => void;
+  /** `world` is null when a keypress opened it: there is no point the user picked. */
+  openQuickAdd: (screen: Point, world: Point | null, teaches?: boolean) => void;
   closeQuickAdd: () => void;
   toggleLauncher: () => void;
   closeLauncher: () => void;

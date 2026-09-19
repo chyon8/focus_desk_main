@@ -76,7 +76,7 @@ function useCurrentArrange() {
 }
 
 function arrangeLabel(mode: ArrangeMode) {
-  return `Arrange: ${MODES[mode].name} (G, or ⌥G inside a page)`;
+  return `Arrange: ${MODES[mode].name} (G, or ⇧G inside a page)`;
 }
 
 /**
@@ -399,15 +399,6 @@ export const CanvasTools: React.FC = () => {
                   <Plus size={15} />
                 </button>
               </div>
-              <button
-                onClick={() => {
-                  useSpaceStore.getState().fitToWidgets();
-                  setIsOpen(false);
-                }}
-                className="row mt-1 w-full flex items-center justify-between px-2 py-2 rounded-control text-left text-ui"
-              >
-                Frame every widget <span className="t-soft">F</span>
-              </button>
             </motion.div>
           </>
         )}
