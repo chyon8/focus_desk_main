@@ -203,10 +203,11 @@ export function newSpace(name: string): SpaceDoc {
     id: crypto.randomUUID(),
     schemaVersion: SCHEMA_VERSION,
     name,
-    themeId: DEFAULT_THEME_ID,
-    // Cloud 단색. 기본 테마(Amber Lake)는 사진을 지운 뒤 갈색 그라데이션만 남아서
-    // 새 공간 기본으로 쓰지 않는다. 밝은 UI는 이 색의 밝기에서 정해진다(polarity 없음).
-    background: { type: 'COLOR', value: '#f4f5f7' },
+    themeId: 'paper',
+    // Paper 테마 그대로(2026-09-19 사용자). background가 null이면 테마 색(#efe7d9)이
+    // 보인다. 기본 테마(Amber Lake)는 사진을 지운 뒤 갈색 그라데이션만 남아서 새 공간
+    // 기본으로 쓰지 않는다. 밝은 UI는 이 색의 밝기에서 정해진다(polarity 없음).
+    background: null,
     camera: { x: -40, y: -40, zoom: 1 },
     ambience: { ...SILENT_AMBIENCE },
     widgets: {},

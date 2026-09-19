@@ -206,6 +206,8 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 - **패키징본 실사용 QA** (2026-09-12 빌드, `release/mac-arm64`). 접근성 권한을 새로 줘야 하고, dev 인스턴스를 같이 띄우면 안 된다 — 팝업·링크 / 앱 숨김 알림 / 앱·웹앱 위젯 / 공간별 로그인
 - **Swiss Editorial 폰트** — 패키징본에서 네트워크 없이 IBM Plex Sans KR·Noto Sans KR가 뜨는지
 - **월페이퍼 23장** — 재시작 후 복원·공간별 독립 저장, 16:9·16:10·울트라와이드 잘림, 수동 Light/Dark. 새 장면 생성 기준은 [WALLPAPER-GENERATION-PROMPT.md](../design-ref/WALLPAPER-GENERATION-PROMPT.md)
+- **휠 스크롤이 다른 위젯에서도 목록을 먼저 움직이는지** — 캔버스가 휠을 전부 가로채던 것을 고쳤다(2026-09-19, [useCameraControls.ts](../src/canvas/useCameraControls.ts) `listTakesWheel`). 즐겨찾기 목록에서만 봤다. 메모·할 일·칸반·컬럼에서도 볼 것
+- **설정 모달 두 개**(Favorites · Sign-ins) 실사용 — 가운데 560px로 바꿨다(2026-09-19). Esc로 안 닫히는 게 괜찮은지도 같이 정한다
 - **컬럼 카드 높이 210** (196→210). 컬럼 높이 계산이 이 상수를 쓰므로 **기존 컬럼이 열렸을 때 카드가 안 겹치는지**
 - **컬럼 카드 안 위젯 12종 스케일** — 어두운 배경 한 번만 봤다. **메모 카드가 세로줄로 보이던 것**도 같이 본다
 - **독이 한 줄에 컨트롤 8개다.** 창을 좁히면 넘치는지 안 봤다
@@ -223,6 +225,7 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 - **첫 실행 판정** = `spaceStore.needsOnboarding`. 공간은 **비어 있게** 만든다
 - **테스트 프로필** = `npm run dev:fresh`. 실제 프로필과 안 섞이므로 실사용 앱과 동시에 켜도 된다
 - **공간 모양** = [ThemePicker.tsx](../src/app/ThemePicker.tsx) — 배경·날씨·UI 밝기를 현재 공간에만 건다. 값은 [backgrounds.ts](../src/spaces/backgrounds.ts) · [SceneLayer.tsx](../src/themes/SceneLayer.tsx)
+- **즐겨찾기** = 위젯은 고르기만 한다([WebAppWidget.tsx](../src/widgets/WebAppWidget.tsx)의 `WebAppPicker`, 행 우클릭으로 이름·주소·삭제). 목록 관리는 설정 → Favorites 모달([FavoritesPanel.tsx](../src/app/FavoritesPanel.tsx)). 삭제는 확인 대신 Undo 토스트다(`webappStore.lastRemoved`)
 - **월페이퍼 폴더** = `userData/wallpapers`. 앱이 들고 오는 사진은 번들(`/wallpapers/…`), 사용자 것은 `focusdesk-image://wallpaper/…`([images.ts](../electron/ipc/images.ts)). **패키징본에서는 번들 폴더가 asar 안이라 사진을 직접 넣을 수 없다** — 보이는지는 18번에서 확인한다
 - **앱 아이콘** = [make_icon.py](../build/make_icon.py)가 그려서 `build/icon.png`·`icon.icns`를 만든다. 색 상수 3개와 좌표만 고치면 다시 나온다. `electron-builder.yml`이 icns를 쓴다
 - **백업** = [backup.ts](../electron/ipc/backup.ts). 하루 1회 스냅샷(최근 5개). **가져오기는 id가 같으면 건너뛴다** — 같은 프로필에 되가져오면 "Nothing new"가 정상이다. 쿠키는 백업에 없다
