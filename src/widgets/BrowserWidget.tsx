@@ -45,6 +45,26 @@ function stepZoom(zoom: number, direction: 1 | -1) {
  */
 const MIN_LAYOUT_WIDTH = 640;
 
+/**
+ * Sideways overflow under this many guest pixels is rounding, not a layout that
+ * does not fit, so it is left alone.
+ */
+const FIT_SLACK = 8;
+
+/**
+ * How far the guest may be laid out past the widget's own width before the page
+ * stops growing. At 2 the text is half size, which is about as small as a page
+ * can go and still be read once the canvas is zoomed in on it.
+ */
+const MAX_FIT_SCALE = 2;
+
+/** Reads how much wider than its window the page laid itself out. */
+const FIT_PROBE =
+  '({ need: document.documentElement.scrollWidth, have: document.documentElement.clientWidth })';
+
+/** A page settles its own layout after loading; lazy content arrives late. */
+const FIT_SETTLE_MS = 500;
+
 /** Under this the address row is only taking up room; the header still names the page. */
 const CHROME_MIN_WIDTH = 380;
 
@@ -172,6 +192,12 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   // The page area in world units, which is what the guest is laid out at.
   const pageBox = useRef<HTMLDivElement>(null);
   const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
+  // How wide the guest has to be laid out for the whole page to be in it, once
+  // the page has been asked. 0 until then, and again on every new page.
+  const [fitWidth, setFitWidth] = useState(0);
+  // The width the guest is laid out at right now, read by the probe below to
+  // work out the width the page is asking for.
+  const layoutWidth = useRef(0);
   // src is set once: after that the page navigates itself, and re-rendering with
   // a new src would yank it back. Empty means the start page is showing, and the
   // first address typed is what mounts the guest.
@@ -275,10 +301,13 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     return () => observer.disconnect();
   }, [hasPage]);
 
+  // The narrow-width floor, or the width the page asked for — whichever is wider.
+  const wantedWidth = Math.max(MIN_LAYOUT_WIDTH, fitWidth);
   const shrink =
-    pageSize.width > 0 && pageSize.width < MIN_LAYOUT_WIDTH
-      ? pageSize.width / MIN_LAYOUT_WIDTH
+    pageSize.width > 0 && pageSize.width < wantedWidth
+      ? Math.max(1 / MAX_FIT_SCALE, pageSize.width / wantedWidth)
       : 1;
+  layoutWidth.current = pageSize.width > 0 ? pageSize.width / shrink : 0;
   // Always pixels, never percentages: the guest only follows the element when its
   // own style changes, so a percentage that stays "100%" leaves the page laid out
   // at its old width — maximising a browser widget used to do exactly that.
@@ -299,6 +328,10 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   const inlinePage = data.url.startsWith('data:');
   const showChrome =
     !inlinePage && (pageSize.width === 0 || pageSize.width >= CHROME_MIN_WIDTH);
+  // 최대화하면 주소줄도 위젯 헤더와 같이 위로 들어간다. 페이지가 창을 다 쓰지
+  // 않으면 페이지가 트는 전체화면 영상도 그만큼 줄어든다(browserFullscreen.ts).
+  const isMaximized = useUiStore((s) => s.maximizedWidgetId === id);
+  const isTopBarsOut = useUiStore((s) => s.isTopBarsOut);
   const starred = Object.values(favorites).some((app) => app.url === data.url);
 
   /** Goes somewhere, mounting the guest if this widget has not been anywhere yet. */
@@ -349,6 +382,34 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     };
     const onStartNavigation = (e: Electron.DidStartNavigationEvent) => {
       if (e.isMainFrame && !e.isInPlace && !checkShowing) requested = e.url;
+      // The next page lays itself out on its own terms, so it is measured again
+      // from scratch — otherwise one wide page leaves every page after it small.
+      if (e.isMainFrame && !e.isInPlace) setFitWidth(0);
+    };
+
+    /**
+     * Sites with a fixed desktop layout overflow sideways in a widget and the
+     * right of the page is simply cut off. Asking the page how wide it laid
+     * itself out and giving the guest that width scales the whole layout down
+     * instead, so all of it is there.
+     *
+     * Sites that reflow — YouTube among them — report no overflow and are left
+     * at the widget's own width, where their text stays full size. Measuring
+     * rather than laying every page out wide is what keeps those as they are.
+     */
+    let fitTimer: ReturnType<typeof setTimeout> | undefined;
+    const measureFit = () => {
+      const room = layoutWidth.current;
+      if (!room) return;
+      void el
+        .executeJavaScript(FIT_PROBE)
+        .then((page: { need: number; have: number } | null) => {
+          if (!page || page.have <= 0 || page.need <= page.have + FIT_SLACK) return;
+          // Only ever wider: a page that fits once it has been given room would
+          // otherwise measure clear on the next pass and snap back, every load.
+          setFitWidth((current) => Math.max(current, room * (page.need / page.have)));
+        })
+        .catch(() => undefined);
     };
 
     const onNavigate = (e: Electron.DidNavigateEvent) => {
@@ -416,7 +477,11 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     };
 
     const onStart = () => setIsLoading(true);
-    const onStop = () => setIsLoading(false);
+    const onStop = () => {
+      setIsLoading(false);
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(measureFit, FIT_SETTLE_MS);
+    };
     // A page that will not load leaves the guest blank, which reads as the widget
     // being broken rather than the site being unreachable.
     const onFail = (e: Electron.DidFailLoadEvent) => {
@@ -437,6 +502,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     return () => {
       clearTimeout(blockTimer);
       clearTimeout(stuckTimer);
+      clearTimeout(fitTimer);
       el.removeEventListener('dom-ready', onDomReady);
       el.removeEventListener('did-start-navigation', onStartNavigation);
       el.removeEventListener('did-navigate', onNavigate);
@@ -490,10 +556,15 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   if (closed) return <BrowserCard data={data} onOpen={() => update({ open: true })} />;
 
   return (
-    <div className="h-full w-full flex flex-col">
+    <div className="relative h-full w-full flex flex-col">
       {showChrome && (
       <form
-        className="border-hair h-9 shrink-0 flex items-center px-2 gap-1 border-b"
+        className={`border-hair h-9 shrink-0 flex items-center px-2 gap-1 border-b ${
+          isMaximized ? `browser-bar-peek ${isTopBarsOut ? 'top-bars-out' : ''}` : ''
+        }`}
+        onMouseEnter={isMaximized ? () => useUiStore.getState().showTopBars() : undefined}
+        onMouseMove={isMaximized ? () => useUiStore.getState().showTopBars() : undefined}
+        onMouseLeave={isMaximized ? () => useUiStore.getState().hideTopBars() : undefined}
         onSubmit={(e) => {
           e.preventDefault();
           go(toAddress(address));
