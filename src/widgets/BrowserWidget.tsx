@@ -18,6 +18,11 @@ import { useWidgetData } from './useWidgetData';
 // How long Google's block page stays before the widget opens the page again.
 const BLOCK_RETRY_MS = 1000;
 
+// How long a bot check or a block page may sit there before the widget offers
+// the page to another browser. Most checks pass in a second or two, and a way
+// out that appears while one is still running reads as the app giving up.
+const STUCK_MS = 15_000;
+
 // The levels a browser's ⌘+/⌘− walks through.
 const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 
@@ -161,6 +166,8 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
   const [history, setHistory] = useState({ back: false, forward: false });
   const [isLoading, setIsLoading] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // A check or block page that has not moved in STUCK_MS.
+  const [stuck, setStuck] = useState(false);
   const view = useRef<Electron.WebviewTag>(null);
   // The page area in world units, which is what the guest is laid out at.
   const pageBox = useRef<HTMLDivElement>(null);
@@ -323,6 +330,23 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     // Once per widget, so a block that stays does not reload forever.
     let blockRetried = false;
     let blockTimer: ReturnType<typeof setTimeout> | undefined;
+
+    // Google's block page keeps the title of the page it is guarding, so it is
+    // not one isCheckTitle finds — it is tracked by address instead.
+    let blockedPage = false;
+    let stuckTimer: ReturnType<typeof setTimeout> | undefined;
+    const watchStuck = (showing: boolean) => {
+      if (!showing) {
+        clearTimeout(stuckTimer);
+        stuckTimer = undefined;
+        setStuck(false);
+        return;
+      }
+      // Already counting, or already given up. A check page that rewrites its
+      // title every second would otherwise keep pushing the offer away.
+      if (stuckTimer) return;
+      stuckTimer = setTimeout(() => setStuck(true), STUCK_MS);
+    };
     const onStartNavigation = (e: Electron.DidStartNavigationEvent) => {
       if (e.isMainFrame && !e.isInPlace && !checkShowing) requested = e.url;
     };
@@ -340,7 +364,9 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
       useSiteVisitStore.getState().record(url);
       setFailure(null);
       readHistory();
-      if (isGoogleBlock(e.url) && !blockRetried) {
+      blockedPage = isGoogleBlock(e.url);
+      watchStuck(blockedPage);
+      if (blockedPage && !blockRetried) {
         blockRetried = true;
         blockTimer = setTimeout(() => el.loadURL(url), BLOCK_RETRY_MS);
       }
@@ -369,6 +395,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     // in the widget so it is there before the page has loaded.
     const onTitle = (e: Electron.PageTitleUpdatedEvent) => {
       checkShowing = isCheckTitle(e.title);
+      watchStuck(blockedPage || checkShowing);
       if (checkShowing && requested && hostOf(requested) === hostOf(el.getURL())) {
         update({ title: e.title, url: addressToSave(requested) });
         return;
@@ -409,6 +436,7 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
     el.addEventListener('did-fail-load', onFail);
     return () => {
       clearTimeout(blockTimer);
+      clearTimeout(stuckTimer);
       el.removeEventListener('dom-ready', onDomReady);
       el.removeEventListener('did-start-navigation', onStartNavigation);
       el.removeEventListener('did-navigate', onNavigate);
@@ -599,6 +627,20 @@ export const BrowserWidget: React.FC<{ id: string; onFavicon?: (src: string) => 
           />
         ) : (
           <BrowserStartPage onOpen={go} />
+        )}
+
+        {/* Along the bottom, not over the page: a check the user has to click
+            through is usually in the middle, and covering it would trap them. */}
+        {stuck && !failure && (
+          <div className="glass-panel absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-3 py-2">
+            <span className="t-faint text-ui truncate">This page won’t load here.</span>
+            <button
+              onClick={() => void window.apps?.openUrl(data.url)}
+              className="chrome-button press shrink-0 px-3 h-7 rounded-control text-ui"
+            >
+              Open in browser
+            </button>
+          </div>
         )}
 
         {failure && (

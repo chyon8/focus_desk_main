@@ -34,6 +34,8 @@ declare global {
       permissions: () => Promise<{ accessibility: boolean }>;
       /** Opens the Accessibility pane and reveals the binary to add; returns its path. */
       showAccessibilitySettings: () => Promise<string>;
+      /** Hands an address to the Mac's default browser. http and https only. */
+      openUrl: (url: string) => Promise<void>;
       /** Opens the Spotlight pane, where indexing and its exclusions are set. */
       showSpotlightSettings: () => Promise<void>;
       /** Rect in window coordinates; the main process adds the window's origin. */

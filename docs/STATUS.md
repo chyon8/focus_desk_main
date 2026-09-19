@@ -8,9 +8,9 @@
 
 | # | 할 일 | 크기 | 끝난 기준 |
 |---|---|---|---|
-| 13 | **브라우저가 봇 검사에 덜 막히게** — D·A1~A3·B1·B2 끝, 다음은 B3 | 큼 | 아래 13번 A~C가 끝나고, D의 사이트 목록이 전후로 기록됐다 |
 | 14 | **랜딩에 실제 스크린샷 반영** | 중간 | 고른 컷을 다듬어 2배로 뽑고 랜딩 시안에 넣었다. 진행 기록은 [APP-DESIGN-RENEWAL.md](../design-ref/APP-DESIGN-RENEWAL.md) 맨 아래 "스크린샷 계획", 랜딩 쪽은 [NOTES.md](../design-ref/landing-canvas/NOTES.md) |
 | 10 | **온보딩** | 큼 | 임포트 / 웹앱 고르기 / 건너뛰기 세 갈래가 다 끝까지 간다 |
+| 18 | **월페이퍼 정리** | 작음 | 번들 23장에서 뺄 것을 뺐고, 픽커 순서 상수에 남은 없는 파일 이름을 지웠다 |
 | 11 | 서명·공증 | — | **사용자만 가능.** 하드 블로커 |
 
 > 순서 13 → 14는 2026-09-16 사용자가 정했다. 12(정렬)는 같은 날 끝나서 지웠다 — 정렬은 Grid · Stack(칸반: 열 폭 300, 한 줄씩) · Masonry(같은 열, 짧은 열부터) 셋이고, 모두 화면에 놓인 순서를 읽어 두 번 눌러도 결과가 같다(`orderFor`). 아래가 비는 건 그대로 둔다. 시도했다 뺀 방식과 이유는 [layout.ts](../src/canvas/layout.ts) `stackInto` 주석.
@@ -20,7 +20,7 @@
 
 ---
 
-## 13. 브라우저가 봇 검사에 덜 막히게 — B3부터 남았다
+## 13. 브라우저가 봇 검사에 덜 막히게 — 끝 (2026-09-19)
 
 **완전히 막을 방법은 없다.** Electron은 크롬과 똑같지 않아서 검사가 엄격한 사이트는 알아챌 수 있다. 목표는 두 가지다 — 막히는 경우를 줄이고, 막혔을 때 빠져나갈 길을 둔다.
 
@@ -39,10 +39,10 @@
 | `Sec-Ch-Ua*` 요청 헤더 | ~~아예 안 보낸다~~ → 보낸다 | 보낸다 | B2에서 직접 붙였다 |
 | `userAgentData.brands` | ~~Not_A Brand, Chromium~~ → 크롬과 같다 | Chromium, Not?A_Brand, Google Chrome | B2에서 맞췄다 |
 | `Accept-Language` / `navigator.languages` | `ko` / ko, ko-KR, en-KR | `ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7` / ko-KR, ko, en-US, en | **그냥 둔다** (2026-09-17 사용자). 앱도 맥 언어를 따르고, 목록 길이만 다르다. 이것 때문에 막힌 사이트는 없었다 |
-| `window.chrome` | 빈 객체 | loadTimes · csi · app | B3 |
-| WebRTC | 내부 IP(192.168.x)가 그대로 보인다 | `.local` 주소로 가린다 | B3 — 권한을 `granted`로 답해서 생기는 것으로 본다 |
+| `window.chrome` | 빈 객체 | loadTimes · csi · app | **그냥 둔다** (2026-09-19 사용자). 채우려면 페이지에 스크립트를 넣어야 하는데, 그것이 아래 "하지 않을 것"이다 |
+| WebRTC | 내부 IP가 그대로 보인다 | `.local` 주소로 가린다 | **그냥 둔다** (2026-09-19 사용자). 아래 B3 참고 |
 | 알림·위치 권한 조회 | granted | prompt | 의도한 것([main.ts](../electron/main.ts) 주석) |
-| 페이지에 보이는 전역 | `__focusDeskFullscreen` · `__focusDeskLinks` | 없음 | B3 |
+| 페이지에 보이는 전역 | ~~두 개~~ → 없다 | 없음 | B3에서 없앴다 |
 | `navigator.share` | 없음 | 있음 | 작다 |
 
 **B1 끝 (2026-09-18)** — Electron 39.2.7 → 44.4.2, 크롬 142 → 152.0.7977.130. 깨진 API 없었다. `npm run dist`로 DMG까지 나온다.
@@ -52,12 +52,24 @@
 - **여기 적혀 있던 가설은 틀렸다.** UA 문자열 탓이 아니라 **Electron이 원래 client hints를 안 보낸다.** 설정으로 켤 방법이 없어 직접 붙였다
 - 확인: 위젯·팝업 둘 다 헤더 3개와 brands가 크롬과 같음 · 깃허브 · 네이버 · 언스플래시 · 레딧 · 쿠팡 · ChatGPT · X 로드됨. 앱 자기 창은 안 건드렸다(⌥⌘I 그대로)
 
-| 단계 | 할 일 | 왜 |
-|---|---|---|
-| B3 | D2 표의 나머지 차이 — `window.chrome`, WebRTC 내부 IP, 페이지 전역 | 하나씩 효과와 부작용을 보고 고른다 |
-| C1 | **막혔을 때 "Open in Chrome" 버튼** — 검사 화면이 15초 넘게 떠 있으면 위젯 위에 띄운다 | 막히는 사이트가 남아도 사용자가 멈추지 않는다 |
-| C2 | **구글 로그인** — "안전하지 않은 브라우저"로 막히면 로그인만 시스템 브라우저로 하는 방법을 검토 | 구글은 임베디드 브라우저 로그인을 막는 경우가 있다. D1에서 확인 |
-| D3 | **D1의 사이트 20곳을 다시 재기** — D1과 같은 방법(사이트마다 새 공간·새 위젯, 15초 뒤 읽음) | 13번의 끝난 기준이 전후 기록이다. B3까지 끝내고 한 번에 잰다. B2 확인 때 본 것은 위젯 하나를 옮겨가며 본 것이라 D1과 방법이 다르다 |
+**B3 끝 (2026-09-19).** 셋 중 하나만 고쳤다.
+
+- **고침 — 페이지에 보이는 전역.** 두 shim이 재주입을 막으려고 쓰던 `window.__focusDesk*` 두 개를 심볼로 옮겼다([browserFullscreen.ts](../src/widgets/browserFullscreen.ts) · [browserLinks.ts](../src/widgets/browserLinks.ts)). `Object.keys`에도 `getOwnPropertyNames`에도 안 나온다. 가드는 그대로 있어야 한다 — 없으면 링크 클릭 하나에 탭이 두 개 열린다. 확인: 전역 0개, 전체화면 shim 동작, `target="_blank"` 클릭에 위젯이 딱 하나 열림
+- **안 고침 — WebRTC 내부 IP** (2026-09-19 사용자). 가리는 방법은 `media` 권한 **조회**에 false로 답하는 것 하나뿐이다. 재서 확인했다: false면 크롬처럼 `<uuid>.local`이 되고, true면 사설 IP가 그대로 나온다. Chromium 스위치(`force-webrtc-ip-handling-policy`)는 두 값 다 효과가 없었다. 그런데 그 false는 2026-09-14에 일부러 피한 답이다 — 사이트가 권한을 "차단됨"으로 읽어 Meet이 요청 대신 안내를 띄운다([main.ts](../electron/main.ts) `setPermissionCheckHandler` 주석). mDNS 판단과 `permissions.query`는 핸들러에 똑같은 모양(`permission=media`)으로 들어와 구분할 수 없다
+- **안 고침 — `window.chrome` 빈 객체** (2026-09-19 사용자). 채우려면 페이지에 스크립트를 넣어야 하고, 그것이 아래 "하지 않을 것"에 적힌 그것이다
+
+**C1 끝 (2026-09-19).** 검사나 차단 화면이 15초 넘게 그대로면 위젯 아래에 막대가 뜬다 — "This page won't load here." + **Open in browser**.
+
+- **아래 가로 막대**다(2026-09-19 사용자). 전체를 덮지 않는다 — CAPTCHA는 보통 가운데 있고, 덮으면 누를 수가 없다
+- **기본 브라우저**로 연다(2026-09-19 사용자). "Open in Chrome"이라고 쓰면 사파리가 기본인 사람에게 틀린 말이 된다. `apps:open-url` → `shell.openExternal`, **http·https만** 받는다([apps.ts](../electron/ipc/apps.ts))
+- 여는 주소는 위젯이 저장한 주소(`data.url`)다. 검사 파라미터와 구글 차단의 `continue`는 `addressToSave`가 이미 풀어놨다
+- **구글 차단 화면도 대상**이다. 그 화면은 지키는 페이지의 제목을 그대로 달고 있어 `isCheckTitle`로는 안 걸린다 — 주소로 따로 본다(`blockedPage`)
+- 15초를 기다리는 이유: 검사는 대개 1~2초에 지나간다. 도중에 버튼이 뜨면 앱이 포기한 것처럼 보인다
+- 확인: 제목이 "Just a moment..."인 로컬 페이지로 재니 14초엔 안 뜨고 17초에 떴다 · 통과하면 사라진다 · 버튼을 누르니 기본 브라우저가 실제로 그 주소를 받아갔다(서버 로그) · `file://`는 막힌다
+
+**C2는 안 한다** (2026-09-19). "구글 로그인이 막히면 시스템 브라우저로"는 16번이 끝나면서 전제가 없어졌다 — UA에 앱 토큰을 넣고 패스키를 끈 뒤 사용자가 실제 계정으로 로그인되는 것을 확인했다(2026-09-17). 시스템 브라우저에서 로그인해도 쿠키가 위젯으로 안 넘어와서 도움도 안 된다. 다시 막히면 [LOGIN-ISSUE.md](LOGIN-ISSUE.md)의 안 C(쿠키 옮기기)로 간다.
+
+**D3(사이트 20곳 재측정)는 안 한다** (2026-09-19 사용자). 쓰면서 확인한다. 실제로 막히는 사이트가 나오면 그때 D1 목록과 비교한다.
 
 **하지 않을 것** — 자동화 탐지를 속이는 스크립트 주입(stealth 플러그인류). 사이트가 바뀔 때마다 깨지고, 들키면 더 강하게 막힌다.
 
@@ -65,7 +77,7 @@
 
 ## 17. 로그인 정리 — 끝 (2026-09-18)
 
-**17-1~17-3은 끝났다 (2026-09-17, 확인용 앱에서 봄).** 새 공간은 Cloud 단색·밝은 UI로 열린다(`newSpace`). 로그인 목록 이름은 "Sites with saved data"다. 구글 차단 화면(`/sorry/`)을 받으면 1초 뒤 원래 주소를 한 번만 다시 연다(`BrowserWidget`의 `blockRetried`) — 확인 때 이 IP가 실제로 막혀 있어서, 다시 열린 뒤 또 막혔고 거기서 멈췄다.
+**17-1~17-3은 끝났다 (2026-09-17, 확인용 앱에서 봄).** 새 공간은 Paper 테마로 열린다(`newSpace`, 2026-09-19에 Cloud 단색에서 바꿨다 — 배경을 안 고른 상태라 테마 색 `#efe7d9`가 보인다). 로그인 목록 이름은 "Sites with saved data"다. 구글 차단 화면(`/sorry/`)을 받으면 1초 뒤 원래 주소를 한 번만 다시 연다(`BrowserWidget`의 `blockRetried`) — 확인 때 이 IP가 실제로 막혀 있어서, 다시 열린 뒤 또 막혔고 거기서 멈췄다.
 
 **17-4는 끝났다 (2026-09-18).** 로그인은 공간이 아니라 위젯이 고른다. 화면에 쓰는 말은 **sign-in**, 실체는 쿠키 저장소 하나다. 기본 이름은 **Main**이다.
 
@@ -121,6 +133,19 @@ Paper가 보이는 동안(호버·고른 뒤)은 어두운 층을 걷고 글자�
 - 호버하면 그 방 소리 미리듣기 — 브라우저가 첫 클릭 전엔 소리를 안 낸다. 이 화면의 첫 클릭이 방을 고르는 클릭이라 항상 무음이다
 - "I'm a ___" 밑줄 빈칸 — 가입 폼 문법이라 안 맞았다. "What happens in this room?"으로 바꿨다
 - 사진 위에 유리판 띄우는 레이아웃 — 흔한 템플릿으로 보였다. 지금은 사진이 선택지 자체다
+
+---
+
+## 18. 월페이퍼 정리 — 급하지 않다 (2026-09-19 사용자)
+
+번들 월페이퍼는 `public/wallpapers` 23장이고 픽커는 폴더를 그대로 읽는다([images.ts](../electron/ipc/images.ts)의 `images:wallpapers`). 그래서 파일을 빼거나 이름을 바꾸는 것이 곧 목록 변경이다.
+
+- **webp가 아닌 두 장** — `lofi_fireplace.jpeg`(2.7MB) · `sunset_landscape.png`(596KB). MVP 때 것이고 지금 스타일과 안 맞는다. 픽커에 "Lofi Fireplace" · "Sunset Landscape"로 보인다. 뺄지는 사용자가 본 뒤 정한다
+- **없는 파일 이름 두 개** — [ThemePicker.tsx](../src/app/ThemePicker.tsx)의 `WALLPAPER_HEAD`에 `geometric-relief.png`, `WALLPAPER_TAIL`에 `anime-maple-veranda.png`. 파일이 없어서 순서에 영향은 없다. 지운다
+- **`-v2`로 끝나는 3장** — 픽커에 "Alpine Cycle Bridge V2"로 보인다. 이름을 바꿀지 정한다
+- **파일을 빼거나 이름을 바꾸면** [migrate.ts](../src/spaces/migrate.ts)의 `RETIRED` 표에 옛 이름 → 대체 월페이퍼를 넣는다. 안 넣으면 그 배경을 쓰던 공간이 빈 배경이 된다
+- **장수와 주제 구성**(계절·비·밤이 몇 장씩, 겹치는 장면)은 사용자가 고른다. 새로 만들 때 기준은 [WALLPAPER-GENERATION-PROMPT.md](../design-ref/WALLPAPER-GENERATION-PROMPT.md)
+- 같이 확인할 것: 패키징본에서 번들 월페이퍼가 실제로 보이는지. 빌드는 `dist/wallpapers`에 23장을 복사하므로 보일 것으로 보지만 실기로 안 봤다
 
 ---
 
@@ -198,7 +223,7 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 - **첫 실행 판정** = `spaceStore.needsOnboarding`. 공간은 **비어 있게** 만든다
 - **테스트 프로필** = `npm run dev:fresh`. 실제 프로필과 안 섞이므로 실사용 앱과 동시에 켜도 된다
 - **공간 모양** = [ThemePicker.tsx](../src/app/ThemePicker.tsx) — 배경·날씨·UI 밝기를 현재 공간에만 건다. 값은 [backgrounds.ts](../src/spaces/backgrounds.ts) · [SceneLayer.tsx](../src/themes/SceneLayer.tsx)
-- **월페이퍼 폴더** = `userData/wallpapers`. 앱이 들고 오는 사진은 번들(`/wallpapers/…`), 사용자 것은 `focusdesk-image://wallpaper/…`([images.ts](../electron/ipc/images.ts)). **패키징본에서는 번들 쪽이 asar 안이라 못 쓴다**
+- **월페이퍼 폴더** = `userData/wallpapers`. 앱이 들고 오는 사진은 번들(`/wallpapers/…`), 사용자 것은 `focusdesk-image://wallpaper/…`([images.ts](../electron/ipc/images.ts)). **패키징본에서는 번들 폴더가 asar 안이라 사진을 직접 넣을 수 없다** — 보이는지는 18번에서 확인한다
 - **앱 아이콘** = [make_icon.py](../build/make_icon.py)가 그려서 `build/icon.png`·`icon.icns`를 만든다. 색 상수 3개와 좌표만 고치면 다시 나온다. `electron-builder.yml`이 icns를 쓴다
 - **백업** = [backup.ts](../electron/ipc/backup.ts). 하루 1회 스냅샷(최근 5개). **가져오기는 id가 같으면 건너뛴다** — 같은 프로필에 되가져오면 "Nothing new"가 정상이다. 쿠키는 백업에 없다
 - **앱 창 붙이기** = `prefsStore.attachApps`, 기본 `false`. 접근성 프롬프트는 헬퍼의 `place`·`windows` 두 곳에서만 뜬다

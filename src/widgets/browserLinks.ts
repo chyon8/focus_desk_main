@@ -48,8 +48,10 @@ export const ALLOW_POPUPS = { allowpopups: '' } as unknown as { allowpopups?: bo
  * Injected on every dom-ready, in the guest's own world.
  */
 export const LINK_SHIM = `(() => {
-  if (window.__focusDeskLinks) return;
-  window.__focusDeskLinks = true;
+  // On a symbol rather than a named global, for the reason in FULLSCREEN_SHIM.
+  const mark = Symbol.for('focusdesk.links');
+  if (window[mark]) return;
+  window[mark] = true;
 
   const open = window.open.bind(window);
 

@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('apps', {
   showAccessibilitySettings: () => ipcRenderer.invoke('apps:show-accessibility-settings'),
   /** Opens the Spotlight pane, where indexing and its exclusions are set. */
   showSpotlightSettings: () => ipcRenderer.invoke('apps:show-spotlight-settings'),
+  /** Hands an address to the Mac's default browser. http and https only. */
+  openUrl: (url: string) => ipcRenderer.invoke('apps:open-url', url),
   /** Rect is in window coordinates; the main process adds the window's origin. */
   place: (
     appKey: string,

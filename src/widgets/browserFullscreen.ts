@@ -10,8 +10,12 @@
  * Injected on every dom-ready, in the guest's own world.
  */
 export const FULLSCREEN_SHIM = `(() => {
-  if (window.__focusDeskFullscreen) return;
-  window.__focusDeskFullscreen = true;
+  // The guard that keeps a second injection from running is kept on a symbol,
+  // not a named global. A page listing its own globals would otherwise find one
+  // no other browser has, and an unknown global is what a bot check counts (D2).
+  const mark = Symbol.for('focusdesk.fullscreen');
+  if (window[mark]) return;
+  window[mark] = true;
 
   let current = null;
   const fire = () => {

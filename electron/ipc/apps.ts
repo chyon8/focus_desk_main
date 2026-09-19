@@ -140,6 +140,18 @@ export function registerAppsIpc(helper: HelperClient, getWindow: () => BrowserWi
     shell.openExternal('x-apple.systempreferences:com.apple.Spotlight-Settings.extension')
   );
 
+  // An address handed to whatever the Mac opens web pages with. A browser widget
+  // offers this when a site's bot check will not let it through: the same page,
+  // in a browser the site is happy with.
+  //
+  // http and https only. `openExternal` takes any scheme the Mac has a handler
+  // for, and the address here comes from a widget, which shows pages the user
+  // does not control.
+  ipcMain.handle('apps:open-url', (_event, url: string) => {
+    if (!/^https?:\/\//i.test(url)) return;
+    return shell.openExternal(url);
+  });
+
   // --- Live placement (D-038) ---
   //
   // The renderer measures the widget in window coordinates; turning that into
