@@ -186,13 +186,6 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
     doc.schemaVersion = 12;
   }
 
-  // v14 added `arrange`, the last arrange this space was given. Missing means Auto
-  // grid, which is what every space did before, so there is nothing to convert.
-  // Focus and Cascade were cut from the menu after some spaces had saved them, so
-  // this runs whatever the version: an unknown mode goes back to the grid.
-  if (doc.arrange && !['grid', 'stack', 'masonry'].includes(doc.arrange.mode)) {
-    doc.arrange = null;
-  }
 
   if (doc.schemaVersion < 15) {
     // v15 let spaces share one sign-in. Every space saved before it has signed in
@@ -214,6 +207,29 @@ export function migrateSpace(raw: SpaceDoc): SpaceDoc {
       }
     }
     delete legacySignIns(doc).signIns;
+  }
+
+  if (doc.schemaVersion < 17) {
+    // v17 cut the three arranges down to two (2026-09-19). Grid and Stack both
+    // laid widgets out in rows, and Masonry packed them by height, so they land on
+    // Rows and Compact. Only the setting changes here — the widgets keep the
+    // positions and sizes they have until the user presses G again, and the new
+    // arrange will not resize them at all.
+    const mode = (doc.arrange as { mode?: string } | null | undefined)?.mode;
+    if (mode === 'grid' || mode === 'stack') {
+      doc.arrange = { mode: 'rows', columns: doc.arrange?.columns };
+    } else if (mode === 'masonry') {
+      // Columns were a lane count, and Compact works its own width out.
+      doc.arrange = { mode: 'compact' };
+    }
+    doc.schemaVersion = 17;
+  }
+
+  // v14 added `arrange`, the last arrange this space was given. Missing means
+  // Compact, the default, so there is nothing to convert. Modes cut from the menu
+  // are converted whatever the version: an unknown one goes back to the default.
+  if (doc.arrange && !['compact', 'rows'].includes(doc.arrange.mode)) {
+    doc.arrange = null;
   }
 
   doc.schemaVersion = SCHEMA_VERSION;

@@ -6,15 +6,15 @@ import {
   Circle,
   Columns3,
   Copy,
-  Kanban,
   LayoutDashboard,
   LayoutGrid,
+  Rows3,
   Minus,
   Plus,
   Trash2,
   X,
 } from 'lucide-react';
-import type { ArrangeMode } from '../canvas/layout';
+import type { ArrangeMode } from '../canvas/tidy';
 import { MAX_ZOOM, zoomCameraAt } from '../canvas/camera';
 import { getMinZoom, useSpaceStore } from '../stores/spaceStore';
 import { canvasArea, RAIL_WIDTH, useUiStore } from '../stores/uiStore';
@@ -62,9 +62,8 @@ function zoomBy(factor: number) {
 
 /** What each arrange is called, and the icon that stands for it on the buttons. */
 const MODES: Record<ArrangeMode, { name: string; note: string; Icon: typeof LayoutGrid }> = {
-  grid: { name: 'Grid', note: 'Rows line up', Icon: LayoutGrid },
-  stack: { name: 'Stack', note: 'Even columns, in order', Icon: Kanban },
-  masonry: { name: 'Masonry', note: 'Packed by height', Icon: LayoutDashboard },
+  compact: { name: 'Compact', note: 'No gaps left', Icon: LayoutDashboard },
+  rows: { name: 'Rows', note: 'Lined up, in order', Icon: Rows3 },
 };
 
 /**
@@ -72,7 +71,7 @@ const MODES: Record<ArrangeMode, { name: string; note: string; Icon: typeof Layo
  * show. Nothing yet means the Auto grid, as it did before.
  */
 function useCurrentArrange() {
-  return useSpaceStore((s) => s.spaces[s.activeSpaceId]?.arrange) ?? { mode: 'grid' as const };
+  return useSpaceStore((s) => s.spaces[s.activeSpaceId]?.arrange) ?? { mode: 'compact' as const };
 }
 
 function arrangeLabel(mode: ArrangeMode) {
@@ -132,6 +131,9 @@ const ArrangeMenu: React.FC<{ className: string; onDone: () => void }> = ({
           );
         })}
 
+        {/* Compact works its own width out, so a count would say nothing there. */}
+        {current.mode === 'rows' && (
+        <>
         <div className="bg-hair my-1 h-px" />
         <div className="t-soft px-2 pt-1 pb-2 text-micro font-semibold uppercase tracking-[0.14em]">
           Columns
@@ -151,6 +153,8 @@ const ArrangeMenu: React.FC<{ className: string; onDone: () => void }> = ({
             </button>
           ))}
         </div>
+        </>
+        )}
       </motion.div>
     </>
   );

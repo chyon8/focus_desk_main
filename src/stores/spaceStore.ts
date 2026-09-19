@@ -3,8 +3,6 @@ import type { AmbienceLevels } from '../ambience/engine';
 import { SILENT_AMBIENCE } from '../ambience/engine';
 import { MIN_ZOOM, type Camera } from '../canvas/camera';
 import {
-  arrange,
-  ArrangeMode,
   centreCamera,
   clampCamera,
   findFreeSpot,
@@ -12,10 +10,10 @@ import {
   inReadingOrder,
   isFullyVisible,
   minZoomFor,
-  orderFor,
   placeInView,
   viewBounds,
 } from '../canvas/layout';
+import { ArrangeMode, tidy, tidyCamera } from '../canvas/tidy';
 import {
   columnAt,
   COLUMN_CARD_HEIGHT,
@@ -655,7 +653,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   setPattern: (pattern) => updateActive(set, (space) => ({ ...space, pattern })),
 
-  // Fill the canvas with the widgets in play, then frame the result.
+  // Move the widgets in play into a tidy block, then frame the result. Sizes are
+  // never touched — see `tidy.ts`.
   arrangeWidgets: (mode, columns) => {
     useUiStore.getState().passFirstStep('tidy');
     get().checkHint('tidy');
@@ -668,7 +667,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     // was arranged with last. Picking one from the menu makes it the new default.
     const chosen: NonNullable<SpaceDoc['arrange']> = mode
       ? { mode, columns }
-      : (before.arrange ?? { mode: 'grid' });
+      : (before.arrange ?? { mode: 'compact' });
 
     set({
       lastArranged: {
@@ -692,32 +691,31 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         : { x: 0, y: 0 };
 
       const area = canvasArea();
-      // In the order the widgets already sit, so the same desk arranges the same
-      // way every time (`orderFor`).
-      // `natural` is the size the widget was designed at, which is the ceiling an
-      // arrange grows it against — without it a grid fills the cell it is given,
-      // and one clock in a space got half the screen.
-      const ordered = orderFor(chosen.mode, boxes).map((w) =>
-        w.type === 'column'
-          ? { ...w, fixed: true }
-          : { ...w, natural: WIDGET_DEFS[w.type].defaultSize }
-      );
-      const placements = arrange(ordered, area, chosen.mode, chosen.columns);
+      // Only `x` and `y` come back, and that is the whole point: a widget keeps the
+      // size the user gave it. Fitting one to its cell instead shrank a 900-wide
+      // browser to a column's width, which drops its address bar and halves the
+      // start page — an arrange that made a usable browser unusable.
+      const spots = tidy(boxes, area, chosen.mode, chosen.columns);
       const widgets = { ...space.widgets };
-      for (const [id, place] of Object.entries(placements)) {
-        const isColumn = widgets[id].type === 'column';
-        widgets[id] = {
-          ...widgets[id],
-          x: place.x + anchor.x,
-          y: place.y + anchor.y,
-          // A column owns its size — the arrange only says where it goes.
-          width: isColumn ? widgets[id].width : place.width,
-          height: isColumn ? widgets[id].height : place.height,
-        };
+      for (const [id, spot] of Object.entries(spots)) {
+        widgets[id] = { ...widgets[id], x: spot.x + anchor.x, y: spot.y + anchor.y };
       }
       const laid = applyColumns(widgets);
-      const camera = fitCamera(inPlay({ ...space, widgets: laid }), area);
-      return { ...space, widgets: laid, camera: camera ?? space.camera, arrange: chosen };
+      const camera = tidyCamera(inPlay({ ...space, widgets: laid }), area) ?? space.camera;
+
+      // Pressing G on a desk that is already tidy should do nothing at all —
+      // no save, and no undo step that puts nothing back.
+      const settled =
+        boxes.every((box) => laid[box.id].x === box.x && laid[box.id].y === box.y) &&
+        camera.zoom === space.camera.zoom &&
+        camera.x === space.camera.x &&
+        camera.y === space.camera.y;
+      if (settled && space.arrange?.mode === chosen.mode && space.arrange?.columns === chosen.columns) {
+        set({ lastArranged: null });
+        return space;
+      }
+
+      return { ...space, widgets: laid, camera, arrange: chosen };
     });
   },
 

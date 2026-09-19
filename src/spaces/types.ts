@@ -1,10 +1,10 @@
 import type { Camera } from '../canvas/camera';
-import type { ArrangeMode } from '../canvas/layout';
+import type { ArrangeMode } from '../canvas/tidy';
 
 import type { AmbienceLevels } from '../ambience/engine';
 import type { ParticleKind } from '../themes/types';
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 export type WidgetType =
   | 'todo'
@@ -82,10 +82,10 @@ export interface SpaceDoc {
    */
   pattern?: 'none' | 'grid' | null;
   /**
-   * 이 공간에서 마지막으로 쓴 정렬. 없으면 Auto 격자다. G키는 이 값으로 정렬하므로
-   * 사진 공간은 Stack, 문서 공간은 격자를 각각 기억한다 — 정렬은 화면을 보는 방식이
-   * 아니라 위젯 위치를 실제로 덮어쓰는 동작이라, 공간마다 마지막에 쓴 것이 다음 기본이
-   * 되는 편이 모드를 매번 고르는 것보다 손이 덜 간다.
+   * 이 공간에서 마지막으로 쓴 정렬. 없으면 Compact다. G키는 이 값으로 정렬하므로
+   * 공간마다 Compact와 Rows를 각각 기억한다 — 정렬은 화면을 보는 방식이 아니라
+   * 위젯 위치를 실제로 덮어쓰는 동작이라, 공간마다 마지막에 쓴 것이 다음 기본이
+   * 되는 편이 모드를 매번 고르는 것보다 손이 덜 간다. `columns`는 Rows만 읽는다.
    */
   arrange?: { mode: ArrangeMode; columns?: number } | null;
   camera: Camera;

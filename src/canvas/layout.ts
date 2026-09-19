@@ -30,15 +30,12 @@ export interface Placement {
   height: number;
 }
 
-// A column count covers rows (1) and a single row (n), so those need no own mode.
-// These are what a user picks and a space remembers. `stack` is the board layout
-// (even lanes filled row by row); `masonry` packs the same lanes by height. Focus and Cascade were
-// in the menu too and were cut: four names nobody could tell apart from the menu
-// alone, and Cascade piled widgets on each other, the opposite of tidying.
-export type ArrangeMode = 'grid' | 'stack' | 'masonry';
-// Focus stays for the layouts the app makes on its own — a Chrome import and the
-// first run — where the two tabs read last should come back big.
-export type LayoutMode = ArrangeMode | 'focus';
+// The layouts this file builds, which resize boxes to their cells as well as move
+// them. They are what the app lays out on its own with — a Chrome import and the
+// first run, where the two tabs read last should come back big (`focus`), and the
+// even grid for everything else. The arrange a user presses is in `tidy.ts`
+// instead: it keeps every widget at the size it already is.
+export type LayoutMode = 'grid' | 'stack' | 'masonry' | 'focus';
 
 export const ARRANGE_GAP = 32;
 const FIT_PADDING = 20;
@@ -389,7 +386,7 @@ export function inRowOrder<T extends Box>(boxes: T[]): T[] {
  * Masonry reads top first, then left: its cards are placed at the lowest free top,
  * leftmost on a tie, so that is the order they were placed in.
  */
-export function orderFor<T extends Box>(mode: ArrangeMode, boxes: T[]): T[] {
+export function orderFor<T extends Box>(mode: LayoutMode, boxes: T[]): T[] {
   if (mode === 'stack') return inLaneOrder(boxes);
   if (mode === 'masonry') return inReadingOrder(boxes);
   return inRowOrder(boxes);

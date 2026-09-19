@@ -201,7 +201,54 @@ describe('migrateSpace', () => {
 
     expect(migrateSpace(saved('cascade')).arrange).toBeNull();
     expect(migrateSpace(saved('focus')).arrange).toBeNull();
-    expect(migrateSpace(saved('stack')).arrange).toEqual({ mode: 'stack' });
+    expect(migrateSpace(saved('compact')).arrange).toEqual({ mode: 'compact' });
+  });
+
+  it('turns the three old arranges into the two new ones (v17)', () => {
+    const saved = (arrange: unknown) =>
+      ({
+        id: 's',
+        schemaVersion: 16,
+        name: 'New',
+        background: null,
+        camera: { x: 0, y: 0, zoom: 1 },
+        widgets: {
+          a: { id: 'a', type: 'memo', x: 40, y: 60, width: 420, height: 460, z: 1, data: {} },
+        },
+        arrange,
+      }) as unknown as SpaceDoc;
+
+    expect(migrateSpace(saved({ mode: 'grid', columns: 3 })).arrange).toEqual({
+      mode: 'rows',
+      columns: 3,
+    });
+    expect(migrateSpace(saved({ mode: 'stack' })).arrange).toEqual({
+      mode: 'rows',
+      columns: undefined,
+    });
+    // A lane count means nothing to Compact, which works its own width out.
+    expect(migrateSpace(saved({ mode: 'masonry', columns: 4 })).arrange).toEqual({
+      mode: 'compact',
+    });
+    // No arrange saved means the default, so there is nothing to convert.
+    expect(migrateSpace(saved(null)).arrange).toBeNull();
+  });
+
+  it('leaves widget positions and sizes alone when converting the arrange (v17)', () => {
+    const before = {
+      id: 's',
+      schemaVersion: 16,
+      name: 'New',
+      background: null,
+      camera: { x: 0, y: 0, zoom: 1 },
+      widgets: {
+        page: { id: 'page', type: 'browser', x: 40, y: 60, width: 900, height: 620, z: 1, data: {} },
+      },
+      arrange: { mode: 'grid' },
+    } as unknown as SpaceDoc;
+
+    const page = migrateSpace(before).widgets['page'];
+    expect([page.x, page.y, page.width, page.height]).toEqual([40, 60, 900, 620]);
   });
 
   it('hands a space\'s own sign-in to its browser and web app widgets (v16)', () => {
