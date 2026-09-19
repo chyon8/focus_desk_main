@@ -56,6 +56,13 @@ interface UiState {
    */
   peekWidgetId: string | null;
   /**
+   * 최대화한 브라우저의 상단바 두 개(위젯 헤더·주소줄)가 나와 있다.
+   *
+   * 그 둘은 서로 다른 컴포넌트가 그리는데 한 덩어리로 같이 나오고 들어가야 해서
+   * 여기 있다. 최대화한 브라우저는 한 번에 하나뿐이라 불리언이면 된다.
+   */
+  isTopBarsOut: boolean;
+  /**
    * Where a widget being dragged right now would land if it were let go: which
    * column, and which slot down it.
    *
@@ -190,16 +197,22 @@ interface UiState {
   /** The space's name, for the first line. Only set while the steps are running. */
   firstStepSpace: string;
   toggleFullscreen: () => void;
+  showTopBars: () => void;
+  hideTopBars: () => void;
   setStaged: (staged: boolean) => void;
   toggleAppOpen: (widgetId: string) => void;
   closeApp: (widgetId: string) => void;
   closeAllApps: () => void;
 }
 
+/** `showTopBars`가 건 시계. 최대화한 브라우저는 하나뿐이라 모듈에 하나면 된다. */
+let topBarsTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useUiStore = create<UiState>((set, get) => ({
   isSidebarOpen: true,
   maximizedWidgetId: null,
   peekWidgetId: null,
+  isTopBarsOut: false,
   dropTarget: null,
   draggingWidgetId: null,
   dropSpot: null,
@@ -253,9 +266,10 @@ export const useUiStore = create<UiState>((set, get) => ({
     set((s) => ({
       maximizedWidgetId: s.maximizedWidgetId === widgetId ? null : widgetId,
       peekWidgetId: null,
+      isTopBarsOut: false,
     })),
 
-  clearMaximized: () => set({ maximizedWidgetId: null, openDock: null }),
+  clearMaximized: () => set({ maximizedWidgetId: null, openDock: null, isTopBarsOut: false }),
 
   // Clearing the maximised widget is not tidying: a panel is drawn beside the
   // column it came from, and a maximised widget covers the whole canvas
@@ -316,6 +330,24 @@ export const useUiStore = create<UiState>((set, get) => ({
   // so the button can show which way it goes next.
   toggleFullscreen: () => {
     void window.windowMode?.toggleFullscreen().then((on) => set({ isFullscreen: on }));
+  },
+
+  /**
+   * 바가 스스로 들어가는 시계. 마우스가 바를 벗어나면 바로 들어가지만, 페이지는
+   * 다른 프로세스가 입력을 받아서 그 이벤트가 안 올 수 있다 — 그래서 시계를 항상
+   * 건다. 바 위에서 마우스가 움직이는 동안은 계속 갱신되고, 주소창에 커서가 있는
+   * 동안은 CSS(`:focus-within`)가 붙잡는다.
+   */
+  showTopBars: () => {
+    if (topBarsTimer !== null) clearTimeout(topBarsTimer);
+    topBarsTimer = setTimeout(() => set({ isTopBarsOut: false }), 3000);
+    set({ isTopBarsOut: true });
+  },
+
+  hideTopBars: () => {
+    if (topBarsTimer !== null) clearTimeout(topBarsTimer);
+    topBarsTimer = null;
+    set({ isTopBarsOut: false });
   },
 
   setStaged: (isStaged) => set({ isStaged }),

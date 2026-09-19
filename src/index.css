@@ -644,6 +644,62 @@ body {
   height: 40px;
 }
 
+/* 최대화한 브라우저의 상단바. 페이지가 창을 다 쓰도록 자리를 안 먹고 위에 겹친다.
+   평소에는 화면 밖으로 올라가 있고, 맨 위 띠에 마우스를 올리면 내려온다. 페이지가
+   전체화면으로 트는 영상도 이때 창을 다 쓴다(browserFullscreen.ts의 "화면"이
+   webview 뷰포트라서 바가 자리를 먹으면 그만큼 줄어든다).
+
+   여닫는 것은 아래 클래스다. 이유는 그 규칙 옆에 적었다. */
+.widget-header-peek,
+.browser-bar-peek {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.14s ease, opacity 0.14s ease;
+}
+/* 페이지 위에 떠 있으니 면을 깔아야 한다 — 없으면 위젯 이름과 페이지의 제 상단바가
+   겹쳐 보인다. 위젯이 제자리에 있을 때는 위젯 면이 이 자리를 깔아줬다. */
+.widget-header-peek {
+  z-index: 4;
+  background: var(--surface);
+}
+/* 주소줄은 위젯 헤더 바로 아래에 붙는다. 둘이 한 덩어리로 내려온다. */
+.browser-bar-peek {
+  z-index: 3;
+  background: var(--surface);
+}
+.widget-header-hotzone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  z-index: 5;
+}
+
+/* 바가 나와 있는 조건 — 시계가 아직 남았거나(`top-bars-out`), 주소창에 커서가 있다.
+   :hover는 쓰지 않는다. 페이지(<webview>)는 다른 프로세스가 입력을 받아서, 마우스가
+   페이지로 내려가도 이 문서의 hover가 풀린다는 보장이 없다 — 그러면 한 번 나온 바가
+   계속 떠 있는다. 여는 것도 시계를 다시 거는 것도 마우스 이벤트가 한다(WidgetFrame·
+   BrowserWidget의 onMouseEnter·onMouseMove). */
+.widget-header-peek.top-bars-out,
+.widget-header-peek:focus-within,
+.widget-header-peek:has(~ * .browser-bar-peek:focus-within) {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+.browser-bar-peek.top-bars-out,
+.browser-bar-peek:focus-within {
+  transform: translateY(40px);
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* 팔레트의 스와치 — 위젯 축소판이다. 칠했을 때 나오는 옅은 면 그대로(`.widget-marked`와
    같은 식). 순색 동그라미는 고른 색과 나온 색이 달랐다. `--mark`는 이 요소에 걸린다. */
 .mark-swatch {

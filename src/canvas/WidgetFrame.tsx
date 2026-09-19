@@ -119,6 +119,19 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
    */
   const isOverColumn = useUiStore((s) => s.draggingWidgetId === id && s.dropTarget !== null);
 
+  /**
+   * 최대화한 브라우저. 상단바가 자리를 안 먹고 위에 겹쳐 뜬다.
+   *
+   * 페이지가 전체화면을 요청하면 그 "화면"은 webview의 뷰포트, 즉 상단바 아래
+   * 영역이다(browserFullscreen.ts). 그래서 영상을 전체화면으로 해도 40px 띠가
+   * 위에 남았다. 바가 자리를 안 먹으면 페이지가 창을 다 쓰고, 영상도 다 쓴다.
+   *
+   * 브라우저만이다 — 다른 위젯은 최대화해도 페이지를 품지 않아서 이 문제가 없다.
+   */
+  const isFullBrowser = isFull && (widget.type === 'browser' || widget.type === 'webapp');
+  // 상단바 두 개가 같이 나오고 들어간다. 주소줄은 BrowserWidget이 그려서 스토어에 있다.
+  const isTopBarsOut = useUiStore((s) => s.isTopBarsOut);
+
   const entry = WIDGET_REGISTRY[widget.type];
   const Body = entry.Component;
 
@@ -135,7 +148,8 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
    */
   // A favorite (webapp) is a browser widget underneath and wears the same header.
   const hasHeader =
-    widget.type === 'browser' || widget.type === 'webapp' || widget.type === 'column' || isFull;
+    !isFullBrowser &&
+    (widget.type === 'browser' || widget.type === 'webapp' || widget.type === 'column' || isFull);
 
   const mark = colorOf(widget.color);
   const isMarked = !!mark && !isFull;
@@ -168,7 +182,8 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
   );
 
   const box = overlay ?? widget;
-  const bodyHeight = box.height - (isFull ? FULL_HEADER_HEIGHT : hasHeader ? HEADER_HEIGHT : 0);
+  const bodyHeight =
+    box.height - (isFullBrowser ? 0 : isFull ? FULL_HEADER_HEIGHT : hasHeader ? HEADER_HEIGHT : 0);
   const contentScale =
     // A browser and a web app show a real page; an app widget is only a label for
     // a real window. All three lay themselves out, so magnifying them just blurs
@@ -324,6 +339,14 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
       /* So the first run can measure the sample page it puts down and light it. */
       data-widget-id={id}
     >
+      {/* 최대화한 브라우저의 상단바를 불러내는 띠. 페이지 위에 얹히므로 페이지가
+          받을 클릭을 뺏지 않게 얇다. 바가 나와 있는 동안은 바 자신이 hover 영역이다. */}
+      {isFullBrowser && (
+        <div
+          className="widget-header-hotzone"
+          onMouseEnter={() => useUiStore.getState().showTopBars()}
+        />
+      )}
       <div
         /* Not a window drag region while maximised, even though it is where the
            titlebar would be: macOS takes the double-click on one for its own
@@ -331,10 +354,13 @@ export const WidgetFrame: React.FC<{ id: string; overlay?: FrameOverlay }> = ({
         /* 바를 가진 위젯은 그 바가 늘 무언가를 보여준다 — 브라우저는 어느 페이지인지,
            컬럼은 이름과 개수. 비어 있는 띠를 깔아두지 않는다. */
         className={`widget-header group flex items-center px-3 select-none ${
-          hasHeader ? 'widget-header-always' : 'widget-header-float'
+          hasHeader || isFullBrowser ? 'widget-header-always' : 'widget-header-float'
         } ${isFull ? 'widget-header-full' : ''} ${
-          overlay ? '' : 'cursor-grab active:cursor-grabbing'
-        }`}
+          isFullBrowser ? `widget-header-peek ${isTopBarsOut ? 'top-bars-out' : ''}` : ''
+        } ${overlay ? '' : 'cursor-grab active:cursor-grabbing'}`}
+        onMouseEnter={isFullBrowser ? () => useUiStore.getState().showTopBars() : undefined}
+        onMouseMove={isFullBrowser ? () => useUiStore.getState().showTopBars() : undefined}
+        onMouseLeave={isFullBrowser ? () => useUiStore.getState().hideTopBars() : undefined}
         style={isFull && !isSidebarOpen ? { paddingLeft: TRAFFIC_LIGHTS_WIDTH } : undefined}
         /* A column has nothing a full screen would show more of — it is a list
            of cards, and a screen-wide list of 300px cards is the same list with

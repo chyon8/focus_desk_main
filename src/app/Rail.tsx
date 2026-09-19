@@ -4,10 +4,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronLeft,
   Ellipsis,
+  Expand,
   Image,
   LayoutGrid,
   Plus,
   Search,
+  Shrink,
   Trash2,
   Volume2,
 } from 'lucide-react';
@@ -272,6 +274,7 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
   const isSignInsOpen = useUiStore((s) => s.isSignInsOpen);
   const isFavoritesOpen = useUiStore((s) => s.isFavoritesOpen);
   const isSoundOpen = useUiStore((s) => s.openDock === 'sound');
+  const isFullscreen = useUiStore((s) => s.isFullscreen);
   // 소리가 나고 있으면 버튼이 액센트를 쓴다. 불리언이라 페이더를 움직여도 레일이
   // 프레임마다 다시 그려지지 않는다.
   const isAmbiencePlaying = useSpaceStore((s) => {
@@ -353,6 +356,15 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
 
             <ArrangeTools />
             <CanvasTools />
+            {/* 창이 화면을 다 덮는다 — Dock과 메뉴 막대까지. macOS 기본 전체화면이
+                아니라 simpleFullScreen이라 앱 위젯이 같은 데스크탑에 남는다. */}
+            <RailTool
+              label={isFullscreen ? 'Leave fullscreen (M)' : 'Fullscreen (M)'}
+              on={isFullscreen}
+              onClick={useUiStore.getState().toggleFullscreen}
+            >
+              {isFullscreen ? <Shrink size={18} /> : <Expand size={18} />}
+            </RailTool>
 
             <div className="rail-sep" />
 

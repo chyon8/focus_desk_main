@@ -531,6 +531,9 @@ export function arrange(
   return fillGrid(ordered, area, columns);
 }
 
+/** How far a bounded search moves between tries: fine enough to use a gap. */
+const SPAWN_STEP = 24;
+
 /** Do these two boxes touch, with `gap` of clear space counted as touching? */
 function overlaps(a: Placement, b: Box, gap: number): boolean {
   return (
@@ -549,15 +552,28 @@ function overlaps(a: Placement, b: Box, gap: number): boolean {
  * far as it has to. Nothing is ever placed on top of something else, which is
  * what made taking a card out of a column look like it had done nothing at all:
  * it landed under the next column along.
+ *
+ * `bounds` keeps the search inside a rectangle — the view, for a widget being
+ * made. Null means nothing was clear: with bounds that is a full screen, and the
+ * caller can look again without them; without bounds it is a canvas so crowded
+ * that six rings out is still covered, and the caller's own spot stands.
  */
 export function findFreeSpot(
   wanted: { x: number; y: number },
   size: { width: number; height: number },
   taken: Box[],
+  bounds?: { left: number; top: number; right: number; bottom: number },
   gap = ARRANGE_GAP
-): { x: number; y: number } {
-  const step = size.width + gap;
-  const drop = size.height + gap;
+): { x: number; y: number } | null {
+  // Beside the thing it came out of, a ring is a whole widget, so the spot lands
+  // in line with it. Inside the view there is no room to be that tidy — what is
+  // left is the gaps between what is already there, and a ring of a whole widget
+  // steps straight over every one of them, so the rings are fine-grained instead.
+  const step = bounds ? SPAWN_STEP : size.width + gap;
+  const drop = bounds ? SPAWN_STEP : size.height + gap;
+  const rings = bounds
+    ? Math.ceil(Math.max(bounds.right - bounds.left, bounds.bottom - bounds.top) / SPAWN_STEP)
+    : 6;
   // 0, 1, -1, 2, -2 … so a ring is tried down and to the right before up and to
   // the left. Straight outward order took the first free cell it found, which was
   // the one above — and a widget that steps up out of the top of the window is
@@ -568,17 +584,25 @@ export function findFreeSpot(
     for (let i = 1; i <= ring; i++) offsets.push(i, -i);
     return offsets;
   };
-  for (let ring = 0; ring <= 6; ring++) {
+  for (let ring = 0; ring <= rings; ring++) {
     for (const dy of outward(ring)) {
       for (const dx of outward(ring)) {
         // Only the ring's own edge: the inside of it was tried on an earlier pass.
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
         const at = { ...size, x: wanted.x + dx * step, y: wanted.y + dy * drop };
+        if (
+          bounds &&
+          (at.x < bounds.left ||
+            at.y < bounds.top ||
+            at.x + at.width > bounds.right ||
+            at.y + at.height > bounds.bottom)
+        )
+          continue;
         if (!taken.some((box) => overlaps(at, box, gap))) return { x: at.x, y: at.y };
       }
     }
   }
-  return wanted;
+  return null;
 }
 
 /**
@@ -728,6 +752,20 @@ export function isFullyVisible(
 /** Screen pixels kept between a placed widget and the edge of the view. */
 const VIEW_MARGIN = 16;
 
+/** The world rectangle on screen right now, inset by `VIEW_MARGIN`. */
+export function viewBounds(
+  cam: Camera,
+  area: { y: number; width: number; height: number }
+): { left: number; top: number; right: number; bottom: number } {
+  const margin = VIEW_MARGIN / cam.zoom;
+  return {
+    left: cam.x + margin,
+    top: cam.y + area.y / cam.zoom + margin,
+    right: cam.x + area.width / cam.zoom - margin,
+    bottom: cam.y + (area.y + area.height) / cam.zoom - margin,
+  };
+}
+
 /**
  * Where a widget made at a point the user picked goes: its top-left on the point,
  * then pulled back inside the view so the whole widget is on screen.
@@ -743,11 +781,7 @@ export function placeInView(
   at: { x: number; y: number },
   area: { y: number; width: number; height: number }
 ): { x: number; y: number } {
-  const margin = VIEW_MARGIN / cam.zoom;
-  const left = cam.x + margin;
-  const top = cam.y + area.y / cam.zoom + margin;
-  const right = cam.x + area.width / cam.zoom - margin;
-  const bottom = cam.y + (area.y + area.height) / cam.zoom - margin;
+  const { left, top, right, bottom } = viewBounds(cam, area);
   return {
     x: Math.max(left, Math.min(at.x, right - size.width)),
     y: Math.max(top, Math.min(at.y, bottom - size.height)),

@@ -4,6 +4,7 @@ import {
   autoColumns,
   centreCamera,
   clampCamera,
+  findFreeSpot,
   fitCamera,
   inLaneOrder,
   minZoomFor,
@@ -483,5 +484,49 @@ describe('placeInView', () => {
     const screen = worldToScreen(cam, placed);
     expect(screen.x).toBeCloseTo(16);
     expect(screen.y).toBeCloseTo(inset.y + 16);
+  });
+});
+
+describe('findFreeSpot', () => {
+  const memo = { width: 420, height: 460 };
+  // The view a widget made from the launcher has to land in.
+  const bounds = { left: 0, top: 0, right: 1400, bottom: 900 };
+
+  it('leaves an empty spot where it was asked for', () => {
+    expect(findFreeSpot({ x: 100, y: 100 }, memo, [], bounds)).toEqual({ x: 100, y: 100 });
+  });
+
+  it('steps aside when something is already there', () => {
+    const taken: Box[] = [{ id: 'a', x: 100, y: 100, ...memo }];
+    const spot = findFreeSpot({ x: 100, y: 100 }, memo, taken, bounds)!;
+    expect(spot).not.toEqual({ x: 100, y: 100 });
+    expect(
+      spot.x < 100 + memo.width && spot.x + memo.width > 100 &&
+        spot.y < 100 + memo.height && spot.y + memo.height > 100
+    ).toBe(false);
+  });
+
+  it('keeps the whole widget inside the bounds', () => {
+    // A row across the top, with room for one more widget below it and nowhere else.
+    const tall = { ...bounds, bottom: 1500 };
+    const taken: Box[] = [0, 1, 2].map((i) => ({ id: `a${i}`, x: i * 452, y: 0, ...memo }));
+    const spot = findFreeSpot({ x: 452, y: 0 }, memo, taken, tall)!;
+    expect(spot.x).toBeGreaterThanOrEqual(tall.left);
+    expect(spot.y).toBeGreaterThanOrEqual(tall.top);
+    expect(spot.x + memo.width).toBeLessThanOrEqual(tall.right);
+    expect(spot.y + memo.height).toBeLessThanOrEqual(tall.bottom);
+  });
+
+  it('finds nothing when the bounds have no room left, so the caller can look wider', () => {
+    const wall: Box[] = [];
+    for (let x = -1000; x < 2400; x += 452)
+      for (let y = -1000; y < 1900; y += 492) wall.push({ id: `${x},${y}`, x, y, ...memo });
+    expect(findFreeSpot({ x: 300, y: 300 }, memo, wall, bounds)).toBeNull();
+  });
+
+  it('still ranges free without bounds, for a card taken out of a column', () => {
+    const taken: Box[] = [{ id: 'a', x: 0, y: 0, ...memo }];
+    const spot = findFreeSpot({ x: 0, y: 0 }, memo, taken);
+    expect(spot).not.toEqual({ x: 0, y: 0 });
   });
 });

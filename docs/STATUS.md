@@ -206,6 +206,7 @@ Developer ID 인증서 → 공증 → 자동 업데이트. **AI가 못 한다.**
 - **패키징본 실사용 QA** (2026-09-12 빌드, `release/mac-arm64`). 접근성 권한을 새로 줘야 하고, dev 인스턴스를 같이 띄우면 안 된다 — 팝업·링크 / 앱 숨김 알림 / 앱·웹앱 위젯 / 공간별 로그인
 - **Swiss Editorial 폰트** — 패키징본에서 네트워크 없이 IBM Plex Sans KR·Noto Sans KR가 뜨는지
 - **월페이퍼 23장** — 재시작 후 복원·공간별 독립 저장, 16:9·16:10·울트라와이드 잘림, 수동 Light/Dark. 새 장면 생성 기준은 [WALLPAPER-GENERATION-PROMPT.md](../design-ref/WALLPAPER-GENERATION-PROMPT.md)
+- **위젯이 겹치지 않게 생기는 것** (2026-09-19, [spaceStore.ts](../src/stores/spaceStore.ts) `addWidget`·`frameNewWidget`) — 런처·N·더블클릭으로 만들면 빈자리를 찾아 놓고, 화면에 빈자리가 없으면 화면 밖에 놓은 뒤 카메라가 물러나 전부를 담는다. **팔레트에서 끌어다 놓는 것만 손으로 안 봤다** — 놓은 자리 그대로여야 한다(스토어로는 확인함)
 - **휠 스크롤이 다른 위젯에서도 목록을 먼저 움직이는지** — 캔버스가 휠을 전부 가로채던 것을 고쳤다(2026-09-19, [useCameraControls.ts](../src/canvas/useCameraControls.ts) `listTakesWheel`). 즐겨찾기 목록에서만 봤다. 메모·할 일·칸반·컬럼에서도 볼 것
 - **설정 모달 두 개**(Favorites · Sign-ins) 실사용 — 가운데 560px로 바꿨다(2026-09-19). Esc로 안 닫히는 게 괜찮은지도 같이 정한다
 - **컬럼 카드 높이 210** (196→210). 컬럼 높이 계산이 이 상수를 쓰므로 **기존 컬럼이 열렸을 때 카드가 안 겹치는지**

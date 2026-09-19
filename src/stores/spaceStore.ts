@@ -14,6 +14,7 @@ import {
   minZoomFor,
   orderFor,
   placeInView,
+  viewBounds,
 } from '../canvas/layout';
 import {
   columnAt,
@@ -357,6 +358,31 @@ export function showWhereItLanded(widget: WidgetDoc, label: string) {
       store.setCamera(centreCamera(getCamera(), current, canvasArea()));
     },
   });
+}
+
+/**
+ * Brings a widget just made into the view, zooming out only as far as it takes.
+ *
+ * A new widget goes in the first spot clear of everything, and once a screenful
+ * is down that spot is off the edge. Panning to it instead would push what the
+ * user was working next to out of sight, which is the same loss the other way
+ * round, so the camera steps back to hold the space — every widget stays where
+ * it was put and all of them are on screen, which is the answer this app has
+ * instead of a scrollbar.
+ *
+ * Nothing happens while the new widget is already fully visible, which is the
+ * ordinary case: an empty space, or one with room left in it.
+ */
+function frameNewWidget(id: string) {
+  const store = useSpaceStore.getState();
+  const space = store.spaces[store.activeSpaceId];
+  const widget = space?.widgets[id];
+  if (!space || !widget) return;
+  const area = canvasArea();
+  if (isFullyVisible(getCamera(), widget, area)) return;
+  const boxes = Object.values(space.widgets).filter((w) => !ownerOf(space.widgets, w.id));
+  const camera = fitCamera(boxes, area);
+  if (camera) store.setCamera(camera);
 }
 
 /** The widgets a column holds, and the column itself — what an operation on a column really acts on. */
@@ -720,22 +746,42 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       // Dropped from the palette: centre it on the pointer. Clicked: the middle of
       // the canvas area the user is looking at. Double-clicked: `placeInView`.
       const area = canvasArea();
-      const spot = at && inView ? placeInView(space.camera, def.defaultSize, at, area) : null;
+      const { camera } = space;
+      const wanted =
+        at && inView
+          ? placeInView(camera, def.defaultSize, at, area)
+          : at
+          ? { x: at.x - def.defaultSize.width / 2, y: at.y - def.defaultSize.height / 2 }
+          : {
+              x: camera.x + (area.width / camera.zoom - def.defaultSize.width) / 2,
+              y:
+                camera.y +
+                (area.y + (area.height - def.defaultSize.height * camera.zoom) / 2) / camera.zoom,
+            };
+      // Everything but a drag lands clear of what is already there. The launcher
+      // and N ask for the middle of the view every time, so three in a row landed
+      // on the same pixel with only the last one to be seen; a double-click asks
+      // for a point, but a browser is 900 wide and covers its neighbours from it.
+      //
+      // A drag is the exception, for the reason `takeOutOfColumn` gives: the user
+      // pointed at a place, and a nudge puts the widget somewhere they did not.
+      //
+      // A screen holds two or three widgets before the gaps between them are too
+      // narrow for the next one. Past that the spot is found outside the view and
+      // the camera steps back to it — see `frameNewWidget` below.
+      const taken = Object.values(space.widgets).filter(
+        (other) => !ownerOf(space.widgets, other.id)
+      );
+      const spot =
+        at && !inView
+          ? wanted
+          : findFreeSpot(wanted, def.defaultSize, taken, viewBounds(camera, area)) ??
+            findFreeSpot(wanted, def.defaultSize, taken) ??
+            wanted;
       const widget: WidgetDoc = {
         id: crypto.randomUUID(),
         type,
-        x: spot
-          ? spot.x
-          : at
-          ? at.x - def.defaultSize.width / 2
-          : space.camera.x + (area.width / space.camera.zoom - def.defaultSize.width) / 2,
-        y: spot
-          ? spot.y
-          : at
-          ? at.y - def.defaultSize.height / 2
-          : space.camera.y +
-            (area.y + (area.height - def.defaultSize.height * space.camera.zoom) / 2) /
-              space.camera.zoom,
+        ...spot,
         ...def.defaultSize,
         z: topZ(space) + 1,
         data: { ...def.createData(), ...data },
@@ -743,6 +789,13 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       created = widget.id;
       return { ...space, widgets: { ...space.widgets, [widget.id]: widget } };
     });
+    // A spot clear of everything can be outside the view, and a widget the user
+    // cannot see is the same as one that was never made. The camera steps back
+    // far enough to hold the whole space — the move `fitToWidgets` makes, which
+    // is what this app has instead of scrolling to find something.
+    //
+    // Not for a drag: it is already where the user put it, and on screen.
+    if (created && !(at && !inView)) frameNewWidget(created);
     return created;
   },
 
@@ -1020,15 +1073,19 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       // clear, or it lands under the next column along. Everything on the canvas
       // counts as taken, except the widget itself and the cards, which are drawn
       // inside their columns.
+      const beside = {
+        x: owner.x + owner.width + MOVE_GAP,
+        y: owner.y + slot * COLUMN_CARD_HEIGHT,
+      };
       const spot = at
         ? { x: at.x - widget.width / 2, y: at.y - HEADER_DROP_OFFSET }
         : findFreeSpot(
-            { x: owner.x + owner.width + MOVE_GAP, y: owner.y + slot * COLUMN_CARD_HEIGHT },
+            beside,
             widget,
             Object.values(space.widgets).filter(
               (other) => other.id !== id && !ownerOf(space.widgets, other.id)
             )
-          );
+          ) ?? beside;
       const widgets = {
         ...space.widgets,
         [id]: { ...widget, ...spot, z: topZ(space) + 1 },

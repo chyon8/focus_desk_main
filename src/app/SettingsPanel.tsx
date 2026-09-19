@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { usePrefsStore } from '../stores/prefsStore';
 import { useUiStore } from '../stores/uiStore';
-import { AppWindow, Download, FolderOpen, KeyRound, Star, Upload, X } from 'lucide-react';
+import { AppWindow, Download, FolderOpen, Keyboard, KeyRound, Star, Upload, X } from 'lucide-react';
 
 /**
  * The app's own settings.
@@ -134,6 +134,18 @@ export const SettingsPanel: React.FC<{
           </button>
         )}
         {(!attachApps || accessibility) && <div className="mb-6" />}
+
+        <Label>Keyboard</Label>
+        <div className="space-y-0.5 mb-6">
+          <Row
+            icon={<Keyboard size={14} className="t-soft" />}
+            label="Shortcuts…"
+            onClick={() => {
+              onClose();
+              useUiStore.getState().toggleShortcuts();
+            }}
+          />
+        </div>
 
         <Label>Sites</Label>
         <div className="space-y-0.5 mb-6">
