@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Pencil, Plus, Search, X } from 'lucide-react';
 import { WebAppData, WebAppIcon } from '../spaces/types';
+import { useUiStore } from '../stores/uiStore';
 import { useWebAppStore, type WebApp } from '../stores/webappStore';
+import { isComposing } from '../app/ime';
 import { WEB_APP_PRESETS, hostOf } from '../webapps/presets';
 import type { WebAppPreset } from '../webapps/presets';
 import { WebAppForm } from '../webapps/WebAppForm';
@@ -178,9 +181,20 @@ const WebAppTile: React.FC<{
 
 /**
  * Choosing what stands here: the user's saved web apps first, then a short list
- * of suggestions, then the form that makes the feature worth having — an address
- * and an icon for whatever this particular project runs on.
+ * of suggestions.
+ *
+ * One screen (2026-09-19 사용자). A row only opens the favourite it names —
+ * picking is not the place to edit one, which is what the pencil made it. One
+ * favourite is renamed, re-addressed or removed by right-clicking its row, the
+ * way spaces, widgets and sign-ins are; the whole list is managed in Settings →
+ * Favorites, which is also the only place it can be read without a widget.
+ *
+ * One type size at every width. The list was stepped up on wide panels and read
+ * as a blown-up card; what a wide panel changes is the margin, not the text, so
+ * the content is held to one column and centred.
  */
+const COLUMN = 'mx-auto w-full max-w-[420px]';
+
 const WebAppPicker: React.FC<{
   editing?: WebApp;
   onPick: (app: WebApp) => void;
@@ -188,7 +202,9 @@ const WebAppPicker: React.FC<{
 }> = ({ editing, onPick, onClose }) => {
   const apps = useWebAppStore((s) => s.apps);
   const [query, setQuery] = useState('');
-  const [form, setForm] = useState<WebApp | null>(editing ?? null);
+  const [form, setForm] = useState<WebApp | null>(null);
+  const [menu, setMenu] = useState<{ app: WebApp; x: number; y: number } | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
 
   const saved = useMemo(() => {
     const all = Object.values(apps).sort((a, b) => a.name.localeCompare(b.name));
@@ -213,114 +229,216 @@ const WebAppPicker: React.FC<{
   }, [apps, query]);
 
   if (form) {
-    // Editing the app this widget already stands for is a round trip: saving or
-    // deleting closes the picker. Editing another saved one, or writing a new
-    // one, comes back to the list — except that a brand new one is what the user
-    // came here to choose, so saving it picks it.
-    const isThisWidgets = !!editing && editing.id === form.id;
-    const isSaved = !!apps[form.id];
     return (
-      <WebAppForm
-        draft={form}
-        onCancel={() => (isThisWidgets ? onClose?.() : setForm(null))}
-        onSave={(draft) => {
-          const app = useWebAppStore.getState().save(draft);
-          if (isThisWidgets || !isSaved) onPick(app);
-          else setForm(null);
-        }}
-        onDelete={
-          isSaved
-            ? () => {
-                useWebAppStore.getState().remove(form.id);
-                if (isThisWidgets) onClose?.();
-                else setForm(null);
-              }
-            : undefined
-        }
-      />
+      <div className="t-ink h-full w-full flex flex-col p-4">
+        <div className={`${COLUMN} flex-1 min-h-0 flex flex-col`}>
+          <WebAppForm
+            draft={form}
+            onCancel={() => setForm(null)}
+            onSave={(draft) => {
+              const app = useWebAppStore.getState().save(draft);
+              // A favourite written here is what the user came for, so saving it
+              // puts it in the widget. Changing the address of the one this
+              // widget already stands for moves the widget with it.
+              if (!apps[app.id] || (editing && editing.id === app.id)) onPick(app);
+              else setForm(null);
+            }}
+          />
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="t-ink h-full w-full flex flex-col p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="t-soft text-ui font-semibold uppercase tracking-widest">Favorites</span>
-        {onClose && (
-          <button onClick={onClose} className="t-faint press hover:t-ink ml-auto">
-            <X size={12} />
-          </button>
-        )}
-      </div>
-
-      <div className="border-hair flex items-center gap-2 pb-2 mb-2 border-b">
-        <Search size={14} className="t-faint shrink-0" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search your favorites"
-          autoFocus
-          className="field flex-1 min-w-0 !bg-transparent outline-none text-body"
-        />
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 space-y-0.5">
-        {saved.map((app) => (
-          // The row picks, the pencil manages. Editing has to be reachable from
-          // here and not only from a tile already standing for it: otherwise a
-          // saved web app whose widget was closed can never be renamed or removed.
-          <div key={app.id} className="row group flex items-center gap-2 px-2 py-1.5 rounded-control">
-            <button
-              onClick={() => onPick(app)}
-              className="press !text-[inherit] flex-1 min-w-0 flex items-center gap-2 text-left"
-            >
-              <WebAppMark icon={app.icon} name={app.name} size={20} className="shrink-0" />
-              <span className="flex-1 min-w-0 text-body truncate">{app.name}</span>
-              <span className="t-faint text-micro truncate max-w-[8rem]">{hostOf(app.url)}</span>
+      <div className={`${COLUMN} flex-1 min-h-0 flex flex-col`}>
+        <div className="border-hair flex items-center gap-2 pb-2 mb-2 border-b">
+          <Search size={14} className="t-faint shrink-0" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search your favorites"
+            autoFocus
+            className="field flex-1 min-w-0 !bg-transparent outline-none text-body"
+          />
+          {onClose && (
+            <button onClick={onClose} className="t-faint press hover:t-ink shrink-0">
+              <X size={12} />
             </button>
-            <button
-              onClick={() => setForm(app)}
-              title={`Edit or remove ${app.name}`}
-              className="t-faint press hover:t-ink shrink-0 opacity-0 group-hover:opacity-100"
-            >
-              <Pencil size={11} />
-            </button>
-          </div>
-        ))}
+          )}
+        </div>
 
-        {presetGroups.map(({ group, items }) => (
-          <div key={group}>
-            <div className="t-faint px-2 pt-3 pb-1 text-micro font-bold uppercase tracking-widest">
-              {group}
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 space-y-0.5">
+          {saved.map((app) => (
+            <SavedRow
+              key={app.id}
+              app={app}
+              renaming={renaming === app.id}
+              onOpen={() => onPick(app)}
+              onMenu={(x, y) => setMenu({ app, x, y })}
+              onRenamed={(name) => {
+                if (name.trim()) useWebAppStore.getState().save({ ...app, name: name.trim() });
+                setRenaming(null);
+              }}
+            />
+          ))}
+
+          {presetGroups.map(({ group, items }) => (
+            <div key={group}>
+              <div className="t-faint px-2 pt-3 pb-1 text-micro font-bold uppercase tracking-widest">
+                {group}
+              </div>
+              {items.map((preset) => (
+                <button
+                  key={preset.url}
+                  onClick={() =>
+                    onPick(
+                      // Without the field picking, the preset's `group` would be
+                      // saved onto the user's web app.
+                      useWebAppStore
+                        .getState()
+                        .save({ name: preset.name, url: preset.url, icon: preset.icon })
+                    )
+                  }
+                  className="row press !text-[inherit] w-full flex items-center gap-2 px-2 py-1.5 rounded-control text-left"
+                >
+                  <WebAppMark icon={preset.icon} name={preset.name} size={20} className="shrink-0" />
+                  <span className="flex-1 min-w-0 text-body truncate">{preset.name}</span>
+                </button>
+              ))}
             </div>
-            {items.map((preset) => (
-              <button
-                key={preset.url}
-                onClick={() =>
-                  onPick(
-                    // Without the field picking, the preset's `group` would be
-                    // saved onto the user's web app.
-                    useWebAppStore
-                      .getState()
-                      .save({ name: preset.name, url: preset.url, icon: preset.icon })
-                  )
-                }
-                className="row press !text-[inherit] w-full flex items-center gap-2 px-2 py-1.5 rounded-control text-left"
-              >
-                <WebAppMark icon={preset.icon} name={preset.name} size={20} className="shrink-0" />
-                <span className="flex-1 min-w-0 text-body truncate">{preset.name}</span>
-              </button>
-            ))}
-          </div>
-        ))}
+          ))}
+        </div>
+
+        <div className="border-hair shrink-0 mt-2 pt-2 flex items-center gap-2 border-t">
+          <button
+            onClick={() => setForm({ id: crypto.randomUUID(), name: '', url: '', icon: null })}
+            className="row press flex items-center gap-1.5 px-2 py-1.5 rounded-control text-ui"
+          >
+            <Plus size={13} />
+            Add by address
+          </button>
+          <button
+            onClick={() => useUiStore.getState().setFavoritesOpen(true)}
+            title="Rename, re-address or remove favorites"
+            className="t-faint press hover:t-ink ml-auto px-2 py-1.5 text-ui"
+          >
+            Manage in settings
+          </button>
+        </div>
       </div>
 
-      <button
-        onClick={() => setForm({ id: crypto.randomUUID(), name: '', url: '', icon: null })}
-        className="row press shrink-0 mt-2 flex items-center justify-center gap-2 py-2 rounded-control text-ui"
-      >
-        <Plus size={13} />
-        Add a favorite
-      </button>
+      {menu &&
+        /* On the body, not in the widget: the canvas is transformed, and inside a
+           transform even `position: fixed` is measured from that element. */
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[95]" onPointerDown={() => setMenu(null)} />
+            <div
+              className="glass-panel fixed z-[96] w-44 p-1 rounded-surface"
+              style={{
+                left: Math.min(menu.x, window.innerWidth - 184),
+                top: Math.min(menu.y, window.innerHeight - 124),
+              }}
+            >
+              <MenuItem
+                label="Rename"
+                onClick={() => {
+                  setRenaming(menu.app.id);
+                  setMenu(null);
+                }}
+              />
+              <MenuItem
+                label="Change address…"
+                onClick={() => {
+                  setForm(menu.app);
+                  setMenu(null);
+                }}
+              />
+              <MenuItem
+                label="Remove"
+                danger
+                onClick={() => {
+                  useWebAppStore.getState().remove(menu.app.id);
+                  setMenu(null);
+                }}
+              />
+            </div>
+          </>,
+          document.body
+        )}
+    </div>
+  );
+};
+
+const MenuItem: React.FC<{ label: string; danger?: boolean; onClick: () => void }> = ({
+  label,
+  danger,
+  onClick,
+}) => (
+  <button
+    onClick={onClick}
+    className={`row press w-full px-2 py-1.5 rounded-control text-ui text-left ${
+      danger ? 't-danger' : ''
+    }`}
+  >
+    {label}
+  </button>
+);
+
+/**
+ * A saved favourite in the list. Renaming happens on the row itself — the name
+ * is already on screen, so it is that text that gets edited rather than a form
+ * (2026-09-18 사용자, `.name-input`).
+ */
+const SavedRow: React.FC<{
+  app: WebApp;
+  renaming: boolean;
+  onOpen: () => void;
+  onMenu: (x: number, y: number) => void;
+  onRenamed: (name: string) => void;
+}> = ({ app, renaming, onOpen, onMenu, onRenamed }) => {
+  const [draft, setDraft] = useState(app.name);
+  useEffect(() => setDraft(app.name), [app.name, renaming]);
+
+  const host = hostOf(app.url);
+  return (
+    <div
+      onContextMenu={(e) => {
+        e.preventDefault();
+        // The frame has its own right-click menu (which sign-in the page uses).
+        // Over a row, the row is what was aimed at.
+        e.stopPropagation();
+        onMenu(e.clientX, e.clientY);
+      }}
+      className="row flex items-center gap-2 px-2 py-1.5 rounded-control"
+    >
+      <WebAppMark icon={app.icon} name={app.name} size={20} className="shrink-0" />
+      {renaming ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => onRenamed(draft)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !isComposing(e)) onRenamed(draft);
+            if (e.key === 'Escape') onRenamed(app.name);
+          }}
+          className="name-input flex-1 min-w-0 text-body"
+        />
+      ) : (
+        <button
+          onClick={onOpen}
+          className="press !text-[inherit] flex-1 min-w-0 flex items-center gap-2 text-left"
+        >
+          <span className="flex-1 min-w-0 text-body truncate">{app.name}</span>
+          {/* Only when it says something the name does not. */}
+          {host.toLowerCase() !== app.name.toLowerCase() &&
+            host.replace(/\..*$/, '').toLowerCase() !== app.name.toLowerCase() && (
+            <span className="t-faint text-meta truncate max-w-[9rem]">{host}</span>
+          )}
+        </button>
+      )}
     </div>
   );
 };

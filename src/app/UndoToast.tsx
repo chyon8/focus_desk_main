@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Undo2 } from 'lucide-react';
 import { useSpaceStore } from '../stores/spaceStore';
 import { useUiStore } from '../stores/uiStore';
+import { useWebAppStore } from '../stores/webappStore';
 import { WIDGET_REGISTRY } from '../widgets/registry';
 
 /** Long enough to notice the mistake, short enough not to sit there. */
@@ -22,6 +23,7 @@ export const UndoToast: React.FC = () => {
   const moved = useSpaceStore((s) => s.lastMoved);
   const arranged = useSpaceStore((s) => s.lastArranged);
   const removedSpace = useSpaceStore((s) => s.lastRemovedSpace);
+  const removedFavorite = useWebAppStore((s) => s.lastRemoved);
   // The selection bar owns the bottom slot while it is up; the toast sits above it.
   const hasSelection = useUiStore((s) => s.selectedIds.length > 0);
 
@@ -62,7 +64,14 @@ export const UndoToast: React.FC = () => {
               undo: () => useSpaceStore.getState().undoArrange(),
               dismiss: () => useSpaceStore.getState().dismissArranged(),
             }
-          : null;
+          : removedFavorite
+            ? {
+                key: `favorite-${removedFavorite.id}`,
+                label: `Removed ${removedFavorite.name}`,
+                undo: () => useWebAppStore.getState().undoRemove(),
+                dismiss: () => useWebAppStore.getState().dismissRemoved(),
+              }
+            : null;
 
   const key = entry?.key;
   const dismiss = entry?.dismiss;

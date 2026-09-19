@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Trash2, X } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { WebAppIcon } from '../spaces/types';
 import type { WebApp } from '../stores/webappStore';
 import { isComposing } from '../app/ime';
@@ -11,22 +11,33 @@ import { ICON_EMOJI, hostOf, normalizeUrl } from './presets';
  * Only the address is really asked for. A name left blank becomes the host,
  * which is what the user would have typed anyway, and an icon left unchosen
  * arrives on its own the first time the page loads.
+ *
+ * Removing is not here (2026-09-19): it belongs to the Manage list, where the
+ * row being removed is on screen and the button is the size of a button.
+ *
+ * The picker draws the column this sits in, so there is no padding or width of
+ * its own — `wide` only steps the type up for a panel-sized widget.
  */
 export const WebAppForm: React.FC<{
   draft: WebApp;
+  wide?: boolean;
   onSave: (app: WebApp) => void;
   onCancel: () => void;
-  /** Absent for a web app that has not been saved yet — cancelling is the way out. */
-  onDelete?: () => void;
-}> = ({ draft, onSave, onCancel, onDelete }) => {
+}> = ({ draft, wide = false, onSave, onCancel }) => {
   const [name, setName] = useState(draft.name);
   const [url, setUrl] = useState(draft.url);
   const [icon, setIcon] = useState<WebAppIcon | null>(draft.icon);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const address = normalizeUrl(url);
   const finalName = name.trim() || (address ? hostOf(address) : '');
   const valid = !!address && !!finalName;
+
+  const size = {
+    label: wide ? 'text-ui' : 'text-micro',
+    field: wide ? 'text-title' : 'text-body',
+    button: wide ? 'py-2 text-body' : 'py-1.5 text-ui',
+    cell: wide ? 'h-9' : 'h-7',
+  };
 
   const save = () => {
     if (!valid) return;
@@ -34,48 +45,55 @@ export const WebAppForm: React.FC<{
   };
 
   return (
-    <div className="t-ink h-full w-full flex flex-col p-4">
+    <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex items-center gap-2 mb-3">
-        <span className="t-soft text-ui font-semibold uppercase tracking-widest">
-          {onDelete ? 'Edit favorite' : 'New favorite'}
+        {/* No close button: Cancel at the foot of the form is the way back, and a
+            second ✕ under the widget's own reads as two ways out of the widget. */}
+        <span
+          className={`t-soft font-semibold uppercase tracking-widest ${
+            wide ? 'text-body' : 'text-ui'
+          }`}
+        >
+          {draft.name || draft.url ? 'Edit favorite' : 'New favorite'}
         </span>
-        <button onClick={onCancel} className="t-faint hover:t-ink ml-auto">
-          <X size={12} />
-        </button>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-3">
         <label className="block">
-          <span className="t-faint block text-micro uppercase tracking-widest mb-1">Address</span>
+          <span className={`t-faint block uppercase tracking-widest mb-1 ${size.label}`}>
+            Address
+          </span>
           <input
             autoFocus
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && save()}
             placeholder="figma.com/files"
-            className="field border-hair w-full !bg-transparent border-b text-body pb-1 outline-none"
+            className={`field border-hair w-full !bg-transparent border-b pb-1 outline-none ${size.field}`}
           />
         </label>
 
         <label className="block">
-          <span className="t-faint block text-micro uppercase tracking-widest mb-1">Name</span>
+          <span className={`t-faint block uppercase tracking-widest mb-1 ${size.label}`}>Name</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !isComposing(e) && save()}
             placeholder={address ? hostOf(address) : 'Figma'}
-            className="field border-hair w-full !bg-transparent border-b text-body pb-1 outline-none"
+            className={`field border-hair w-full !bg-transparent border-b pb-1 outline-none ${size.field}`}
           />
         </label>
 
         <div>
           <div className="flex items-baseline gap-2 mb-1.5">
-            <span className="t-faint text-micro uppercase tracking-widest">Icon</span>
-            {!icon && <span className="t-faint text-micro">the site’s own, once it loads</span>}
+            <span className={`t-faint uppercase tracking-widest ${size.label}`}>Icon</span>
+            {!icon && (
+              <span className={`t-faint ${size.label}`}>the site’s own, once it loads</span>
+            )}
             {icon && (
               <button
                 onClick={() => setIcon(null)}
-                className="t-faint hover:t-ink ml-auto text-micro"
+                className={`t-faint hover:t-ink ml-auto ${size.label}`}
               >
                 Clear
               </button>
@@ -88,9 +106,9 @@ export const WebAppForm: React.FC<{
                 <button
                   key={char}
                   onClick={() => setIcon({ kind: 'emoji', char })}
-                  className={`flex items-center justify-center h-7 rounded-control text-title ${
-                    on ? 'chrome-button-on' : 'row'
-                  }`}
+                  className={`flex items-center justify-center rounded-control text-title ${
+                    size.cell
+                  } ${on ? 'chrome-button-on' : 'row'}`}
                 >
                   {char}
                 </button>
@@ -100,50 +118,19 @@ export const WebAppForm: React.FC<{
         </div>
       </div>
 
-      {confirmingDelete ? (
-        <div className="glass border-hair shrink-0 mt-3 p-2.5 rounded-control border">
-          <p className="t-ink text-meta leading-snug mb-2">
-            Remove “{draft.name}” from your web apps? Widgets already standing for it keep working.
-          </p>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => setConfirmingDelete(false)}
-              className="row flex-1 py-1 rounded-control text-meta"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onDelete}
-              className="chrome-button flex-1 py-1 rounded-control text-meta font-medium t-danger"
-            >
-              Remove
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="shrink-0 mt-3 flex items-center gap-1.5">
-          {onDelete && (
-            <button
-              onClick={() => setConfirmingDelete(true)}
-              title="Remove from your favorites"
-              className="row px-2 py-1.5 rounded-control t-danger"
-            >
-              <Trash2 size={12} />
-            </button>
-          )}
-          <button onClick={onCancel} className="row flex-1 py-1.5 rounded-control text-ui">
-            Cancel
-          </button>
-          <button
-            onClick={save}
-            disabled={!valid}
-            className="chrome-button-on flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-control text-ui font-medium disabled:opacity-40"
-          >
-            <Check size={12} />
-            Save
-          </button>
-        </div>
-      )}
+      <div className="shrink-0 mt-3 flex items-center gap-1.5">
+        <button onClick={onCancel} className={`row press flex-1 rounded-control ${size.button}`}>
+          Cancel
+        </button>
+        <button
+          onClick={save}
+          disabled={!valid}
+          className={`chrome-button-on press flex-1 flex items-center justify-center gap-1.5 rounded-control font-medium disabled:opacity-40 ${size.button}`}
+        >
+          <Check size={wide ? 15 : 12} />
+          Save
+        </button>
+      </div>
     </div>
   );
 };

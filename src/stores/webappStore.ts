@@ -20,10 +20,18 @@ export interface WebApp {
 interface WebAppState {
   apps: Record<string, WebApp>;
   isLoaded: boolean;
+  /**
+   * The last one removed, for the undo toast. Removing asks nothing first: the
+   * app puts destructive work behind Undo rather than a confirm box (D-061), and
+   * a favourite is a name and an address, not the pages it opened.
+   */
+  lastRemoved: WebApp | null;
   load: () => Promise<void>;
   /** Adds or replaces one, and hands it back so the caller can fill a widget in. */
   save: (app: Omit<WebApp, 'id'> & { id?: string }) => WebApp;
   remove: (id: string) => void;
+  undoRemove: () => void;
+  dismissRemoved: () => void;
   /**
    * The site reported a favicon. Kept as the icon unless the user has chosen an
    * emoji — their choice is not something a page load gets to overwrite. A
@@ -39,6 +47,7 @@ function persist(apps: Record<string, WebApp>) {
 export const useWebAppStore = create<WebAppState>((set, get) => ({
   apps: {},
   isLoaded: false,
+  lastRemoved: null,
 
   load: async () => {
     const stored = ((await window.store?.get(KEY)) ?? []) as WebApp[];
@@ -59,11 +68,22 @@ export const useWebAppStore = create<WebAppState>((set, get) => ({
 
   remove: (id) =>
     set((s) => {
+      const removed = s.apps[id];
+      if (!removed) return s;
       const apps = { ...s.apps };
       delete apps[id];
       persist(apps);
-      return { apps };
+      return { apps, lastRemoved: removed };
     }),
+
+  undoRemove: () => {
+    const removed = get().lastRemoved;
+    if (!removed) return;
+    set({ lastRemoved: null });
+    get().save(removed);
+  },
+
+  dismissRemoved: () => set({ lastRemoved: null }),
 
   noteFavicon: (id, src) => {
     const existing = get().apps[id];

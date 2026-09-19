@@ -107,6 +107,11 @@ interface UiState {
    * near the rail that draws it.
    */
   isSignInsOpen: boolean;
+  /**
+   * The favorites panel. Same reason as the sign-ins one: settings opens it, and
+   * so does the favourite picker inside a widget, which is nowhere near the rail.
+   */
+  isFavoritesOpen: boolean;
   /** Search across everything openable (K). */
   isLauncherOpen: boolean;
   /** The keyboard cheatsheet. */
@@ -166,6 +171,7 @@ interface UiState {
   setDraggingWidget: (widgetId: string | null) => void;
   toggleDock: (dock: 'atmosphere' | 'sound', top?: number) => void;
   setSignInsOpen: (isSignInsOpen: boolean) => void;
+  setFavoritesOpen: (isFavoritesOpen: boolean) => void;
   closeDock: () => void;
   openQuickAdd: (screen: Point, world: Point, teaches?: boolean) => void;
   closeQuickAdd: () => void;
@@ -206,6 +212,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   firstStepSampleId: null,
   openDock: null,
   isSignInsOpen: false,
+  isFavoritesOpen: false,
   dockTop: null,
   isLauncherOpen: false,
   isShortcutsOpen: false,
@@ -267,6 +274,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   closeDock: () => set({ openDock: null }),
 
   setSignInsOpen: (isSignInsOpen) => set({ isSignInsOpen }),
+  setFavoritesOpen: (isFavoritesOpen) => set({ isFavoritesOpen }),
 
   openQuickAdd: (screen, world, teaches) => set({ quickAdd: { screen, world, teaches } }),
 

@@ -23,6 +23,7 @@ import { isComposing } from './ime';
 import { ChromeImportPanel } from './ChromeImportPanel';
 import { ArrangeTools, CanvasTools } from './Dock';
 import { SettingsPanel } from './SettingsPanel';
+import { FavoritesPanel } from './FavoritesPanel';
 import { SignInsPanel } from './SignInsPanel';
 
 function sceneStyle(scene: SceneSpec): React.CSSProperties {
@@ -269,6 +270,7 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
   const isMaximized = useUiStore((s) => s.maximizedWidgetId !== null);
   const isAtmosphereOpen = useUiStore((s) => s.openDock === 'atmosphere');
   const isSignInsOpen = useUiStore((s) => s.isSignInsOpen);
+  const isFavoritesOpen = useUiStore((s) => s.isFavoritesOpen);
   const isSoundOpen = useUiStore((s) => s.openDock === 'sound');
   // 소리가 나고 있으면 버튼이 액센트를 쓴다. 불리언이라 페이더를 움직여도 레일이
   // 프레임마다 다시 그려지지 않는다.
@@ -443,12 +445,19 @@ export const Rail: React.FC<{ onOpenInsights: () => void }> = ({ onOpenInsights 
 
       {isImportOpen && <ChromeImportPanel onClose={() => setIsImportOpen(false)} />}
       {isSignInsOpen && <SignInsPanel onClose={() => useUiStore.getState().setSignInsOpen(false)} />}
+      {isFavoritesOpen && (
+        <FavoritesPanel onClose={() => useUiStore.getState().setFavoritesOpen(false)} />
+      )}
       {isMoreOpen && (
         <SettingsPanel
           onClose={() => setIsMoreOpen(false)}
           onOpenSignIns={() => {
             setIsMoreOpen(false);
             useUiStore.getState().setSignInsOpen(true);
+          }}
+          onOpenFavorites={() => {
+            setIsMoreOpen(false);
+            useUiStore.getState().setFavoritesOpen(true);
           }}
         />
       )}

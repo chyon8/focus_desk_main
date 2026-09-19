@@ -402,12 +402,15 @@ export const SignInsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
   return (
     <>
-      <div className="fixed inset-0 z-[98]" onPointerDown={onClose} />
+      {/* The same middle-of-the-screen box as the favourites list and the
+          launcher (2026-09-19 사용자): both settings lists are sat down with, and
+          two shapes for the same kind of surface read as two different places. */}
+      <div className="scrim-overlay fixed inset-0 z-[97] backdrop-blur-[2px]" onClick={onClose} />
       <motion.div
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.12 }}
-        className="glass-panel fixed bottom-4 left-[88px] z-[99] w-[21rem] max-h-[70vh] flex flex-col p-4 rounded-surface"
+        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.15 }}
+        className="glass-panel fixed left-1/2 top-1/2 z-[98] w-[560px] max-w-[92vw] max-h-[80vh] -translate-x-1/2 -translate-y-1/2 flex flex-col p-4 rounded-surface"
       >
         {open ? (
           <SignInDetail signIn={open} onBack={() => setOpenId(null)} onClose={onClose} />

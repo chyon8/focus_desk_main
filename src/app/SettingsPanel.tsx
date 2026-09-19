@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { usePrefsStore } from '../stores/prefsStore';
 import { useUiStore } from '../stores/uiStore';
-import { AppWindow, Download, FolderOpen, KeyRound, Upload, X } from 'lucide-react';
+import { AppWindow, Download, FolderOpen, KeyRound, Star, Upload, X } from 'lucide-react';
 
 /**
  * The app's own settings.
@@ -30,7 +30,8 @@ const Row: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void 
 export const SettingsPanel: React.FC<{
   onClose: () => void;
   onOpenSignIns: () => void;
-}> = ({ onClose, onOpenSignIns }) => {
+  onOpenFavorites: () => void;
+}> = ({ onClose, onOpenSignIns, onOpenFavorites }) => {
   const attachApps = usePrefsStore((s) => s.attachApps);
   const [accessibility, setAccessibility] = useState(true);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
@@ -134,8 +135,13 @@ export const SettingsPanel: React.FC<{
         )}
         {(!attachApps || accessibility) && <div className="mb-6" />}
 
-        <Label>Sign-ins</Label>
-        <div className="mb-6">
+        <Label>Sites</Label>
+        <div className="space-y-0.5 mb-6">
+          <Row
+            icon={<Star size={14} className="t-soft" />}
+            label="Favorites…"
+            onClick={onOpenFavorites}
+          />
           <Row
             icon={<KeyRound size={14} className="t-soft" />}
             label="Sign-ins…"
