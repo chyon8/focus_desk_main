@@ -3,6 +3,7 @@ import path from 'node:path';
 import Store from 'electron-store';
 import { NEW_TAB_FRAME } from '../src/widgets/browserLinks';
 import { createHelper } from './apps/helperClient';
+import { matchChromeBrands } from './clientHints';
 import { registerActivityIpc } from './ipc/activity';
 import { registerAppsIpc } from './ipc/apps';
 import { registerBackupIpc, snapshotIfNeeded } from './ipc/backup';
@@ -297,6 +298,12 @@ const ZOOM_KEYS: Record<string, string> = {
 // fullscreen leaves no way out: Esc and ⇧M both go to the site instead.
 app.on('web-contents-created', (_event, contents) => {
   if (contents.getType() !== 'webview') return;
+
+  matchChromeBrands(contents);
+  // A sign-in popup is someone else's page as much as the widget is. Without
+  // this its requests would carry the brand headers while the page itself said
+  // something else, which is worse than neither.
+  contents.on('did-create-window', (popup) => matchChromeBrands(popup.webContents));
 
   // What a page asks for with `window.open` is two different things, and they
   // need opposite answers (D-075).
